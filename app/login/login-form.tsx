@@ -659,14 +659,17 @@ export function LoginForm({
             ) : null}
               </>
             ) : (
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
-                <p className="text-xs font-semibold text-emerald-900">
-                  Student sign-in is Google-only for now.
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
-                  OTP is temporarily disabled. Existing wallets need their Google email linked by
-                  an admin; new students create a wallet automatically.
-                </p>
+              <div className="space-y-3">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
+                  <p className="text-xs font-semibold text-emerald-900">
+                    Student sign-in is Google-only for now.
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
+                    OTP is temporarily disabled. Existing wallets need their Google email linked by
+                    an admin; new students create a wallet automatically.
+                  </p>
+                </div>
+                {studentError ? <InlineError>{studentError}</InlineError> : null}
               </div>
             )}
           </form>
