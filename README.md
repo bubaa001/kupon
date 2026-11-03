@@ -467,10 +467,11 @@ Use a separate Supabase project for Vercel Preview deployments so preview builds
 cannot apply migrations to production. Set a strong `JWT_SECRET` and
 `DEMO_MODE=false` in Vercel. Do not copy secrets into GitHub.
 
-> **Before production use:** food photos are still stored on local disk, which
-> is ephemeral on Vercel. Move uploads to Supabase Storage or another object
-> store before relying on uploaded menu images. Also replace the in-memory rate
-> limiter with a shared store before scaling to multiple serverless instances.
+> Vendor-uploaded food photos are stored in PostgreSQL so they persist across
+> serverless deployments. For larger media libraries, move binary files to
+> object storage to reduce database storage and bandwidth. Also replace the
+> in-memory rate limiter with a shared store before scaling to multiple
+> serverless instances.
 
 ### Docker / VPS
 

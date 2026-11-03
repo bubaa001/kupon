@@ -1,6 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,12 +12,7 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /**
- * Serves vendor-uploaded food photos written after the Next.js build.
- *
- * Files added to `public/` at runtime are not in Next's production static
- * manifest, so `/uploads/food/<file>` 404s with `next start`. This route reads
- * the file from disk and streams it with an immutable cache header. Replace the
- * directory read with S3/R2 in production.
+ * Serves vendor-uploaded food photos persisted in PostgreSQL.
  */
 export async function GET(
   _request: Request,
@@ -29,23 +23,30 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  const contentType = CONTENT_TYPES[ext];
+  const contentType = CONTENT_TYPES[filename.split('.').pop()?.toLowerCase() ?? ''];
   if (!contentType) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
   try {
-    const file = await readFile(path.join(process.cwd(), 'public', 'uploads', 'food', filename));
-    return new NextResponse(file, {
+    const file = await prisma.storedFile.findUnique({
+      where: { key: filename },
+      select: { contentType: true, data: true, size: true },
+    });
+    if (!file) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    return new NextResponse(Buffer.from(file.data), {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Content-Length': String(file.byteLength),
+        'Content-Length': String(file.size),
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
-  } catch {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  } catch (error) {
+    console.error('[uploads] Failed to load stored food photo:', error);
+    return NextResponse.json({ error: 'Unable to load photo' }, { status: 500 });
   }
 }

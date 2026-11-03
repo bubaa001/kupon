@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { requireApiUser, requireVendor } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { badRequest } from '@/lib/errors';
 import { fail, ok } from '@/lib/api';
 
@@ -19,11 +18,8 @@ const MAX_BYTES = 5 * 1024 * 1024;
 /**
  * POST /api/vendor/menu/upload
  *
- * Vendor-owned food photo upload. The file is stored under
- * public/uploads/food/<vendor-id>-<uuid>.<ext> and served through
- * /api/uploads/food/<filename> because Next.js production does not serve files
- * added to public/ after build. For serverless production, swap this for
- * S3/R2/Cloudinary; the menu contract only needs the returned URL.
+ * Vendor-owned food photos are stored in PostgreSQL so uploads persist across
+ * serverless deployments.
  */
 export async function POST(request: Request) {
   try {
@@ -49,10 +45,16 @@ export async function POST(request: Request) {
       throw badRequest('Keep the photo under 5 MB.');
     }
 
-    const directory = path.join(process.cwd(), 'public', 'uploads', 'food');
-    await mkdir(directory, { recursive: true });
     const filename = `${vendor.id}-${randomUUID()}.${ext}`;
-    await writeFile(path.join(directory, filename), Buffer.from(await entry.arrayBuffer()));
+    const data = Buffer.from(await entry.arrayBuffer());
+    await prisma.storedFile.create({
+      data: {
+        key: filename,
+        contentType: entry.type,
+        data,
+        size: data.byteLength,
+      },
+    });
 
     return ok({
       url: `/api/uploads/food/${filename}`,

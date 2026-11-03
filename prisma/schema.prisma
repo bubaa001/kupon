@@ -384,3 +384,11 @@ model SaasInvoice {
 
   @@index([universityId, status])
 }
+
+model StoredFile {
+  key         String   @id
+  contentType String
+  data        Bytes
+  size        Int
+  createdAt   DateTime @default(now())
+}
