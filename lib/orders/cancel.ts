@@ -73,10 +73,8 @@ function isWriteConflict(error: unknown): boolean {
 }
 
 /**
- * SQLite serialises writers, so two cancels of the same coupon can collide with
- * a write conflict instead of both claiming the status. A single retry is
- * enough: on the second attempt the conditional claim fails cleanly and the
- * request returns the already-cancelled order without moving money again.
+ * Concurrent transactions can conflict while claiming the same coupon. Retry
+ * one serialization conflict so the conditional claim can return a clean result.
  */
 async function withWriteRetry<T>(run: () => Promise<T>): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt += 1) {

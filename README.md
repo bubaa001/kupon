@@ -4,7 +4,7 @@
 
 Kupon replaces the paper coupon book and the handwritten cafeteria ledger with a wallet students can top up from M-Pesa, Tigo Pesa, Airtel Money or Halotel, QR menu ordering with verified meal coupons, and a real-time financial console for every university. It is a multi-tenant SaaS: **UDSM money stays at UDSM, MUST money stays at MUST.**
 
-Built with Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui patterns, Prisma + SQLite, Recharts, `qrcode.react` and `html5-qrcode`.
+Built with Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui patterns, Prisma + PostgreSQL, Recharts, `qrcode.react` and `html5-qrcode`.
 
 ![Kupon social preview](public/og-kupon.png)
 
@@ -127,7 +127,7 @@ USSD/offline payments are **not supported in this build**. The simulator page, A
 | QR | `qrcode.react` (generate), `html5-qrcode` (scan) |
 | Auth | `jose` HS256 JWT in an httpOnly, SameSite=Lax cookie; bcrypt for staff credentials; Google OAuth 2.0 for student sign-in/signup and vendor sign-in/application |
 | Validation | Zod on every mutation + query filter |
-| Database | Prisma 6 + SQLite (`prisma/dev.db`) — schema designed for PostgreSQL |
+| Database | Prisma 6 + PostgreSQL (Supabase) |
 | Payments | Provider interface + mock **Snippe** implementation (STK push, settlement, refund, smart routing) |
 | SMS | Mock SMS logger; USSD code retained but disabled via feature flag |
 | PWA | Web manifest, maskable icons, offline fallback, service worker (never caches API/HTML) |
@@ -146,8 +146,8 @@ pnpm install
 # 2. Configure
 cp .env.example .env        # Windows PowerShell: copy .env.example .env
 
-# 3. Generate Prisma client, create SQLite DB and seed the demo
-pnpm setup
+# 3. Apply the PostgreSQL schema
+pnpm db:migrate:deploy
 
 # 4. Run
 pnpm dev
@@ -155,8 +155,12 @@ pnpm dev
 
 Open **http://localhost:3000**.
 
-> The demo seed is **destructive**: it clears demo data and recreates it. It refuses to run when Google-created accounts exist unless `FORCE_DESTRUCTIVE_SEED=1`; use `pnpm db:reset` only when you intend to delete those accounts. If a StudentProfile ever exists without its Wallet row, run `pnpm db:repair`; the student layout and every `/api/student/**` route also self-heal the wallet on demand.
-> The demo database lives at `prisma/dev.db` (git-ignored).
+> Configure both `DATABASE_URL` (transaction pooler) and `DIRECT_URL` (session
+> pooler) in `.env` before running Prisma commands. The example URLs use a
+> placeholder password; URL-encode special characters in your real password.
+> `pnpm db:seed` creates destructive demo data; run it only against a disposable
+> development project, never the production database. If a StudentProfile ever
+> exists without its Wallet row, run `pnpm db:repair`; student routes also self-heal wallets.
 
 
 
@@ -239,10 +243,9 @@ Configure it in `.env` (see `.env.example`):
 GOOGLE_CLIENT_ID="..."
 GOOGLE_CLIENT_SECRET="..."
 GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/callback/google"
-NEXT_PUBLIC_GOOGLE_AUTH_ENABLED="true"
 ```
 
-Add the exact redirect URI to **Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Web Client**. For production, add the deployed URL equivalent.
+Add the exact redirect URI to **Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Web Client**. For production, set `GOOGLE_REDIRECT_URI` to the deployed URL and add that exact URI in Google Cloud Console.
 
 Link a real Google email to an existing demo wallet, either from the admin UI or the CLI:
 
@@ -260,25 +263,7 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 - **`ERR_CONNECTION_REFUSED` after Google:** the Kupon server was not running, or was on a different port/host when Google redirected back. Start it with `pnpm start` (or `pnpm dev`) and keep the same origin open. Check `http://localhost:3000` first.
 - **`redirect_uri_mismatch`:** add exactly `http://localhost:3000/api/auth/callback/google` (and the production equivalent) under Google Cloud Console → APIs & Services → Credentials → your OAuth 2.0 Web Client → Authorised redirect URIs. Set `GOOGLE_REDIRECT_URI` to the same value.
 - **`Access blocked` / app not verified:** while the OAuth consent screen is in Testing, add your Google account as a test user in Google Cloud Console, or publish the app.
-- **Mobile Google auth:** use ngrok to give your phone an HTTPS address. The free ngrok plan assigns a temporary URL, so do **not** pass a custom domain with `--url`.
-
-  1. Start Kupon in one PowerShell window:
-     ```powershell
-     pnpm dev
-     ```
-  2. In a second PowerShell window, start a free tunnel:
-     ```powershell
-     ngrok http 3000
-     ```
-  3. Copy the HTTPS URL ngrok displays, for example `https://example.ngrok-free.app`. In `.env`, set the hostname and callback using your actual URL:
-     ```env
-     NGROK_HOST="example.ngrok-free.app"
-     GOOGLE_MOBILE_REDIRECT_URI="https://example.ngrok-free.app/api/auth/callback/google"
-     ```
-  4. Add that exact callback URL to **Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Web Client → Authorised redirect URIs**.
-  5. Restart `pnpm dev`, then open the HTTPS ngrok URL on your phone. Keep both windows open.
-
-  The free URL may change when you restart ngrok. If it does, update both `.env` values and the Google authorised redirect URI, then restart `pnpm dev`. Google does not accept a private `192.168.x.x` HTTP address as a web redirect URI.
+- **Google auth on the hosted app:** open the stable Vercel domain from your phone. Set `GOOGLE_REDIRECT_URI` to `https://<your-domain>/api/auth/callback/google` in Vercel and add that exact URI to the OAuth client’s authorized redirect URIs in Google Cloud Console. A local tunnel is not needed for the hosted app.
 - **Existing wallet not linked to Google:** the callback does not attach Google to a funded wallet automatically. Link it from **Admin → Students → student → Google sign-in fallback**, or run `pnpm link:google <phone> <email>`. New students do not need this step — they get the signup form.
 - **`google_signup_expired`:** the 15-minute signup ticket expired. Start **Continue with Google** again.
 - **`google_vendor_expired`:** the 15-minute vendor application ticket expired. Start again from the Vendor tab.
@@ -304,7 +289,7 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 
 ## Money flow & fee waterfall
 
-Every campus payment is settled inside one SQLite transaction:
+Every campus payment is settled inside one PostgreSQL transaction:
 
 ```
 Student wallet (debit 100%)
@@ -419,7 +404,6 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 - Vendor food photos are written to `public/uploads/food` and served through `/api/uploads/food/<filename>` on the local filesystem. Serverless hosts need object storage (S3/R2/Cloudinary) for durable uploads; the menu contract only stores the returned URL.
 - Phone photos are resized in the browser to a maximum 1600px JPEG before upload, so large Android photos and most mobile gallery formats work without hitting the 5 MB limit.
 - Vendor settlements are mock instant payouts recorded in `Settlement`; no bank/aggregator payout API is called.
-- SQLite is single-writer; use PostgreSQL for production.
 
 ---
 
@@ -471,21 +455,26 @@ The app is a standard Next.js 14 project and deploys without a custom server:
 vercel
 ```
 
-Set the environment variables from `.env.example` in the Vercel project settings. Add `NEXT_PUBLIC_APP_URL` with the deployment URL.
+Connect the GitHub repository to Vercel and set the variables from `.env.example`
+in the Production environment. Use the Supabase transaction-pooler URL for
+`DATABASE_URL`, the session-pooler URL for `DIRECT_URL`, and set
+`NEXT_PUBLIC_APP_URL` and `GOOGLE_REDIRECT_URI` to the deployed HTTPS domain.
+Register the exact Google callback (`https://<your-domain>/api/auth/callback/google`)
+in Google Cloud Console. Run `pnpm db:migrate:deploy` against the Supabase project
+before the first deployment; the checked-in migrations create the schema.
 
-> **SQLite on Vercel is ephemeral / read-only.** For a real deployment, switch to a managed PostgreSQL database (Neon, Supabase, Vercel Postgres):
->
-> 1. Change `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma`.
-> 2. Set `DATABASE_URL` to the pooled Postgres connection string.
-> 3. Replace the documented string status fields with native Prisma enums (optional, recommended).
-> 4. Run `pnpm prisma migrate dev --name init` locally, commit the migration, and let Vercel run `prisma migrate deploy` in the build command.
-> 5. Seed once against the hosted DB with `pnpm db:seed`.
->
-> The schema uses `cuid()`/UUID-friendly IDs and no SQLite-specific types, so no data model changes are needed.
+Use a separate Supabase project for Vercel Preview deployments so preview builds
+cannot apply migrations to production. Set a strong `JWT_SECRET` and
+`DEMO_MODE=false` in Vercel. Do not copy secrets into GitHub.
+
+> **Before production use:** food photos are still stored on local disk, which
+> is ephemeral on Vercel. Move uploads to Supabase Storage or another object
+> store before relying on uploaded menu images. Also replace the in-memory rate
+> limiter with a shared store before scaling to multiple serverless instances.
 
 ### Docker / VPS
 
-`pnpm build && pnpm start` behind Nginx works with a persistent SQLite volume; mount `prisma/` as a volume and back up `dev.db`. For multiple instances use PostgreSQL.
+`pnpm build && pnpm start` behind Nginx can connect to the same managed PostgreSQL database. Configure both database URLs and run `pnpm db:migrate:deploy` before starting the app.
 
 ---
 

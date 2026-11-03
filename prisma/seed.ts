@@ -4,7 +4,9 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { subDays, setHours, setMinutes, startOfMonth, subMonths } from 'date-fns';
 
-if (!process.env.DATABASE_URL) process.env.DATABASE_URL = 'file:./dev.db';
+if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
+  throw new Error('Set DATABASE_URL and DIRECT_URL before seeding.');
+}
 
 const prisma = new PrismaClient();
 
@@ -835,7 +837,7 @@ async function main() {
     );
   }
 
-  // Bulk insert keeps the seed fast on SQLite.
+  // Bulk insert keeps the seed fast on PostgreSQL.
   await prisma.transaction.createMany({ data: allTransactions });
   await prisma.ledgerEntry.createMany({ data: allLedger });
   await prisma.refundRequest.createMany({ data: allRefundRequests });
@@ -1083,4 +1085,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

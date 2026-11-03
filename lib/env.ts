@@ -12,6 +12,7 @@ const optionalUrl = z.preprocess(
 
 const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  DIRECT_URL: z.string().min(1, 'DIRECT_URL is required'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   PAYMENT_PROVIDER: z.enum(['mock', 'selcom', 'azampay', 'ncard']).default('mock'),
   PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(15).default(2.5),
@@ -31,9 +32,8 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_REDIRECT_URI: optionalUrl,
-  // Optional HTTPS origin used by phones (e.g. an ngrok/Cloudflare tunnel).
-  // Mobile browsers cannot reach http://localhost; register this exact callback
-  // in Google Cloud Console and open the app through the same public URL.
+  // Optional HTTPS callback for a public origin different from the canonical app URL.
+  // Register this exact callback in Google Cloud Console when using it.
   GOOGLE_MOBILE_REDIRECT_URI: optionalUrl,
   WHOP_API_KEY: z.string().optional(),
   WHOP_ACCOUNT_ID: z.string().optional(),
@@ -52,7 +52,8 @@ const EnvSchema = z.object({
 });
 
 const parsed = EnvSchema.safeParse({
-  DATABASE_URL: process.env.DATABASE_URL ?? 'file:./dev.db',
+  DATABASE_URL: process.env.DATABASE_URL,
+  DIRECT_URL: process.env.DIRECT_URL,
   JWT_SECRET: process.env.JWT_SECRET,
   PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
   PLATFORM_FEE_PERCENT: process.env.PLATFORM_FEE_PERCENT,

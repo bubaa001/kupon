@@ -21,7 +21,7 @@ import type { WithdrawalPayoutResult } from './types';
  * money. It is never tied to an order. Creating the request moves no money; the
  * approve path below is the only place a wallet is debited:
  *
- *   1. one SQLite transaction claims PENDING → APPROVED with a conditional
+ *   1. one database transaction claims PENDING → APPROVED with a conditional
  *      `updateMany`, then performs the conditional wallet debit, creates a
  *      `WITHDRAWAL` transaction and posts a balanced journal. If the debit fails
  *      (insufficient funds / concurrent spend) the claim rolls back with it.

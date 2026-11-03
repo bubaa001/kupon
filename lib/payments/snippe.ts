@@ -169,7 +169,7 @@ class SnippeMockProvider implements PaymentProvider {
   /**
    * Settles a PENDING campus payment: debits the student wallet, credits vendor
    * pending settlement, books university/platform/aggregator revenue and writes
-   * a balanced journal — all in one SQLite transaction.
+   * a balanced journal — all in one database transaction.
    */
   async settlePayment(transactionId: string) {
     const result = await prisma.$transaction(async (tx) => {

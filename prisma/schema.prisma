@@ -1,19 +1,14 @@
-// Kupon multi-tenant schema.
-//
-// SQLite is used for the zero-config MVP. Enums are intentionally represented
-// as strings because the SQLite connector does not support Prisma enums; the
-// string values are validated by Zod at the API boundary and documented below.
-// To migrate to PostgreSQL: change `provider` to "postgresql", point
-// DATABASE_URL at Postgres, then replace the documented string fields with
-// native enums. All IDs are cuid() so no sequence migration is required.
+// Kupon multi-tenant schema. Status and role values remain strings and are
+// validated at API boundaries. CUID identifiers work across local and hosted DBs.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // role: STUDENT | VENDOR | ADMIN | SUPER_ADMIN

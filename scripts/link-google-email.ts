@@ -10,7 +10,9 @@
  */
 import { PrismaClient } from '@prisma/client';
 
-if (!process.env.DATABASE_URL) process.env.DATABASE_URL = 'file:./dev.db';
+if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
+  throw new Error('Set DATABASE_URL and DIRECT_URL before linking a Google email.');
+}
 
 const prisma = new PrismaClient();
 

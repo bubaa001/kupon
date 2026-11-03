@@ -21,7 +21,7 @@ export type LedgerLine = {
 
 /**
  * Writes a balanced double-entry journal for one transaction.
- * Throws (and therefore rolls back the enclosing SQLite transaction) if debits
+ * Throws (and therefore rolls back the enclosing database transaction) if debits
  * and credits do not agree. This is the invariant that keeps the ledger honest.
  */
 export async function postJournal(
