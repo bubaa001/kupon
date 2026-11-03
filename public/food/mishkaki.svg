@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Grilled meat skewers">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2c170b"/><stop offset="1" stop-color="#120a05"/></linearGradient>
+    <radialGradient id="plate" cx=".4" cy=".3" r=".8"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#d8cfc1"/></radialGradient>
+    <filter id="s"><feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#140903" flood-opacity=".6"/></filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#130903" opacity=".6"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="136" ry="106" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="114" ry="86" fill="#f3e9d9"/>
+  </g>
+  <g transform="rotate(-14 200 160)">
+    <rect x="96" y="154" width="212" height="6" rx="3" fill="#a16207"/>
+    <rect x="110" y="136" width="60" height="40" rx="12" fill="#7c2d12"/>
+    <rect x="180" y="132" width="62" height="44" rx="12" fill="#9a3412"/>
+    <rect x="252" y="138" width="54" height="38" rx="12" fill="#7c2d12"/>
+    <g fill="#f59e0b" opacity=".45"><circle cx="133" cy="153" r="3"/><circle cx="207" cy="150" r="3"/><circle cx="274" cy="155" r="3"/></g>
+  </g>
+  <g transform="rotate(11 200 178) translate(0 30)">
+    <rect x="100" y="150" width="204" height="6" rx="3" fill="#a16207"/>
+    <rect x="116" y="132" width="58" height="40" rx="12" fill="#9a3412"/>
+    <rect x="184" y="128" width="60" height="44" rx="12" fill="#7c2d12"/>
+    <rect x="254" y="134" width="48" height="38" rx="12" fill="#9a3412"/>
+  </g>
+  <g fill="#22c55e"><path d="M132 202c7-9 16-10 20-4 4 6-1 12-9 14-8 2-15-2-11-10Z"/><path d="M264 204c6-8 14-9 18-3 3 5-1 10-8 12-7 2-14-2-10-9Z"/></g>
+</svg>

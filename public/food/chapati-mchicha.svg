@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Chapati with mchicha greens">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#20301a"/><stop offset="1" stop-color="#0d150b"/></linearGradient>
+    <radialGradient id="plate" cx=".4" cy=".3" r=".8"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#d8ded2"/></radialGradient>
+    <linearGradient id="chap" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6d38a"/><stop offset="1" stop-color="#d99a45"/></linearGradient>
+    <filter id="s"><feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#071006" flood-opacity=".6"/></filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#071006" opacity=".6"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="136" ry="106" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="114" ry="86" fill="#eef3e8"/>
+  </g>
+  <g>
+    <path d="M126 169c14-43 54-65 107-58 47 6 70 32 61 65-10 39-64 60-112 49-37-8-66-27-56-56Z" fill="url(#chap)"/>
+    <path d="M145 165c25-24 84-37 126-16" fill="none" stroke="#b97a30" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+    <path d="M155 188c31-18 82-22 110-4" fill="none" stroke="#f9e2b0" stroke-width="4" stroke-linecap="round" opacity=".6"/>
+    <g fill="#b97a30" opacity=".35"><circle cx="177" cy="143" r="3"/><circle cx="218" cy="133" r="2.5"/><circle cx="253" cy="153" r="3"/><circle cx="206" cy="190" r="2"/></g>
+  </g>
+  <g fill="#15803d">
+    <path d="M159 126c-4-22 12-37 28-28 17 9 14 31-4 40-12 6-22 1-24-12Z"/>
+    <path d="M209 119c-1-19 14-30 27-22 14 8 10 27-5 34-11 5-21 0-22-12Z"/>
+    <path d="M245 131c4-17 19-24 30-15 11 10 4 26-11 30-11 3-21-4-19-15Z"/>
+    <path d="M174 149c0-14 12-23 22-16 11 8 6 23-7 27-9 3-15-2-15-11Z"/>
+  </g>
+  <g fill="#22c55e">
+    <path d="M174 124c0-9 7-15 13-10 7 5 4 15-4 17-5 2-9-1-9-7Z"/>
+    <path d="M220 120c1-8 8-12 13-8 6 4 3 13-4 15-5 1-9-2-9-7Z"/>
+  </g>
+</svg>

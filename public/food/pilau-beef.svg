@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Pilau rice with beef">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2b1a0e"/><stop offset="1" stop-color="#120d08"/></linearGradient>
+    <radialGradient id="plate" cx=".4" cy=".3" r=".8"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#d8d2c4"/></radialGradient>
+    <linearGradient id="rice" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d99a48"/><stop offset="1" stop-color="#9a5a23"/></linearGradient>
+    <filter id="s"><feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#150c05" flood-opacity=".6"/></filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="330" cy="52" r="80" fill="#fb923c" opacity=".12"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#110a04" opacity=".6"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="136" ry="106" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="114" ry="86" fill="#f2eee6"/>
+  </g>
+  <path d="M118 176c4-40 32-62 83-62 52 0 80 25 84 63-24 33-142 37-167 -1Z" fill="url(#rice)"/>
+  <g stroke="#f6cf91" stroke-width="3" stroke-linecap="round" opacity=".8">
+    <path d="M142 137l15 8"/><path d="M168 127l12 9"/><path d="M196 120l12 8"/><path d="M226 123l13 8"/><path d="M251 134l12 8"/>
+    <path d="M147 159l13 7"/><path d="M178 157l12 8"/><path d="M211 155l13 8"/><path d="M241 161l13 7"/>
+    <path d="M159 183l12 6"/><path d="M194 181l13 7"/><path d="M229 183l12 6"/>
+  </g>
+  <g fill="#6b3417">
+    <path d="M157 147c-6-13 9-23 23-17 15 7 16 21 4 30-12 10-23 2-27-13Z"/>
+    <path d="M225 157c-2-12 12-20 24-13 12 8 10 21-2 27-12 5-20-2-22-14Z"/>
+    <path d="M190 184c-3-9 7-16 17-12 11 4 12 15 2 21-9 5-16 0-19-9Z"/>
+  </g>
+  <g fill="#22c55e"><path d="M133 199c9-10 19-10 23-3 3 6-3 13-12 15-9 2-16-2-11-12Z"/><path d="M266 129c8-8 16-8 20-2 3 6-2 12-10 13-8 1-14-3-10-11Z"/></g>
+  <g fill="#fbbf24"><circle cx="174" cy="201" r="3"/><circle cx="246" cy="199" r="2.5"/><circle cx="207" cy="124" r="2"/></g>
+</svg>

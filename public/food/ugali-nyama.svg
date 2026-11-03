@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Ugali and grilled beef on a plate">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#12352b"/><stop offset="1" stop-color="#0a1d18"/>
+    </linearGradient>
+    <radialGradient id="plate" cx=".4" cy=".3" r=".8">
+      <stop stop-color="#f8fafc"/><stop offset="1" stop-color="#d7e2df"/>
+    </radialGradient>
+    <linearGradient id="ugali" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#fffdf6"/><stop offset="1" stop-color="#ede4cc"/>
+    </linearGradient>
+    <filter id="s"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#04110d" flood-opacity=".55"/></filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="338" cy="54" r="78" fill="#10b981" opacity=".12"/>
+  <circle cx="52" cy="252" r="92" fill="#34d399" opacity=".08"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#06130f" opacity=".55"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="134" ry="105" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="112" ry="86" fill="#eef4f2"/>
+  </g>
+  <ellipse cx="200" cy="105" rx="86" ry="28" fill="#d8e3df" opacity=".65"/>
+  <path d="M125 156c8-38 33-57 78-57s69 20 76 55c-32 30-124 32-154 2Z" fill="url(#ugali)"/>
+  <path d="M140 149c21-18 82-26 122-4" fill="none" stroke="#d8c9a8" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+  <g fill="#8a4b22">
+    <path d="M177 186c-8-14 6-26 22-22 17 4 21 19 12 30-9 12-27 8-34-8Z"/>
+    <path d="M221 196c-6-12 7-23 21-19 15 4 18 18 9 27-9 10-24 5-30-8Z"/>
+    <path d="M143 188c-5-10 5-18 16-16 12 3 15 14 8 21-7 8-19 4-24-5Z"/>
+  </g>
+  <g fill="#5f3217">
+    <path d="M186 180c-3-7 4-13 12-11 9 2 10 10 4 15-6 6-13 3-16-4Z"/>
+    <path d="M230 190c-3-6 3-11 10-9 8 2 9 9 3 13-5 4-11 2-13-4Z"/>
+  </g>
+  <g fill="#2f8f5b">
+    <path d="M150 118c8-13 20-17 27-9 5 6 0 16-11 22-11 5-21 0-16-13Z"/>
+    <path d="M250 112c9-11 20-13 25-5 4 6-1 15-12 19-10 3-18-3-13-14Z"/>
+  </g>
+  <g fill="#fbbf24">
+    <circle cx="162" cy="139" r="3"/><circle cx="240" cy="142" r="3"/><circle cx="204" cy="206" r="2.5"/>
+  </g>
+</svg>

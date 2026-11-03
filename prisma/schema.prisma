@@ -1,0 +1,391 @@
+// Kupon multi-tenant schema.
+//
+// SQLite is used for the zero-config MVP. Enums are intentionally represented
+// as strings because the SQLite connector does not support Prisma enums; the
+// string values are validated by Zod at the API boundary and documented below.
+// To migrate to PostgreSQL: change `provider` to "postgresql", point
+// DATABASE_URL at Postgres, then replace the documented string fields with
+// native enums. All IDs are cuid() so no sequence migration is required.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// role: STUDENT | VENDOR | ADMIN | SUPER_ADMIN
+model University {
+  id               String   @id @default(cuid())
+  name             String
+  code             String   @unique
+  paymentRouteCode String   @unique
+  city             String   @default("Dar es Salaam")
+  saasFee          Int      @default(250000) // TZS / month
+  brandColor       String   @default("#10B981")
+  status           String   @default("ACTIVE") // ACTIVE | SUSPENDED
+  createdAt        DateTime @default(now())
+
+  users           User[]
+  studentProfiles StudentProfile[]
+  vendors         Vendor[]
+  menuItems       MenuItem[]
+  transactions    Transaction[]
+  refundRequests  RefundRequest[]
+  ledgerEntries   LedgerEntry[]
+  paymentTokens   PaymentToken[]
+  orders          Order[]
+  settlements     Settlement[]
+  saasInvoices    SaasInvoice[]
+  auditLogs       AuditLog[]
+  otpCodes        OtpCode[]
+
+  @@index([status])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  phone        String    @unique
+  email        String?   @unique // university/Google email, linked for OAuth sign-in
+  googleId     String?   @unique // Google `sub` once the account is linked
+  name         String
+  role         String    @default("STUDENT") // STUDENT | VENDOR | ADMIN | SUPER_ADMIN
+  universityId String?
+  passwordHash String?
+  otp          String?
+  otpExpiresAt DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  university      University?     @relation(fields: [universityId], references: [id])
+  student         StudentProfile?
+  vendor          Vendor?
+  auditLogs       AuditLog[]      @relation("ActorAuditLogs")
+  reviewedRefunds RefundRequest[] @relation("RefundReviewer")
+  verifiedOrders  Order[]         @relation("OrderVerifier")
+
+  @@index([universityId, role])
+}
+
+model StudentProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  universityId  String
+  studentId     String
+  course        String   @default("General Studies")
+  year          Int      @default(1)
+  // Cached copy of Wallet.balance for fast list rendering. Every writer updates
+  // both inside one Prisma $transaction; Wallet remains the accounting record.
+  walletBalance Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university     University      @relation(fields: [universityId], references: [id])
+  wallet         Wallet?
+  transactions   Transaction[]
+  refundRequests RefundRequest[]
+  paymentTokens  PaymentToken[]
+  orders         Order[]
+
+  @@unique([universityId, studentId])
+  @@index([universityId])
+}
+
+model Vendor {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  universityId      String
+  name              String
+  code              String   @unique
+  pin               String // bcrypt hash of the 4-digit POS PIN
+  description       String   @default("Campus cafeteria")
+  settlementAccount String   @default("CRDB Bank •••• 0000")
+  pendingBalance    Int      @default(0)
+  totalSettled      Int      @default(0)
+  status            String   @default("ACTIVE") // PENDING | ACTIVE | SUSPENDED
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university   University    @relation(fields: [universityId], references: [id])
+  menuItems    MenuItem[]
+  transactions Transaction[]
+  settlements  Settlement[]
+  orders       Order[]
+
+  @@index([universityId, status])
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  studentId String   @unique
+  balance   Int      @default(0)
+  currency  String   @default("TZS")
+  updatedAt DateTime @updatedAt
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id                String    @id @default(cuid())
+  reference         String    @unique
+  universityId      String
+  studentId         String
+  vendorId          String?
+  amount            Int
+  fee               Int       @default(0) // platform fee deducted from vendor settlement
+  platformFee       Int       @default(0)
+  aggregatorFee     Int       @default(0)
+  universityRevenue Int       @default(0)
+  vendorSettlement  Int       @default(0)
+  type              String // TOPUP | PAYMENT | REFUND | WITHDRAWAL | ADJUSTMENT_CREDIT | ADJUSTMENT_DEBIT
+  status            String    @default("PENDING") // PENDING | SETTLED | FAILED
+  network           String? // M-Pesa | Tigo Pesa | Airtel Money | Halotel
+  phone             String?
+  routeCode         String? // university.paymentRouteCode — never shared across tenants
+  metadata          String? // JSON string (item, token id, aggregator ref, ...)
+  failureReason     String?
+  createdAt         DateTime  @default(now())
+  settledAt         DateTime?
+
+  university     University      @relation(fields: [universityId], references: [id])
+  student        StudentProfile  @relation(fields: [studentId], references: [id])
+  vendor         Vendor?         @relation(fields: [vendorId], references: [id])
+  ledger         LedgerEntry[]
+  paymentToken   PaymentToken?
+  order          Order?
+  refundRequests RefundRequest[] @relation("RefundOriginalTransaction")
+
+  @@index([universityId, createdAt])
+  @@index([studentId, createdAt])
+  @@index([vendorId, createdAt])
+  @@index([status])
+  @@index([type])
+}
+
+model MenuItem {
+  id             String   @id @default(cuid())
+  vendorId       String
+  universityId   String
+  name           String
+  description    String   @default("")
+  price          Int
+  category       String   @default("Main")
+  emoji          String   @default("🍲")
+  imageUrl       String? // optional local/remote food image shown on the menu + coupon
+  available      Boolean  @default(true)
+  approvalStatus String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  vendor     Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  university University  @relation(fields: [universityId], references: [id])
+  orderItems OrderItem[]
+
+  @@index([vendorId, available])
+  @@index([universityId, approvalStatus])
+}
+
+// A paid cafeteria order. Money settles immediately (wallet debit + vendor
+// pending credit + journal); the coupon is the redemption proof the vendor
+// verifies at the counter. Status: PENDING | VERIFIED | CANCELLED.
+model Order {
+  id            String    @id @default(cuid())
+  reference     String    @unique
+  universityId  String
+  studentId     String
+  vendorId      String
+  status        String    @default("PENDING")
+  total         Int
+  itemCount     Int
+  couponCode    String    @unique
+  note          String?
+  transactionId String?   @unique
+  verifiedById  String?
+  verifiedAt    DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+
+  university     University      @relation(fields: [universityId], references: [id])
+  student        StudentProfile  @relation(fields: [studentId], references: [id])
+  vendor         Vendor          @relation(fields: [vendorId], references: [id])
+  transaction    Transaction?    @relation(fields: [transactionId], references: [id])
+  verifiedBy     User?           @relation("OrderVerifier", fields: [verifiedById], references: [id])
+  items          OrderItem[]
+  refundRequests RefundRequest[] @relation("OrderRefundRequests")
+
+  @@index([vendorId, status, createdAt])
+  @@index([studentId, createdAt])
+  @@index([universityId, createdAt])
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  menuItemId String?
+  name       String
+  price      Int
+  quantity   Int
+  emoji      String
+  imageUrl   String?
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+// A student money request. Two distinct semantics share this audited queue:
+//
+//   kind = "WITHDRAWAL" (default so pre-existing rows stay valid): cash out
+//     available wallet balance to mobile money. Not tied to an order. Creating a
+//     request never moves money; the wallet is debited exactly once when an admin
+//     approves it, inside the same transaction that claims the row.
+//
+//   kind = "REFUND": money returned for one specific paid and vendor-verified
+//     order (`orderId` + the original PAYMENT `transactionId`). Approval reverses
+//     that order's wallet debit, vendor pending credit and fee revenue exactly
+//     once. Pending orders are NOT refunded here — students cancel those before
+//     verification (orders flow), which is a different state machine.
+model RefundRequest {
+  id                  String    @id @default(cuid())
+  reference           String    @unique
+  kind                String    @default("WITHDRAWAL") // WITHDRAWAL | REFUND
+  studentId           String
+  universityId        String
+  amount              Int
+  reason              String    @default("Unused cafeteria balance")
+  status              String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  // REFUND only: paid order being reversed and its original PAYMENT transaction.
+  orderId             String?
+  transactionId       String?
+  // Set when approved: the money movement that settled the request.
+  payoutTransactionId String?
+  payoutReference     String?
+  payoutStatus        String? // PENDING | SETTLED | FAILED (withdrawal payout rail)
+  adminNote           String?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime  @default(now())
+
+  student     StudentProfile @relation(fields: [studentId], references: [id])
+  university  University     @relation(fields: [universityId], references: [id])
+  reviewedBy  User?          @relation("RefundReviewer", fields: [reviewedById], references: [id])
+  order       Order?         @relation("OrderRefundRequests", fields: [orderId], references: [id])
+  transaction Transaction?   @relation("RefundOriginalTransaction", fields: [transactionId], references: [id])
+
+  @@index([universityId, status, createdAt])
+  @@index([universityId, kind, status, createdAt])
+  @@index([studentId])
+  @@index([studentId, kind, status])
+  @@index([orderId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  universityId String?
+  action       String
+  entity       String
+  entityId     String?
+  metadata     String? // JSON string
+  createdAt    DateTime @default(now())
+
+  actor      User?       @relation("ActorAuditLogs", fields: [actorId], references: [id])
+  university University? @relation(fields: [universityId], references: [id])
+
+  @@index([universityId, createdAt])
+  @@index([actorId])
+}
+
+model OtpCode {
+  id           String   @id @default(cuid())
+  phone        String
+  code         String
+  universityId String?
+  expiresAt    DateTime
+  consumed     Boolean  @default(false)
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  university University? @relation(fields: [universityId], references: [id])
+
+  @@index([phone, createdAt])
+}
+
+// A 120-second, single-use payment token. The QR payload is a signed JWT whose
+// `jti` maps to this row; the 6-digit `code` supports the USSD/manual flow.
+model PaymentToken {
+  id            String    @id // JWT jti
+  code          String    @unique
+  studentId     String
+  universityId  String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  transactionId String?   @unique
+  createdAt     DateTime  @default(now())
+
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  university  University     @relation(fields: [universityId], references: [id])
+  transaction Transaction?   @relation(fields: [transactionId], references: [id])
+
+  @@index([code, expiresAt])
+  @@index([studentId, expiresAt])
+}
+
+// Double-entry journal. For each transaction, SUM(debit) === SUM(credit).
+// Accounts: STUDENT_WALLET, VENDOR_PENDING, PLATFORM_REVENUE,
+// UNIVERSITY_REVENUE, AGGREGATOR_PAYABLE, CASH_TRUST.
+model LedgerEntry {
+  id            String   @id @default(cuid())
+  transactionId String
+  universityId  String
+  account       String
+  debit         Int      @default(0)
+  credit        Int      @default(0)
+  description   String?
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  university  University  @relation(fields: [universityId], references: [id])
+
+  @@index([transactionId])
+  @@index([universityId, account])
+}
+
+model Settlement {
+  id           String    @id @default(cuid())
+  reference    String    @unique
+  vendorId     String
+  universityId String
+  amount       Int
+  status       String    @default("PENDING") // PENDING | PAID | FAILED
+  periodStart  DateTime
+  periodEnd    DateTime
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  vendor     Vendor     @relation(fields: [vendorId], references: [id])
+  university University @relation(fields: [universityId], references: [id])
+
+  @@index([vendorId, createdAt])
+  @@index([universityId, status])
+}
+
+model SaasInvoice {
+  id           String    @id @default(cuid())
+  reference    String    @unique
+  universityId String
+  amount       Int
+  period       String // e.g. 2026-10
+  status       String    @default("PENDING") // PAID | PENDING | OVERDUE
+  issuedAt     DateTime  @default(now())
+  paidAt       DateTime?
+
+  university University @relation(fields: [universityId], references: [id])
+
+  @@index([universityId, status])
+}

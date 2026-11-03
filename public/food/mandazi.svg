@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Mandazi: golden fried dough triangles on a plate">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#3d2a0c"/><stop offset="1" stop-color="#170e03"/>
+    </linearGradient>
+    <radialGradient id="plate" cx=".42" cy=".3" r=".8">
+      <stop stop-color="#fdf7ea"/><stop offset="1" stop-color="#dbcdb2"/>
+    </radialGradient>
+    <linearGradient id="dough" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f5c877"/><stop offset=".55" stop-color="#d18f36"/><stop offset="1" stop-color="#9c5c18"/>
+    </linearGradient>
+    <linearGradient id="dough2" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#f9d78f"/><stop offset="1" stop-color="#c07c28"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#120a02" flood-opacity=".6"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#3d2405" flood-opacity=".4"/>
+    </filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="334" cy="56" r="84" fill="#fbbf24" opacity=".12"/>
+  <circle cx="60" cy="254" r="88" fill="#f59e0b" opacity=".08"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#120a02" opacity=".62"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="134" ry="105" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="113" ry="86" fill="#f6eedb"/>
+  </g>
+  <ellipse cx="200" cy="104" rx="84" ry="26" fill="#ded2b9" opacity=".5"/>
+
+  <!-- three rounded-triangle mandazi -->
+  <g filter="url(#soft)">
+    <path d="M160 204 216 148 240 214Z" fill="url(#dough)" stroke="url(#dough)" stroke-width="18" stroke-linejoin="round"/>
+    <path d="M196 152 250 106 274 170Z" fill="url(#dough2)" stroke="url(#dough2)" stroke-width="18" stroke-linejoin="round"/>
+    <path d="M242 212 300 166 322 228Z" fill="url(#dough)" stroke="url(#dough)" stroke-width="18" stroke-linejoin="round"/>
+  </g>
+  <!-- fried edges + shine -->
+  <g fill="none" stroke="#8f5212" stroke-width="3" stroke-linecap="round" opacity=".55">
+    <path d="M176 204l40-40"/><path d="M230 208l14-40"/>
+    <path d="M210 150l38-30"/><path d="M262 162l10-36"/>
+    <path d="M258 210l42-32"/><path d="M304 214l12-32"/>
+  </g>
+  <g fill="none" stroke="#ffe1a3" stroke-width="4.5" stroke-linecap="round" opacity=".55">
+    <path d="M170 198l36-36"/><path d="M204 146l34-27"/><path d="M252 204l38-28"/>
+  </g>
+  <!-- sugar dust -->
+  <g fill="#fffaf0" opacity=".9">
+    <circle cx="186" cy="186" r="2"/><circle cx="206" cy="164" r="1.8"/><circle cx="230" cy="168" r="2"/>
+    <circle cx="228" cy="134" r="1.8"/><circle cx="254" cy="138" r="1.7"/><circle cx="278" cy="196" r="1.9"/>
+    <circle cx="300" cy="200" r="1.7"/><circle cx="252" cy="206" r="1.6"/><circle cx="152" cy="196" r="1.5"/>
+  </g>
+  <!-- green garnish -->
+  <g fill="#22c55e">
+    <path d="M124 132c6-9 14-11 18-5 3 5-1 11-8 14-7 3-14 0-10-9Z"/>
+    <path d="M304 126c6-8 13-10 17-4 3 4-1 10-8 13-6 2-13-1-9-9Z"/>
+  </g>
+</svg>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="A hot cup of chai tea on a saucer">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#33200f"/><stop offset="1" stop-color="#140b04"/>
+    </linearGradient>
+    <radialGradient id="saucer" cx=".42" cy=".32" r=".8">
+      <stop stop-color="#fbf5e8"/><stop offset="1" stop-color="#d9cab1"/>
+    </radialGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff"/><stop offset="1" stop-color="#dfd4c2"/>
+    </linearGradient>
+    <radialGradient id="tea" cx=".4" cy=".35" r=".8">
+      <stop stop-color="#c9863f"/><stop offset=".6" stop-color="#99551c"/><stop offset="1" stop-color="#6d3a10"/>
+    </radialGradient>
+    <filter id="s" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#100701" flood-opacity=".62"/>
+    </filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="336" cy="52" r="82" fill="#f59e0b" opacity=".1"/>
+  <circle cx="56" cy="256" r="88" fill="#10b981" opacity=".07"/>
+  <ellipse cx="200" cy="262" rx="142" ry="20" fill="#100701" opacity=".6"/>
+
+  <!-- saucer -->
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="212" rx="126" ry="44" fill="url(#saucer)"/>
+    <ellipse cx="200" cy="206" rx="104" ry="34" fill="#efe3cc"/>
+  </g>
+  <!-- cup -->
+  <g filter="url(#s)">
+    <circle cx="200" cy="150" r="86" fill="url(#cup)"/>
+    <circle cx="200" cy="150" r="72" fill="#f6eedd"/>
+    <circle cx="200" cy="150" r="63" fill="url(#tea)"/>
+    <circle cx="200" cy="150" r="63" fill="none" stroke="#e9dcc6" stroke-width="7"/>
+  </g>
+  <!-- tea swirl + foam -->
+  <path d="M154 158c18-30 62-38 90-14 12 10 14 24 8 34-14 24-58 32-84 14-12-8-18-21-14-34Z" fill="#b4702c" opacity=".55"/>
+  <path d="M164 146c22-18 56-22 76-6" fill="none" stroke="#e8b175" stroke-width="6" stroke-linecap="round" opacity=".6"/>
+  <path d="M186 138c16-8 36-9 48-1" fill="none" stroke="#f6ddb6" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+  <!-- steam -->
+  <g stroke="#f5e6cd" stroke-width="7" stroke-linecap="round" fill="none" opacity=".38">
+    <path d="M168 84c-14-18 12-26 2-44"/>
+    <path d="M202 74c-14-20 14-28 4-46"/>
+    <path d="M236 84c-12-16 10-24 2-40"/>
+  </g>
+  <!-- handle -->
+  <path d="M286 138c30-4 42 20 30 38-9 14-28 16-38 6" fill="none" stroke="#efe4d0" stroke-width="13" stroke-linecap="round" filter="url(#s)"/>
+  <path d="M286 138c30-4 42 20 30 38-9 14-28 16-38 6" fill="none" stroke="#d7c8ae" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+  <!-- cardamom / cinnamon -->
+  <g fill="#3f9e63">
+    <ellipse cx="140" cy="230" rx="11" ry="6" transform="rotate(-24 140 230)"/>
+    <ellipse cx="152" cy="238" rx="9" ry="5" transform="rotate(16 152 238)"/>
+  </g>
+  <g fill="#8a4b22">
+    <rect x="244" y="226" width="30" height="8" rx="4" transform="rotate(-14 259 230)"/>
+    <rect x="230" y="238" width="24" height="7" rx="3.5" transform="rotate(8 242 241)"/>
+  </g>
+</svg>

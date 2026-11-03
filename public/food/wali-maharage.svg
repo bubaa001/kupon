@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Rice and beans">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#142a20"/><stop offset="1" stop-color="#0a1711"/></linearGradient>
+    <radialGradient id="plate" cx=".4" cy=".3" r=".8"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#d5ded9"/></radialGradient>
+    <filter id="s"><feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#04110b" flood-opacity=".6"/></filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="338" cy="54" r="80" fill="#34d399" opacity=".1"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#06130e" opacity=".6"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="136" ry="106" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="114" ry="86" fill="#eef4f0"/>
+  </g>
+  <path d="M112 164c6-42 40-59 92-57 49 2 77 26 84 62-21 34-148 33-176-5Z" fill="#f8faf6"/>
+  <g fill="#ef4444" opacity=".9">
+    <ellipse cx="166" cy="138" rx="13" ry="9" transform="rotate(-18 166 138)"/>
+    <ellipse cx="204" cy="132" rx="13" ry="9" transform="rotate(12 204 132)"/>
+    <ellipse cx="243" cy="142" rx="13" ry="9" transform="rotate(-8 243 142)"/>
+    <ellipse cx="153" cy="163" rx="13" ry="9" transform="rotate(20 153 163)"/>
+    <ellipse cx="193" cy="160" rx="13" ry="9" transform="rotate(-12 193 160)"/>
+    <ellipse cx="235" cy="164" rx="13" ry="9" transform="rotate(16 235 164)"/>
+    <ellipse cx="266" cy="158" rx="11" ry="8" transform="rotate(-20 266 158)"/>
+    <ellipse cx="177" cy="187" rx="12" ry="8" transform="rotate(8 177 187)"/>
+    <ellipse cx="219" cy="184" rx="12" ry="8" transform="rotate(-8 219 184)"/>
+  </g>
+  <g fill="#b91c1c" opacity=".55">
+    <circle cx="166" cy="138" r="3"/><circle cx="204" cy="132" r="3"/><circle cx="243" cy="142" r="3"/><circle cx="193" cy="160" r="3"/><circle cx="235" cy="164" r="3"/>
+  </g>
+  <g fill="#22c55e"><path d="M142 203c7-11 17-12 22-5 4 6-1 13-10 15-9 3-16-2-12-10Z"/><path d="M268 116c7-8 15-9 19-3 3 5-1 11-9 13-8 1-14-3-10-10Z"/></g>
+</svg>

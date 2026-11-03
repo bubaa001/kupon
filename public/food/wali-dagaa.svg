@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Wali dagaa: white rice with small fried fish">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0f2e26"/><stop offset="1" stop-color="#07140f"/>
+    </linearGradient>
+    <radialGradient id="plate" cx=".42" cy=".3" r=".8">
+      <stop stop-color="#fcf9f0"/><stop offset="1" stop-color="#d7d6c6"/>
+    </radialGradient>
+    <linearGradient id="rice" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#fffdf7"/><stop offset="1" stop-color="#e5e1d0"/>
+    </linearGradient>
+    <linearGradient id="fish" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#c7d7dd"/><stop offset="1" stop-color="#7d97a3"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#040c09" flood-opacity=".62"/>
+    </filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="338" cy="54" r="82" fill="#34d399" opacity=".1"/>
+  <circle cx="56" cy="254" r="90" fill="#fbbf24" opacity=".07"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#04100a" opacity=".6"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="134" ry="105" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="113" ry="86" fill="#f1f2e8"/>
+  </g>
+  <ellipse cx="200" cy="104" rx="86" ry="26" fill="#d9dccd" opacity=".55"/>
+
+  <!-- rice mound -->
+  <path d="M126 174c-8-40 26-68 74-68 50 0 84 27 76 70-7 34-38 50-80 49-43-1-64-19-70-51Z" fill="url(#rice)"/>
+  <g stroke="#cfcbb8" stroke-width="2.6" stroke-linecap="round" opacity=".8">
+    <path d="M146 158l14-4"/><path d="M170 146l14-4"/><path d="M196 140l14-3"/><path d="M222 143l14 3"/>
+    <path d="M246 156l13 5"/><path d="M152 180l14 5"/><path d="M180 192l14 3"/><path d="M212 190l14 2"/>
+    <path d="M240 184l13 5"/><path d="M168 170l13 3"/><path d="M200 172l13 2"/><path d="M228 174l13 3"/>
+  </g>
+
+  <!-- dagaa (small fried fish) -->
+  <g fill="url(#fish)">
+    <g transform="rotate(-14 168 160)">
+      <ellipse cx="168" cy="160" rx="25" ry="10"/>
+      <path d="M143 160l-12-8v16Z"/>
+      <circle cx="184" cy="157" r="2.2" fill="#22323a"/>
+    </g>
+    <g transform="rotate(12 236 166)">
+      <ellipse cx="236" cy="166" rx="24" ry="10"/>
+      <path d="M260 166l12-8v16Z"/>
+      <circle cx="221" cy="163" r="2.2" fill="#22323a"/>
+    </g>
+    <g transform="rotate(-6 198 192)">
+      <ellipse cx="198" cy="192" rx="22" ry="9"/>
+      <path d="M176 192l-11-7v14Z"/>
+      <circle cx="212" cy="189" r="2" fill="#22323a"/>
+    </g>
+    <g transform="rotate(18 262 196)">
+      <ellipse cx="262" cy="196" rx="18" ry="8"/>
+      <path d="M280 196l10-6v12Z"/>
+    </g>
+    <g transform="rotate(-20 142 196)">
+      <ellipse cx="142" cy="196" rx="17" ry="7.5"/>
+      <path d="M125 196l-9-6v12Z"/>
+    </g>
+  </g>
+  <g stroke="#f4e6c4" stroke-width="2" stroke-linecap="round" opacity=".65">
+    <path d="M158 156l10-3"/><path d="M228 162l10-2"/><path d="M190 188l9-2"/>
+  </g>
+
+  <!-- greens + lemon -->
+  <g fill="#3f9e63">
+    <path d="M170 128c8-11 19-14 24-7 4 5-1 13-10 17-10 4-19 0-14-10Z"/>
+    <path d="M246 138c7-9 17-11 21-5 3 5-1 12-9 15-8 3-16-1-12-10Z"/>
+    <path d="M214 202c7-9 16-10 20-4 3 5-1 11-8 14-8 3-15-1-12-10Z"/>
+  </g>
+  <g>
+    <path d="M296 200a24 24 0 0 1-30 22l-4-10a14 14 0 0 0 18-13Z" fill="#facc15"/>
+    <path d="M296 200h-14v14" fill="none" stroke="#eab308" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <g fill="#fbbf24"><circle cx="152" cy="214" r="2.4"/><circle cx="246" cy="148" r="2.2"/></g>
+</svg>

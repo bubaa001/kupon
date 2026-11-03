@@ -1,0 +1,188 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { ArrowLeft, Check, Smartphone } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
+import { getAuthUser, roleHome } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { USSD_ENABLED } from '@/lib/features';
+import { LoginForm, type LoginRole } from './login-form';
+
+export const metadata: Metadata = {
+  title: 'Sign in',
+  description:
+    'Sign in to Kupon as a student or campus vendor. Students create a wallet with Google; vendors apply with Google for admin approval.',
+};
+
+export const dynamic = 'force-dynamic';
+
+type LoginPageProps = {
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  // Already have a valid session: skip the form and land on the role home.
+  const sessionUser = await getAuthUser();
+  if (sessionUser) redirect(roleHome(sessionUser.role));
+
+  const requestedRole = Array.isArray(searchParams?.role)
+    ? searchParams?.role[0]
+    : searchParams?.role;
+  // Staff have a separate entrance. The public login is only for students and
+  // vendors; an old staff bookmark is redirected instead of exposing the tab.
+  if (requestedRole === 'staff') redirect('/staff/login');
+  const initialRole: LoginRole = requestedRole === 'vendor' ? 'vendor' : 'student';
+
+  // Live demo tenant snapshot, not hardcoded marketing figures. The login page
+  // stays server-rendered/dynamic, so these counts reflect the current seed.
+  let pilot: { students: number; vendors: number; dishes: number } | null = null;
+  try {
+    const udsm = await prisma.university.findUnique({
+      where: { code: 'UDSM' },
+      select: {
+        _count: { select: { studentProfiles: true, vendors: true, menuItems: true } },
+      },
+    });
+    if (udsm) {
+      pilot = {
+        students: udsm._count.studentProfiles,
+        vendors: udsm._count.vendors,
+        dishes: udsm._count.menuItems,
+      };
+    }
+  } catch {
+    // The seed may not exist yet on a fresh deployment; the login form still works.
+    pilot = null;
+  }
+
+  return (
+    <main className="min-h-dvh bg-canvas">
+      <div className="lg:grid lg:min-h-dvh lg:grid-cols-[1.03fr_0.97fr]">
+        <aside className="relative hidden overflow-hidden bg-navy px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between xl:px-14">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 [background-image:radial-gradient(rgba(255,255,255,0.09)_0.8px,transparent_0.8px)] [background-size:20px_20px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-24 top-10 h-80 w-80 rounded-full bg-primary-500/20 blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-primary-400/10 blur-3xl"
+          />
+
+          <div className="relative">
+            <Logo variant="light" />
+            <p className="mt-16 max-w-md text-4xl font-semibold leading-[1.03] tracking-[-0.04em] xl:text-[2.9rem]">
+              One wallet. Every campus counter.
+            </p>
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-300">
+              Top up with mobile money, scan a vendor&apos;s QR to order, verify meal coupons, and
+              reconcile the whole campus in one ledger.
+            </p>
+            <ul className="mt-8 space-y-3 text-sm text-slate-300">
+              <li className="flex gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-300" strokeWidth={2} />
+                A student wallet that works on any phone.
+              </li>
+              <li className="flex gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-300" strokeWidth={2} />
+                Mobile-money top ups with an SMS receipt every time.
+              </li>
+              <li className="flex gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-300" strokeWidth={2} />
+                A double-entry ledger the bursar can audit line by line.
+              </li>
+            </ul>
+          </div>
+
+          <div className="relative mt-12 max-w-md rounded-xl border border-white/10 bg-white/[0.05] p-4">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">UDSM pilot snapshot</span>
+              <span className="inline-flex items-center gap-1.5 font-semibold text-primary-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary-400" aria-hidden />
+                Live seed
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Students</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {pilot ? pilot.students : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Vendors</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {pilot ? pilot.vendors : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Dishes</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {pilot ? pilot.dishes : '—'}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 border-t border-white/10 pt-2 text-[10px] text-slate-500">
+              Counts come from the current seeded UDSM tenant. No real money moves here.
+            </p>
+          </div>
+
+          <p className="relative mt-10 text-xs text-slate-500">
+            Kupon demo environment · UDSM and MUST pilots
+          </p>
+        </aside>
+
+        <section className="flex min-h-dvh flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-10 lg:pb-10 lg:pt-8">
+          <div className="mx-auto flex w-full max-w-md items-center justify-between lg:max-w-lg">
+            <span className="lg:hidden">
+              <Logo size="sm" />
+            </span>
+            <Link
+              href="/"
+              className="hidden items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 lg:inline-flex"
+            >
+              <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+              Back to home
+            </Link>
+            {USSD_ENABLED ? (
+              <Link
+                href="/ussd"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+              >
+                <Smartphone className="h-4 w-4" strokeWidth={1.9} />
+                Try USSD
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-7 lg:max-w-lg lg:py-10">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card sm:p-7">
+              <div className="mb-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-600">
+                  Kupon wallet
+                </p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-navy sm:text-3xl">
+                  Sign in or create a wallet
+                </h1>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                  Students sign up with Google. Vendors apply with Google and are approved by their
+                  campus admin.
+                </p>
+              </div>
+
+              <LoginForm initialRole={initialRole} />
+            </div>
+
+            <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-400">
+              Seeded demo data. Top ups and payments are simulated by a mock aggregator, so no real
+              money moves. Phone OTP is temporarily disabled; students use Google.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}

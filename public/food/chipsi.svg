@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Hot chips: a plate of golden french fries">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#3a2408"/><stop offset="1" stop-color="#171003"/>
+    </linearGradient>
+    <radialGradient id="plate" cx=".42" cy=".3" r=".8">
+      <stop stop-color="#fffaf0"/><stop offset="1" stop-color="#dccfb6"/>
+    </radialGradient>
+    <linearGradient id="fry" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#f7c35c"/><stop offset=".45" stop-color="#ffe29a"/><stop offset="1" stop-color="#d99626"/>
+    </linearGradient>
+    <linearGradient id="fry2" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#d99a32"/><stop offset=".5" stop-color="#f6c766"/><stop offset="1" stop-color="#b9770f"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#130d02" flood-opacity=".6"/>
+    </filter>
+    <filter id="fsoft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#4a2a03" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="338" cy="52" r="84" fill="#fbbf24" opacity=".14"/>
+  <circle cx="58" cy="258" r="88" fill="#f97316" opacity=".09"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#120c02" opacity=".62"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="134" ry="105" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="113" ry="86" fill="#f6edda"/>
+  </g>
+  <ellipse cx="200" cy="104" rx="84" ry="26" fill="#ded4be" opacity=".5"/>
+
+  <!-- back layer fries -->
+  <g filter="url(#fsoft)" fill="url(#fry2)">
+    <rect x="161" y="102" width="22" height="96" rx="10" transform="rotate(-18 172 150)"/>
+    <rect x="195" y="94" width="22" height="104" rx="10" transform="rotate(-4 206 146)"/>
+    <rect x="227" y="102" width="22" height="96" rx="10" transform="rotate(12 238 150)"/>
+    <rect x="145" y="134" width="21" height="86" rx="10" transform="rotate(-30 155 177)"/>
+    <rect x="241" y="136" width="21" height="88" rx="10" transform="rotate(28 251 180)"/>
+  </g>
+  <!-- front layer fries -->
+  <g filter="url(#fsoft)" fill="url(#fry)">
+    <rect x="175" y="114" width="23" height="100" rx="11" transform="rotate(-10 186 164)"/>
+    <rect x="209" y="118" width="23" height="100" rx="11" transform="rotate(6 220 168)"/>
+    <rect x="189" y="144" width="22" height="90" rx="10" transform="rotate(22 200 189)"/>
+    <rect x="126" y="152" width="21" height="80" rx="10" transform="rotate(56 136 192)"/>
+    <rect x="250" y="158" width="21" height="78" rx="10" transform="rotate(124 260 197)"/>
+    <rect x="203" y="108" width="22" height="88" rx="10" transform="rotate(32 214 152)"/>
+    <rect x="160" y="158" width="21" height="74" rx="10" transform="rotate(-46 170 195)"/>
+  </g>
+  <!-- centre highlights -->
+  <g fill="#ffeab4" opacity=".75">
+    <rect x="181" y="122" width="6" height="82" rx="3" transform="rotate(-10 184 163)"/>
+    <rect x="215" y="126" width="6" height="80" rx="3" transform="rotate(6 218 166)"/>
+    <rect x="232" y="112" width="5" height="62" rx="2.5" transform="rotate(12 234 143)"/>
+    <rect x="199" y="104" width="5" height="70" rx="2.5" transform="rotate(-4 201 139)"/>
+  </g>
+  <!-- crisp edges -->
+  <g stroke="#9c5a0c" stroke-width="2.4" stroke-linecap="round" opacity=".38">
+    <path d="M168 122l-14 58"/><path d="M200 116l-6 76"/><path d="M236 124l8 62"/>
+    <path d="M258 146l18 54"/><path d="M146 168l30 42"/>
+  </g>
+  <!-- salt + ketchup -->
+  <g fill="#fffbe8" opacity=".9">
+    <circle cx="183" cy="140" r="2.2"/><circle cx="216" cy="132" r="2"/><circle cx="246" cy="152" r="1.9"/>
+    <circle cx="197" cy="202" r="1.8"/><circle cx="228" cy="128" r="1.6"/><circle cx="168" cy="186" r="1.7"/>
+  </g>
+  <path d="M268 204c15-9 34-5 36 9 2 15-14 25-29 18-13-7-18-21-7-27Z" fill="#dc2626" opacity=".92"/>
+  <g fill="#22c55e" opacity=".9">
+    <path d="M120 172c6-10 14-13 18-7 4 5 0 12-7 15-7 3-15 0-11-8Z"/>
+  </g>
+</svg>

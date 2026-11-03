@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Fish in coconut sauce">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0e2b33"/><stop offset="1" stop-color="#081619"/></linearGradient>
+    <radialGradient id="plate" cx=".4" cy=".3" r=".8"><stop stop-color="#f8fafc"/><stop offset="1" stop-color="#d7e0df"/></radialGradient>
+    <filter id="s"><feDropShadow dx="0" dy="9" stdDeviation="10" flood-color="#041013" flood-opacity=".6"/></filter>
+  </defs>
+  <rect width="400" height="300" rx="24" fill="url(#bg)"/>
+  <circle cx="334" cy="52" r="82" fill="#22d3ee" opacity=".1"/>
+  <ellipse cx="200" cy="258" rx="142" ry="22" fill="#051013" opacity=".6"/>
+  <g filter="url(#s)">
+    <ellipse cx="200" cy="160" rx="136" ry="106" fill="url(#plate)"/>
+    <ellipse cx="200" cy="160" rx="114" ry="86" fill="#eaf2f0"/>
+  </g>
+  <path d="M124 172c21-38 65-55 110-42 15 4 24 13 30 25-17 26-50 45-88 45-25 0-43-10-52-28Z" fill="#d97706" opacity=".85"/>
+  <g transform="translate(0 -6)">
+    <path d="M151 156c14-22 48-31 79-22 26 8 37 27 30 44-8 20-37 30-65 23-30-8-56-24-44-45Z" fill="#94a3b8"/>
+    <path d="M256 158c16-11 27-10 35-2-4 12-19 20-36 18Z" fill="#64748b"/>
+    <circle cx="179" cy="150" r="4" fill="#0f172a"/>
+    <path d="M167 170c12 7 25 9 38 6" fill="none" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+    <g stroke="#cbd5e1" stroke-width="2" opacity=".65"><path d="M197 143l-8 28"/><path d="M214 145l-8 28"/><path d="M231 150l-8 24"/></g>
+  </g>
+  <g fill="#fbbf24" opacity=".8"><circle cx="145" cy="198" r="4"/><circle cx="158" cy="210" r="3"/><circle cx="258" cy="199" r="4"/></g>
+  <g fill="#22c55e"><path d="M139 127c8-11 18-12 23-5 4 6-1 13-10 16-9 2-17-2-13-11Z"/><path d="M265 126c7-9 16-10 20-4 4 6-1 12-9 14-8 2-15-2-11-10Z"/></g>
+</svg>
