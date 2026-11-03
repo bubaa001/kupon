@@ -254,7 +254,6 @@ export function LoginForm({
   const [verifying, setVerifying] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
   const [googleStarting, setGoogleStarting] = useState(false);
-  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
 
   // Vendor state
   const [vendorCode, setVendorCode] = useState('');
@@ -672,35 +671,33 @@ export function LoginForm({
             )}
           </form>
 
-          {googleEnabled ? (
-            <div className="mt-5">
-              {OTP_LOGIN_ENABLED ? (
-                <div className="relative flex items-center gap-3">
-                  <span className="h-px flex-1 bg-slate-200" />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    or
-                  </span>
-                  <span className="h-px flex-1 bg-slate-200" />
-                </div>
-              ) : null}
-              <Button
-                type="button"
-                variant={OTP_LOGIN_ENABLED ? 'outline' : 'default'}
-                size="lg"
-                className={OTP_LOGIN_ENABLED ? 'mt-4 w-full bg-white' : 'w-full'}
-                onClick={() => startGoogleSignIn('student')}
-                loading={googleStarting}
-                disabled={googleStarting || universities.length === 0}
-              >
-                {!googleStarting ? <GoogleGlyph className="h-[18px] w-[18px]" /> : null}
-                Continue with Google
-              </Button>
-              <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
-                Google is the student sign-in method now. Existing wallets sign in if their Google
-                email is linked; new students create a wallet in 30 seconds.
-              </p>
-            </div>
-          ) : null}
+          <div className="mt-5">
+            {OTP_LOGIN_ENABLED ? (
+              <div className="relative flex items-center gap-3">
+                <span className="h-px flex-1 bg-slate-200" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  or
+                </span>
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant={OTP_LOGIN_ENABLED ? 'outline' : 'default'}
+              size="lg"
+              className={OTP_LOGIN_ENABLED ? 'mt-4 w-full bg-white' : 'w-full'}
+              onClick={() => startGoogleSignIn('student')}
+              loading={googleStarting}
+              disabled={googleStarting || universities.length === 0}
+            >
+              {!googleStarting ? <GoogleGlyph className="h-[18px] w-[18px]" /> : null}
+              Continue with Google
+            </Button>
+            <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
+              Google is the student sign-in method now. Existing wallets sign in if their Google
+              email is linked; new students create a wallet in 30 seconds.
+            </p>
+          </div>
         </TabsContent>
 
         <TabsContent value="vendor" className="mt-5 focus-visible:outline-none">
@@ -902,4 +899,3 @@ export function LoginForm({
     </div>
   );
 }
-
