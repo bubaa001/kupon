@@ -74,6 +74,9 @@ export default function TopUpPage() {
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [whopEnabled, setWhopEnabled] = useState(false);
   const [azamPayEnabled, setAzamPayEnabled] = useState(false);
+  const [azamPayEnvironment, setAzamPayEnvironment] = useState<'sandbox' | 'production' | null>(
+    null,
+  );
   const [amount, setAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [network, setNetwork] = useState<MobileNetwork>('M-PESA');
@@ -102,14 +105,20 @@ export default function TopUpPage() {
 
   useEffect(() => {
     void loadWallet();
-    apiFetch<{ whopEnabled: boolean; azampayEnabled: boolean }>('/api/student/topup/config')
+    apiFetch<{
+      whopEnabled: boolean;
+      azampayEnabled: boolean;
+      azampayEnvironment: 'sandbox' | 'production' | null;
+    }>('/api/student/topup/config')
       .then((config) => {
         setWhopEnabled(config.whopEnabled);
         setAzamPayEnabled(config.azampayEnabled);
+        setAzamPayEnvironment(config.azampayEnvironment);
       })
       .catch(() => {
         setWhopEnabled(false);
         setAzamPayEnabled(false);
+        setAzamPayEnvironment(null);
       });
   }, [loadWallet]);
 
@@ -516,12 +525,16 @@ export default function TopUpPage() {
             <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs leading-relaxed text-emerald-900">
               <p className="font-semibold">
                 {useAzamPay
-                  ? 'Utapokea USSD push kwenye simu yako.'
+                  ? azamPayEnvironment === 'sandbox'
+                    ? 'AzamPay sandbox imepokea ombi lako.'
+                    : 'AzamPay itatuma ombi la uthibitisho kwenye simu yako.'
                   : 'Utalipia kwenye ukurasa salama wa Whop.'}
               </p>
               <p className="mt-1 text-emerald-800/80">
                 {useAzamPay
-                  ? `Thibitisha malipo kwa PIN ya ${NETWORK_LABEL[network]}. Wallet yako itaongezwa baada ya AzamPay kuthibitisha.`
+                  ? azamPayEnvironment === 'sandbox'
+                    ? 'Sandbox ni mazingira ya majaribio; USSD inaweza isifike kwenye laini halisi. Jaribu kutumia namba ya majaribio ya AzamPay, na usitume ombi jingine kama hili bado linasubiri.'
+                    : `Thibitisha malipo kwa PIN ya ${NETWORK_LABEL[network]}. Wallet yako itaongezwa baada ya AzamPay kuthibitisha.`
                   : 'Wallet yako itaongezwa mara tu Whop itakapothibitisha malipo. Hakuna PIN ya mtandao inayohitajika hapa.'}
               </p>
             </div>

@@ -21,6 +21,7 @@ export type AzamPayConfig = {
   clientSecret: string;
   apiKey?: string;
   appName: string;
+  environment: 'sandbox' | 'production';
   authBase: string;
   checkoutBase: string;
 };
@@ -39,6 +40,7 @@ export function getAzamPayConfig(): AzamPayConfig | null {
     clientSecret: env.AZAMPAY_CLIENT_SECRET,
     apiKey: env.AZAMPAY_API_KEY || undefined,
     appName: env.AZAMPAY_APP_NAME,
+    environment: sandbox ? 'sandbox' : 'production',
     authBase: sandbox
       ? 'https://authenticator-sandbox.azampay.co.tz'
       : 'https://authenticator.azampay.co.tz',
@@ -202,7 +204,7 @@ export async function initiateAzamPayTopUp(input: {
       status: 'PENDING',
       provider: 'AzamPay',
       routeCode: university.paymentRouteCode,
-      message: `USSD push sent to ${normalizePhone(input.phone)}. Enter your ${provider} PIN to confirm.`,
+      message: `AzamPay imepokea ombi lako kwa ${normalizePhone(input.phone)}. Angalia simu yako kwa ombi la uthibitisho.`,
       aggregatorFee: 0,
     };
   } catch (error) {
