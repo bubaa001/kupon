@@ -19,7 +19,7 @@ import { conflict, notFound } from '@/lib/errors';
 export type AzamPayConfig = {
   clientId: string;
   clientSecret: string;
-  apiKey: string;
+  apiKey?: string;
   appName: string;
   authBase: string;
   checkoutBase: string;
@@ -29,7 +29,6 @@ export function getAzamPayConfig(): AzamPayConfig | null {
   if (
     !env.AZAMPAY_CLIENT_ID ||
     !env.AZAMPAY_CLIENT_SECRET ||
-    !env.AZAMPAY_API_KEY ||
     !env.AZAMPAY_APP_NAME
   ) {
     return null;
@@ -38,7 +37,7 @@ export function getAzamPayConfig(): AzamPayConfig | null {
   return {
     clientId: env.AZAMPAY_CLIENT_ID,
     clientSecret: env.AZAMPAY_CLIENT_SECRET,
-    apiKey: env.AZAMPAY_API_KEY,
+    apiKey: env.AZAMPAY_API_KEY || undefined,
     appName: env.AZAMPAY_APP_NAME,
     authBase: sandbox
       ? 'https://authenticator-sandbox.azampay.co.tz'
@@ -167,7 +166,7 @@ export async function initiateAzamPayTopUp(input: {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
-        'X-API-Key': config.apiKey,
+        ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {}),
       },
       body: JSON.stringify({
         accountNumber: normalizePhone(input.phone),
