@@ -533,7 +533,7 @@ export default function TopUpPage() {
               <p className="mt-1 text-emerald-800/80">
                 {useAzamPay
                   ? azamPayEnvironment === 'sandbox'
-                    ? 'Sandbox ni mazingira ya majaribio; USSD inaweza isifike kwenye laini halisi. Jaribu kutumia namba ya majaribio ya AzamPay, na usitume ombi jingine kama hili bado linasubiri.'
+                    ? 'Kwa sandbox, tumia akaunti yako ya test mobile wallet au namba za majaribio zilizoonyeshwa kwenye dashboard ya AzamPay. Usitume ombi jingine kama hili bado linasubiri.'
                     : `Thibitisha malipo kwa PIN ya ${NETWORK_LABEL[network]}. Wallet yako itaongezwa baada ya AzamPay kuthibitisha.`
                   : 'Wallet yako itaongezwa mara tu Whop itakapothibitisha malipo. Hakuna PIN ya mtandao inayohitajika hapa.'}
               </p>
