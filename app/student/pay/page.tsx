@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   CheckCircle2,
   ChevronRight,
@@ -10,10 +9,9 @@ import {
   MapPin,
   ScanLine,
   ShoppingBag,
+  Smartphone,
   Store,
   UtensilsCrossed,
-  Wallet,
-  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
@@ -38,27 +36,30 @@ import { FoodProductCard } from '@/components/food';
 import { FoodThumb } from '@/components/orders/food-thumb';
 import { FoodCoupon } from '@/components/orders/food-coupon';
 import { PendingOrderDeck } from '@/components/student/pending-order-deck';
-import { CancelOrderDialog } from '@/components/student/cancel-order-dialog';
 import { QrScanner } from '@/components/qr/qr-scanner';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
-import { cn, formatTZS } from '@/lib/utils';
+import { cn, formatTZS, isValidTzPhone } from '@/lib/utils';
+import { MOBILE_NETWORKS, type MobileNetwork } from '@/lib/constants';
 import type {
-  CancelOrderResult,
   OrderView,
   PlaceOrderInput,
   StudentOrdersData,
   VendorMenuData,
 } from '@/lib/orders/types';
 import { parseVendorQr } from '@/lib/orders/qr-payload';
-import type { WalletData } from '../_lib/types';
+import type { StudentDashboardData, StudentProfileData } from '../_lib/types';
 import { ErrorState } from '../_components/error-state';
 
-type Phase = 'boot' | 'scan' | 'menu' | 'coupon';
+type Phase = 'boot' | 'scan' | 'menu' | 'payment' | 'payment-failed' | 'coupon';
 
 type PlaceOrderResponse = {
   order: OrderView;
-  balance: number;
   transactionId: string;
+  payment: {
+    status: 'PENDING' | 'SETTLED';
+    message: string;
+    demo: boolean;
+  };
 };
 
 type MenuItem = VendorMenuData['items'][number];
@@ -94,9 +95,9 @@ function PayingPanel() {
           <UtensilsCrossed className="h-7 w-7" aria-hidden />
         </span>
       </span>
-      <p className="mt-4 text-base font-semibold text-slate-900">Inakata pesa kwenye wallet…</p>
+      <p className="mt-4 text-base font-semibold text-slate-900">Tunatuma ombi la malipo…</p>
       <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-slate-500">
-        Tunatengeneza coupon yako ya chakula. Usifunge ukurasa huu.
+        Thibitisha kwenye simu yako. Coupon itatolewa baada ya malipo kuthibitishwa.
       </p>
       <p className="mt-4 flex items-center gap-2 text-[11px] text-slate-400">
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -107,12 +108,12 @@ function PayingPanel() {
 }
 
 export default function PayPage() {
-  const router = useRouter();
-
   const [phase, setPhase] = useState<Phase>('boot');
   const [bootError, setBootError] = useState<string | null>(null);
-  const [wallet, setWallet] = useState<WalletData | null>(null);
-  const [balance, setBalance] = useState(0);
+  const [student, setStudent] = useState<StudentDashboardData['student'] | null>(null);
+  const [phone, setPhone] = useState('');
+  const [network, setNetwork] = useState<MobileNetwork>('M-PESA');
+  const [paymentMessage, setPaymentMessage] = useState('');
   const [campusVendors, setCampusVendors] = useState<CampusVendor[]>([]);
 
   const [scanActive, setScanActive] = useState(false);
@@ -128,33 +129,39 @@ export default function PayPage() {
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [needsTopUp, setNeedsTopUp] = useState(false);
-
   const [order, setOrder] = useState<OrderView | null>(null);
 
-  // Coupons waiting for the vendor live on the scan screen as a card deck so the
-  // student can show or cancel any of them without losing the scanner.
+  // Paid coupons waiting for the vendor live on the scan screen as a card deck.
   const [pendingOrders, setPendingOrders] = useState<OrderView[]>([]);
   const [pendingLoading, setPendingLoading] = useState(true);
   const [pendingError, setPendingError] = useState<string | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<OrderView | null>(null);
 
   const loadBoot = useCallback(async () => {
     setPhase('boot');
     setBootError(null);
     setPendingLoading(true);
-    const [walletResult, ordersResult] = await Promise.allSettled([
-      apiFetch<WalletData>('/api/student/wallet'),
-      apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING'),
+    const [studentResult, ordersResult] = await Promise.allSettled([
+      apiFetch<StudentProfileData>('/api/student/profile'),
+      apiFetch<StudentOrdersData>('/api/student/orders?status=ALL'),
     ]);
 
-    if (walletResult.status === 'fulfilled') {
-      setWallet(walletResult.value);
-      setBalance(walletResult.value.balance);
+    if (studentResult.status === 'fulfilled') {
+      setStudent({
+        ...studentResult.value.student,
+        university: {
+          name: studentResult.value.university.name,
+          code: studentResult.value.university.code,
+        },
+      });
+      setPhone((current) => current || studentResult.value.student.phone);
     }
     let pending: OrderView[] = [];
+    let paymentWaiting: OrderView | undefined;
     if (ordersResult.status === 'fulfilled') {
       pending = ordersResult.value.orders.filter((entry) => entry.status === 'PENDING');
+      paymentWaiting = ordersResult.value.orders.find(
+        (entry) => entry.status === 'PAYMENT_PENDING',
+      );
       setPendingOrders(pending);
       setPendingError(null);
     } else {
@@ -162,7 +169,7 @@ export default function PayPage() {
         'Imeshindikana kupakia coupons zako. Angalia muunganisho wako kisha ujaribu tena.',
       );
     }
-    if (walletResult.status === 'rejected' && ordersResult.status === 'rejected') {
+    if (studentResult.status === 'rejected' && ordersResult.status === 'rejected') {
       setBootError(
         'Imeshindikana kupakia taarifa zako. Angalia muunganisho wako kisha ujaribu tena.',
       );
@@ -170,7 +177,11 @@ export default function PayPage() {
     setPendingLoading(false);
     // One waiting coupon opens the expanded coupon view (the familiar single
     // coupon screen). Two or more render as the quartett hand on the scanner.
-    if (pending.length === 1) {
+    if (paymentWaiting) {
+      setOrder(paymentWaiting);
+      setPaymentMessage('Tunasubiri uthibitisho wa malipo kwenye simu yako.');
+      setPhase('payment');
+    } else if (pending.length === 1) {
       setOrder(pending[0]);
       setPhase('coupon');
     } else {
@@ -184,7 +195,7 @@ export default function PayPage() {
 
   // Vendor discovery comes from the DB (active vendors in this university),
   // never from a hardcoded demo list.
-  const universityCode = wallet?.student.university.code;
+  const universityCode = student?.university.code;
   useEffect(() => {
     if (!universityCode) return;
     let cancelled = false;
@@ -200,20 +211,10 @@ export default function PayPage() {
     };
   }, [universityCode]);
 
-  const refreshWallet = useCallback(async () => {
-    try {
-      const data = await apiFetch<WalletData>('/api/student/wallet');
-      setWallet(data);
-      setBalance(data.balance);
-    } catch {
-      // Best effort: the visible error already explains the payment failure.
-    }
-  }, []);
-
   const refreshPending = useCallback(async () => {
     setPendingLoading(true);
     try {
-      const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING');
+      const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=ALL');
       setPendingOrders(data.orders.filter((entry) => entry.status === 'PENDING'));
       setPendingError(null);
     } catch (err) {
@@ -229,41 +230,8 @@ export default function PayPage() {
 
   const openCoupon = useCallback((next: OrderView) => {
     setOrder(next);
-    setCancelTarget(null);
     setPhase('coupon');
   }, []);
-
-  const handleCancelled = useCallback(
-    (result: CancelOrderResult) => {
-      const remaining = pendingOrders.filter((entry) => entry.id !== result.order.id);
-      setPendingOrders(remaining);
-      setBalance(result.balance);
-      setWallet((previous) => (previous ? { ...previous, balance: result.balance } : previous));
-      // If the cancelled coupon is the one on screen, keep it visible with the
-      // CANCELLED state instead of yanking the student back to the scanner.
-      setOrder((previous) => (previous && previous.id === result.order.id ? result.order : previous));
-      setCancelTarget(null);
-      void refreshWallet();
-      void refreshPending();
-      // When the hand shrinks to a single coupon, show that expanded coupon
-      // instead of a one-card stack — the same view as opening the page with a
-      // single pending order.
-      if (phase === 'scan' && remaining.length === 1) {
-        setOrder(remaining[0]);
-        setPhase('coupon');
-      }
-      if (result.alreadyCancelled) {
-        toast.info('Coupon hii ilikuwa imeghairiwa tayari.', {
-          description: 'Hakuna pesa iliyotolewa tena.',
-        });
-      } else {
-        toast.success('Coupon imeghairiwa', {
-          description: `${formatTZS(result.order.total)} imerejeshwa kwenye wallet yako.`,
-        });
-      }
-    },
-    [pendingOrders, phase, refreshPending, refreshWallet],
-  );
 
   const scanVendor = useCallback(
     async (payload: { token?: string; code?: string }) => {
@@ -274,12 +242,10 @@ export default function PayPage() {
       try {
         const data = await postJson<VendorMenuData>('/api/student/vendor-scan', payload);
         setMenu(data);
-        setBalance(data.student.walletBalance);
         setCart({});
         setCategory('Zote');
         setNote('');
         setFormError(null);
-        setNeedsTopUp(false);
         setReviewOpen(false);
         setScanActive(false);
         setCodeInput('');
@@ -322,14 +288,13 @@ export default function PayPage() {
     setNote('');
     setReviewOpen(false);
     setFormError(null);
-    setNeedsTopUp(false);
+    setPaymentMessage('');
     setScanError(null);
     setScanActive(false);
     setCodeInput('');
     setPhase('scan');
     void refreshPending();
-    void refreshWallet();
-  }, [refreshPending, refreshWallet]);
+  }, [refreshPending]);
 
   function submitCode(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -364,8 +329,11 @@ export default function PayPage() {
 
   const itemCount = cartEntries.reduce((sum, entry) => sum + entry.quantity, 0);
   const subtotal = cartEntries.reduce((sum, entry) => sum + entry.item.price * entry.quantity, 0);
-  const insufficient = subtotal > 0 && subtotal > balance;
-  const canPay = itemCount > 0 && !insufficient && !submitting;
+  const canPay = itemCount > 0 && !submitting;
+  const phoneError =
+    phone.trim().length === 0 || !isValidTzPhone(phone)
+      ? 'Weka namba sahihi ya simu ya Tanzania.'
+      : null;
 
   function changeQuantity(menuItemId: string, quantity: number) {
     setCart((previous) => {
@@ -375,18 +343,22 @@ export default function PayPage() {
       return next;
     });
     setFormError(null);
-    setNeedsTopUp(false);
     vibrate(12);
   }
 
   async function submitOrder() {
     if (!menu || !canPay) return;
+    if (phoneError) {
+      setFormError(phoneError);
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
-    setNeedsTopUp(false);
     try {
       const payload: PlaceOrderInput = {
         vendorId: menu.vendor.id,
+        phone,
+        network,
         items: cartEntries.map(({ item, quantity }) => ({
           menuItemId: item.id,
           quantity,
@@ -396,29 +368,32 @@ export default function PayPage() {
 
       const result = await postJson<PlaceOrderResponse>('/api/student/orders', payload);
       setOrder(result.order);
-      setBalance(result.balance);
-      setPendingOrders((previous) => [
-        result.order,
-        ...previous.filter((entry) => entry.id !== result.order.id),
-      ]);
+      setPaymentMessage(result.payment.message);
+      if (result.payment.status === 'SETTLED') {
+        setPendingOrders((previous) => [
+          result.order,
+          ...previous.filter((entry) => entry.id !== result.order.id),
+        ]);
+      }
       setReviewOpen(false);
       setCart({});
       setNote('');
-      setPhase('coupon');
-      vibrate([30, 40, 60]);
-      toast.success('Malipo yamekamilika — coupon imetengenezwa', {
-        description: `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
-      });
-      router.refresh();
+      setPhase(result.payment.status === 'SETTLED' ? 'coupon' : 'payment');
+      if (result.payment.status === 'SETTLED') {
+        vibrate([30, 40, 60]);
+        toast.success('Malipo yamethibitishwa. Coupon yako iko tayari.', {
+          description: result.payment.demo
+            ? 'Mazingira ya majaribio. Hakuna pesa halisi iliyohamishwa.'
+            : `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
+        });
+      } else {
+        toast.info('Thibitisha malipo kwenye simu yako.', {
+          description: `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
+        });
+      }
     } catch (err) {
       const message =
         err instanceof ApiClientError ? err.message : 'Malipo hayakufanikiwa. Jaribu tena.';
-      if (err instanceof ApiClientError && err.code === 'INSUFFICIENT_FUNDS') {
-        const details = err.details as { available?: number } | undefined;
-        if (typeof details?.available === 'number') setBalance(details.available);
-        setNeedsTopUp(true);
-        void refreshWallet();
-      }
       setFormError(message);
       toast.error(message);
     } finally {
@@ -431,7 +406,9 @@ export default function PayPage() {
   const orderStatus = order?.status ?? null;
 
   useEffect(() => {
-    if (phase !== 'coupon' || !orderId || orderStatus !== 'PENDING') return;
+    const waitingForPayment = phase === 'payment' && orderStatus === 'PAYMENT_PENDING';
+    const waitingForVendor = phase === 'coupon' && orderStatus === 'PENDING';
+    if (!orderId || (!waitingForPayment && !waitingForVendor)) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -446,24 +423,35 @@ export default function PayPage() {
         const next = data.orders[0];
         if (next) {
           setOrder(next);
+          if (next.status === 'PAYMENT_FAILED') {
+            setPhase('payment-failed');
+            toast.error('Malipo hayakuthibitishwa.', {
+              description:
+                'Coupon haijatolewa. Angalia taarifa za simu yako; wasiliana na Kupon ikiwa fedha zimekatwa.',
+            });
+            return;
+          }
+          if (next.status === 'PENDING' && waitingForPayment) {
+            setPendingOrders((previous) => [
+              next,
+              ...previous.filter((entry) => entry.id !== next.id),
+            ]);
+            setPhase('coupon');
+            vibrate([30, 40, 60]);
+            toast.success('Malipo yamethibitishwa. Coupon yako iko tayari.');
+            return;
+          }
           if (next.status === 'VERIFIED') {
             setPendingOrders((previous) => previous.filter((entry) => entry.id !== next.id));
             vibrate([40, 40, 90]);
             toast.success('Coupon imethibitishwa!', {
               description: 'Vendor amekagua coupon yako. Chukua chakula chako sasa.',
             });
-            // Do NOT call router.refresh() here: it re-renders the page shell
-            // and can drop the client coupon state, sending the student back to
-            // the scanner right after verification. Verification does not move
-            // money, so no wallet refresh is needed.
             return;
           }
           if (next.status === 'CANCELLED') {
             setPendingOrders((previous) => previous.filter((entry) => entry.id !== next.id));
-            void refreshWallet();
-            toast.info('Coupon hii imeghairiwa.', {
-              description: 'Pesa zimerejeshwa kwenye wallet yako. Scan vendor kuanza order mpya.',
-            });
+            toast.info('Order hii imeghairiwa.');
             return;
           }
         }
@@ -478,7 +466,7 @@ export default function PayPage() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [phase, orderId, orderStatus, refreshWallet]);
+  }, [phase, orderId, orderStatus]);
 
   if (phase === 'boot') return <PaySkeleton />;
 
@@ -489,9 +477,9 @@ export default function PayPage() {
       {phase === 'scan' ? (
         <>
           <PageHeader
-            eyebrow="Scan & order • Lipa kwa kuchagua"
-            title="Scan & order"
-            description="Coupon zako zinazosubiri ziko hapa. Scan QR ya vendor kuanza order mpya — coupon itaonekana papo hapo."
+            eyebrow="Meals on campus"
+            title="Find your lunch"
+            description="Scan a cafeteria QR to see today's menu. Pay with mobile money, then show your verified Kupon coupon."
             actions={
               <Button asChild variant="outline" size="sm">
                 <Link href="/student/history">Historia</Link>
@@ -507,30 +495,11 @@ export default function PayPage() {
             error={pendingError}
             onRetry={() => void refreshPending()}
             onOpen={openCoupon}
-            onCancel={(target) => setCancelTarget(target)}
-            cancelingId={cancelTarget?.id ?? null}
           />
-
-          <Card className="flex items-center justify-between gap-3 p-4">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <Wallet className="h-4 w-4" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-                  Salio lako
-                </p>
-                <p className="truncate text-sm font-semibold tabular text-slate-900">
-                  {wallet ? formatTZS(wallet.balance) : '—'}
-                </p>
-              </div>
-            </div>
-            {wallet ? <Badge variant="neutral">{wallet.student.university.code}</Badge> : null}
-          </Card>
 
           <Card className="p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-slate-900">Scan vendor QR</p>
+              <p className="text-sm font-semibold text-slate-900">Scan cafeteria QR</p>
               <Badge variant="neutral" dot>
                 Counter QR
               </Badge>
@@ -604,7 +573,7 @@ export default function PayPage() {
 
             <div className="mt-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-400">
-Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
+Cafeterias at {student?.university.name ?? 'your campus'}
               </p>
               <div className="mt-2 space-y-2">
                 {demoVendors.map((vendor) => (
@@ -653,7 +622,7 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
             }
           />
 
-          <section className="balance-card p-5" aria-label="Vendor na salio">
+          <section className="balance-card p-5" aria-label="Cafeteria menu">
             <div className="relative z-10 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
@@ -677,10 +646,10 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
             </div>
             <div className="relative z-10 mt-4 flex items-center justify-between rounded-xl border border-white/15 bg-white/10 px-3 py-2">
               <span className="flex items-center gap-1.5 text-[11px] text-emerald-100/80">
-                <Wallet className="h-3.5 w-3.5" aria-hidden />
-                Salio lako
+                <Smartphone className="h-3.5 w-3.5" aria-hidden />
+                Lipia oda hii kwa simu
               </span>
-              <span className="text-sm font-semibold tabular text-white">{formatTZS(balance)}</span>
+              <span className="text-[11px] font-semibold text-white">Mobile money</span>
             </div>
           </section>
 
@@ -796,7 +765,6 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
                 <Button
                   onClick={() => {
                     setReviewOpen(true);
-                    void refreshWallet();
                   }}
                 >
                   Review order
@@ -806,6 +774,60 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
             </div>
           ) : null}
         </>
+      ) : null}
+
+      {phase === 'payment' && order ? (
+        <section className="mx-auto w-full max-w-lg space-y-4">
+          <PageHeader
+            eyebrow="Kupon mobile money"
+            title="Confirm on your phone"
+            description="Approve the payment request from your mobile-money service. Your coupon appears as soon as Kupon confirms payment."
+          />
+          <Card className="p-5">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                <Smartphone className="h-5 w-5" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900">
+                  {paymentMessage || 'A payment request is waiting for your approval.'}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {order.vendor.name} · {formatTZS(order.total)}
+                </p>
+              </div>
+              <Loader2 className="mt-1 h-4 w-4 shrink-0 animate-spin text-primary-600" aria-hidden />
+            </div>
+            <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+              Keep this page open while the payment is confirmed. Kupon will show your coupon here
+              once the payment is verified.
+            </p>
+          </Card>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/student/history">View payment history</Link>
+          </Button>
+        </section>
+      ) : null}
+
+      {phase === 'payment-failed' && order ? (
+        <section className="mx-auto w-full max-w-lg space-y-4">
+          <PageHeader
+            eyebrow="Payment not confirmed"
+            title="No coupon was issued"
+            description="Check your mobile-money messages before trying again. Contact Kupon support if money was deducted."
+          />
+          <Card className="p-5">
+            <p className="text-sm font-semibold text-slate-900">{order.vendor.name}</p>
+            <p className="mt-1 text-sm tabular text-slate-600">{formatTZS(order.total)}</p>
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
+              Your payment provider did not confirm this order. The order cannot be collected.
+            </p>
+          </Card>
+          <Button onClick={resetToScan} className="w-full">
+            <ScanLine aria-hidden />
+            Choose a meal again
+          </Button>
+        </section>
       ) : null}
 
       {phase === 'coupon' && order ? (
@@ -825,16 +847,6 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
               Scan another vendor
             </Button>
           </div>
-          {order.status === 'PENDING' ? (
-            <Button
-              variant="outline"
-              className="h-11 w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              onClick={() => setCancelTarget(order)}
-            >
-              <XCircle aria-hidden />
-              Ghairi order • Cancel coupon
-            </Button>
-          ) : null}
           <p className="flex items-center justify-center gap-2 pb-2 text-center text-[11px] text-slate-400">
             {order.status === 'PENDING' ? (
               <>
@@ -849,7 +861,7 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
             ) : (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-                Coupon hii imeghairiwa. Pesa zimerejeshwa kwenye wallet yako.
+                Order hii imeghairiwa.
               </>
             )}
           </p>
@@ -902,34 +914,45 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
                   <span className="text-slate-500">Jumla</span>
                   <span className="font-semibold tabular text-slate-900">{formatTZS(subtotal)}</span>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-slate-500">Salio lako</span>
-                  <span
-                    className={cn(
-                      'font-semibold tabular',
-                      insufficient ? 'text-red-600' : 'text-emerald-700',
-                    )}
-                  >
-                    {formatTZS(balance)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-3 border-t border-slate-200 pt-1.5">
-                  <span className="text-slate-500">Salio baada ya kulipa</span>
-                  <span className="font-semibold tabular text-slate-700">
-                    {formatTZS(Math.max(0, balance - subtotal))}
-                  </span>
-                </div>
               </div>
 
-              {insufficient ? (
-                <Alert variant="warning" title="Salio halitoshi">
-                  Unahitaji {formatTZS(subtotal - balance)} zaidi.{' '}
-                  <Link href="/student/topup" className="font-semibold underline underline-offset-2">
-                    Weka pesa
-                  </Link>{' '}
-                  kisha ujaribu tena.
-                </Alert>
-              ) : null}
+              <div className="space-y-2">
+                <Label htmlFor="mobile-network">Mobile-money service</Label>
+                <select
+                  id="mobile-network"
+                  value={network}
+                  onChange={(event) => {
+                    const selected = MOBILE_NETWORKS.find(
+                      (provider) => provider.id === event.target.value,
+                    );
+                    if (selected) setNetwork(selected.id);
+                  }}
+                  className="flex h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                >
+                  {MOBILE_NETWORKS.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name}
+                    </option>
+                  ))}
+                </select>
+                <Label htmlFor="payment-phone">Phone number for the payment prompt</Label>
+                <Input
+                  id="payment-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(event) => {
+                    setPhone(event.target.value);
+                    setFormError(null);
+                  }}
+                  aria-describedby="payment-phone-help"
+                />
+                <p id="payment-phone-help" className="text-[11px] leading-relaxed text-slate-500">
+                  Kupon will send a payment request to this number. Your phone PIN stays with your
+                  mobile-money service.
+                </p>
+              </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="order-note">Note kwa vendor (hiari)</Label>
@@ -946,13 +969,6 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
               {formError ? (
                 <Alert variant="danger" title="Malipo hayakufanikiwa">
                   {formError}
-                  {needsTopUp ? (
-                    <span className="mt-1.5 block">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href="/student/topup">Weka pesa</Link>
-                      </Button>
-                    </span>
-                  ) : null}
                 </Alert>
               ) : null}
 
@@ -961,8 +977,8 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
                   Ghairi
                 </Button>
                 <Button onClick={() => void submitOrder()} loading={submitting} disabled={!canPay}>
-                  <Wallet aria-hidden />
-                  Lipa {formatTZS(subtotal)}
+                  <Smartphone aria-hidden />
+                  Pay {formatTZS(subtotal)}
                 </Button>
               </DialogFooter>
             </>
@@ -970,15 +986,6 @@ Vendors on campus{wallet ? ` • ${wallet.student.university.code}` : ''}
         </DialogContent>
       </Dialog>
 
-      <CancelOrderDialog
-        order={cancelTarget}
-        open={Boolean(cancelTarget)}
-        onOpenChange={(next) => {
-          if (!next) setCancelTarget(null);
-        }}
-        onCancelled={handleCancelled}
-      />
     </div>
   );
 }
-

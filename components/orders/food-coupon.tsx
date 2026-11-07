@@ -27,6 +27,20 @@ const STATUS: Record<
     description: string;
   }
 > = {
+  PAYMENT_PENDING: {
+    label: 'Payment pending',
+    short: 'Payment pending',
+    tone: 'border-amber-200 bg-amber-50 text-amber-800',
+    dot: 'bg-amber-500',
+    description: 'This coupon will be issued after Kupon confirms your mobile-money payment.',
+  },
+  PAYMENT_FAILED: {
+    label: 'Payment not confirmed',
+    short: 'Not paid',
+    tone: 'border-red-200 bg-red-50 text-red-700',
+    dot: 'bg-red-500',
+    description: 'Payment was not confirmed, so this order cannot be collected.',
+  },
   PENDING: {
     label: 'Waiting for vendor',
     short: 'Pending',

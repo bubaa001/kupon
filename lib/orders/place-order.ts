@@ -1,13 +1,11 @@
 import { randomInt } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { AppError, conflict, notFound } from '@/lib/errors';
-import { calcPaymentFees } from '@/lib/fees';
-import { debitWallet } from '@/lib/wallet';
-import { postJournal, LEDGER_ACCOUNTS } from '@/lib/ledger';
-import { paymentSms, sendSms } from '@/lib/sms';
+import { getAzamPayConfig, initiateAzamPayOrderCheckout } from '@/lib/payments/azampay';
 import { randomReference } from '@/lib/utils';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
+import { failOrderCheckout, settleOrderCheckout } from './settle-checkout';
 import type { PlaceOrderInput } from './types';
 
 const MAX_ITEMS = 20;
@@ -28,15 +26,15 @@ async function uniqueCouponCode(): Promise<string> {
 }
 
 /**
- * Places a paid meal order from a vendor menu.
+ * Starts a meal order and requests payment from the student's mobile-money
+ * account. A coupon is returned only after payment is confirmed.
  *
- * This is the money-bearing path for the student-scans-vendor flow:
+ * The money path for the student-scans-vendor flow:
  *   validate tenant + menu availability + quantities
- *   → debit the wallet exactly once (conditional update)
- *   → credit vendor pending settlement
- *   → book platform/university/aggregator fees
- *   → write a balanced double-entry journal
- *   → create the PENDING order and its item snapshots
+ *   → create a payment-pending order and transaction
+ *   → request mobile-money authorization
+ *   → confirm payment through the gateway callback
+ *   → issue the coupon and book the vendor settlement
  *
  * The vendor later verifies the coupon; verification is an operational step and
  * never moves money a second time.
@@ -70,7 +68,6 @@ export async function placeOrder(input: {
     include: {
       user: { select: { name: true, phone: true } },
       university: { select: { id: true, name: true, code: true, paymentRouteCode: true, status: true } },
-      wallet: true,
     },
   });
   if (!student) throw notFound('Student profile not found.');
@@ -126,38 +123,29 @@ export async function placeOrder(input: {
   if (total > 200_000) throw new AppError('Order total is too large for one coupon.', 400);
 
   const reference = randomReference('ORD');
+  const paymentReference = randomReference('PAY');
   const couponCode = await uniqueCouponCode();
   const expiresAt = new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000);
-  const fees = calcPaymentFees(total);
-  const payable = student.wallet?.balance ?? student.walletBalance;
-
-  if (payable < total) {
-    throw new AppError(
-      `Insufficient wallet balance. You have TZS ${payable.toLocaleString('en-US')}, order needs TZS ${total.toLocaleString('en-US')}.`,
-      402,
-      'INSUFFICIENT_FUNDS',
-      { available: payable, required: total },
-    );
+  const azamPayConfigured = Boolean(getAzamPayConfig());
+  if (!azamPayConfigured && process.env.NODE_ENV === 'production') {
+    throw conflict('Mobile-money checkout is unavailable right now. Please try again later.');
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const order = await prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
       data: {
-        reference: randomReference('PAY'),
+        reference: paymentReference,
         universityId: student.universityId,
         studentId: student.id,
         vendorId: vendor.id,
         amount: total,
-        fee: fees.platformFee,
-        platformFee: fees.platformFee,
-        aggregatorFee: fees.aggregatorFee,
-        universityRevenue: fees.universityRevenue,
-        vendorSettlement: fees.vendorSettlement,
         type: 'PAYMENT',
-        status: 'SETTLED',
+        status: 'PENDING',
+        phone: input.payload.phone,
+        network: input.payload.network,
         routeCode: student.university.paymentRouteCode,
         metadata: JSON.stringify({
-          channel: 'VENDOR_QR_ORDER',
+          channel: 'MOBILE_MONEY_ORDER',
           orderReference: reference,
           couponCode,
           vendorCode: vendor.code,
@@ -173,19 +161,18 @@ export async function placeOrder(input: {
           })),
           routeCode: student.university.paymentRouteCode,
           lipaNamba: student.university.paymentRouteCode,
-          provider: 'snippe-mock',
+          provider: azamPayConfigured ? 'kupon-payment-gateway' : 'demo-payment-gateway',
         }),
-        settledAt: new Date(),
       },
     });
 
-    const order = await tx.order.create({
+    return tx.order.create({
       data: {
         reference,
         universityId: student.universityId,
         studentId: student.id,
         vendorId: vendor.id,
-        status: 'PENDING',
+        status: 'PAYMENT_PENDING',
         total,
         itemCount,
         couponCode,
@@ -196,50 +183,60 @@ export async function placeOrder(input: {
       },
       include: orderInclude,
     });
-
-    const balance = await debitWallet(tx, student.id, total);
-
-    await tx.vendor.update({
-      where: { id: vendor.id },
-      data: { pendingBalance: { increment: fees.vendorSettlement } },
-    });
-
-    await postJournal(tx, {
-      transactionId: transaction.id,
-      universityId: student.universityId,
-      description: `Cafeteria order • ${vendor.name}`,
-      lines: [
-        { account: LEDGER_ACCOUNTS.STUDENT_WALLET, debit: total },
-        { account: LEDGER_ACCOUNTS.VENDOR_PENDING, credit: fees.vendorSettlement },
-        { account: LEDGER_ACCOUNTS.UNIVERSITY_REVENUE, credit: fees.universityRevenue },
-        { account: LEDGER_ACCOUNTS.AGGREGATOR_PAYABLE, credit: fees.aggregatorFee },
-        { account: LEDGER_ACCOUNTS.PLATFORM_REVENUE, credit: fees.platformNet },
-      ],
-    });
-
-    return { order, balance, transactionId: transaction.id };
   });
 
-  const couponToken = await signCouponToken(
-    {
-      orderId: result.order.id,
-      couponCode: result.order.couponCode,
-      vendorId: result.order.vendorId,
-      universityId: result.order.universityId,
-      studentId: result.order.studentId,
-    },
-    result.order.expiresAt,
-  );
+  let paymentMessage: string;
+  if (azamPayConfigured) {
+    try {
+      const checkout = await initiateAzamPayOrderCheckout({
+        reference: paymentReference,
+        phone: input.payload.phone,
+        network: input.payload.network,
+      });
+      paymentMessage = checkout.message;
+    } catch (error) {
+      await failOrderCheckout(
+        paymentReference,
+        error instanceof Error ? error.message : 'Mobile-money checkout failed.',
+      );
+      throw error;
+    }
+  } else {
+    await settleOrderCheckout({
+      reference: paymentReference,
+      providerTransactionId: 'DEMO',
+    });
+    paymentMessage = 'Demo checkout confirmed. No real money was moved.';
+  }
 
-  await sendSms(
-    student.user.phone,
-    paymentSms(total, vendor.name, result.balance),
-  );
+  const updatedOrder = await prisma.order.findUnique({
+    where: { id: order.id },
+    include: orderInclude,
+  });
+  if (!updatedOrder) throw notFound('The order could not be loaded.');
+
+  const couponToken =
+    updatedOrder.status === 'PENDING'
+      ? await signCouponToken(
+          {
+            orderId: updatedOrder.id,
+            couponCode: updatedOrder.couponCode,
+            vendorId: updatedOrder.vendorId,
+            universityId: updatedOrder.universityId,
+            studentId: updatedOrder.studentId,
+          },
+          updatedOrder.expiresAt,
+        )
+      : null;
 
   return {
-    order: serializeOrder(result.order, couponToken),
-    balance: result.balance,
-    transactionId: result.transactionId,
+    order: serializeOrder(updatedOrder, couponToken),
+    transactionId: paymentReference,
+    payment: {
+      status: updatedOrder.status === 'PAYMENT_PENDING' ? 'PENDING' : 'SETTLED',
+      message: paymentMessage,
+      demo: !azamPayConfigured,
+    },
   };
 }
 
@@ -250,15 +247,18 @@ export async function getStudentOrderCoupon(studentProfileId: string, orderId: s
     include: orderInclude,
   });
   if (!order) throw notFound('Order not found.');
-  const couponToken = await signCouponToken(
-    {
-      orderId: order.id,
-      couponCode: order.couponCode,
-      vendorId: order.vendorId,
-      universityId: order.universityId,
-      studentId: order.studentId,
-    },
-    order.expiresAt,
-  );
+  const couponToken =
+    order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED'
+      ? null
+      : await signCouponToken(
+          {
+            orderId: order.id,
+            couponCode: order.couponCode,
+            vendorId: order.vendorId,
+            universityId: order.universityId,
+            studentId: order.studentId,
+          },
+          order.expiresAt,
+        );
   return { order, couponToken };
 }

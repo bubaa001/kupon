@@ -43,6 +43,24 @@ export type WalletData = {
   recentTransactions: StudentTx[];
 };
 
+export type StudentDashboardData = {
+  student: {
+    name: string;
+    studentId: string;
+    course: string;
+    year: number;
+    phone: string;
+    university: { name: string; code: string };
+  };
+  stats: {
+    todaySpent: number;
+    weekSpent: number;
+    mealsThisWeek: number;
+    couponsUsed: number;
+  };
+  recentTransactions: StudentTx[];
+};
+
 export type TransactionsData = {
   transactions: StudentTx[];
   counts: { total: number; settled: number; pending: number; failed: number };
@@ -57,9 +75,9 @@ export type TopUpCreated = {
   routeCode: string;
   message: string;
   aggregatorFee: number;
-  /** Present when the top-up is funded by a hosted Whop checkout. */
+  /** Present when the top-up uses a hosted card checkout. */
   checkoutUrl?: string;
-  provider?: 'whop' | 'azampay';
+  provider?: 'whop' | 'azampay' | 'azampay-card';
 };
 
 export type TopUpStatusData = {
@@ -174,9 +192,7 @@ export type StudentProfileData = {
     joinedAt: string;
   };
   university: { id: string; name: string; code: string; city: string };
-  wallet: { balance: number; currency: string };
   stats: {
-    totalTopUps: number;
     mealsCount: number;
     totalSpent: number;
     transactionsCount: number;

@@ -50,7 +50,10 @@ export const topUpSchema = z.object({
     .int('Amount must be a whole number')
     .min(MIN_TOPUP, `Minimum top up is TZS ${MIN_TOPUP}`)
     .max(MAX_TOPUP, `Maximum top up is TZS ${MAX_TOPUP}`),
-  network: z.enum(MOBILE_NETWORKS.map((network) => network.id) as [string, ...string[]]),
+  paymentMethod: z.enum(['mobile_money', 'card']).default('mobile_money'),
+  network: z
+    .enum(MOBILE_NETWORKS.map((network) => network.id) as [string, ...string[]])
+    .default('M-PESA'),
   phone: phoneSchema.optional(),
 });
 
@@ -181,6 +184,8 @@ export const vendorMenuScanSchema = z
 
 export const placeOrderSchema = z.object({
   vendorId: z.string().min(1),
+  phone: phoneSchema,
+  network: z.enum(MOBILE_NETWORKS.map((network) => network.id) as [string, ...string[]]),
   items: z
     .array(
       z.object({

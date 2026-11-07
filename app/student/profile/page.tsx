@@ -6,7 +6,7 @@ import { ProfileView, type ProfileIdentity } from './_components/profile-view';
 
 export const metadata: Metadata = {
   title: 'Wasifu',
-  description: 'Taarifa zako za chuo, wallet, coupons na usalama wa kikao cha Google.',
+  description: 'Taarifa zako za chuo, oda na usalama wa akaunti yako ya Google.',
 };
 
 export const dynamic = 'force-dynamic';

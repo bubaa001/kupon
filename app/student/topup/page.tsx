@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   CheckCircle2,
   ChevronLeft,
+  CreditCard,
   Loader2,
   LockKeyhole,
   Phone,
@@ -77,6 +78,7 @@ export default function TopUpPage() {
   const [azamPayEnvironment, setAzamPayEnvironment] = useState<'sandbox' | 'production' | null>(
     null,
   );
+  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | 'card'>('mobile_money');
   const [amount, setAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [network, setNetwork] = useState<MobileNetwork>('M-PESA');
@@ -114,6 +116,7 @@ export default function TopUpPage() {
         setWhopEnabled(config.whopEnabled);
         setAzamPayEnabled(config.azampayEnabled);
         setAzamPayEnvironment(config.azampayEnvironment);
+        if (!config.azampayEnabled && config.whopEnabled) setPaymentMethod('card');
       })
       .catch(() => {
         setWhopEnabled(false);
@@ -122,33 +125,37 @@ export default function TopUpPage() {
       });
   }, [loadWallet]);
 
-  // Returning from the hosted Whop checkout: resume the pending transaction and
-  // let the verified webhook settle it.
+  // Hosted-checkout returns only resume polling; the provider callback settles the wallet.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('whop') !== 'return') return;
+    const isWhopReturn = params.get('whop') === 'return';
+    const isAzamPayReturn =
+      params.get('azam') === 'return' || params.get('azam') === 'failed';
+    if (!isWhopReturn && !isAzamPayReturn) return;
     const tx = params.get('tx');
     if (!tx) return;
     const returnAmount = Number(params.get('amount'));
     if (Number.isInteger(returnAmount) && returnAmount > 0) setAmount(returnAmount);
-    setWhopEnabled(true);
+    if (isWhopReturn) setWhopEnabled(true);
+    setPaymentMethod('card');
     setCreated({
       transactionId: tx,
       reference: params.get('ref') ?? '',
       status: 'PENDING',
       routeCode: '',
-      message: 'Tunathibitisha malipo yako ya Whop…',
+      message: isAzamPayReturn
+        ? 'Tunasubiri AzamPay ithibitishe malipo yako ya kadi.'
+        : 'Tunathibitisha malipo yako ya Whop…',
       aggregatorFee: 0,
-      provider: 'whop',
+      provider: isAzamPayReturn ? 'azampay-card' : 'whop',
     });
     setStep('pending');
   }, []);
 
-  // AzamPay is the primary Tanzanian mobile-money rail. Whop is only a fallback
-  // for environments where AzamPay is not configured.
-  const useAzamPay = azamPayEnabled;
+  const useAzamPay = azamPayEnabled && paymentMethod === 'mobile_money';
+  const useAzamPayCard = azamPayEnabled && paymentMethod === 'card';
   const useWhop = !azamPayEnabled && whopEnabled;
-  const directProvider = useAzamPay || useWhop;
+  const directProvider = useAzamPay || useAzamPayCard || useWhop;
   const effectiveAmount = customAmount.length > 0 ? Number(customAmount) : amount;
 
   const amountError = (() => {
@@ -162,11 +169,13 @@ export default function TopUpPage() {
   })();
 
   const phoneError =
-    phone.trim().length === 0
-      ? 'Weka namba ya simu.'
-      : !isValidTzPhone(phone)
-        ? 'Namba si sahihi. Mfano: +255 712 345 678.'
-        : null;
+    paymentMethod === 'card'
+      ? null
+      : phone.trim().length === 0
+        ? 'Weka namba ya simu.'
+        : !isValidTzPhone(phone)
+          ? 'Namba si sahihi. Mfano: +255 712 345 678.'
+          : null;
 
   const canContinue = !amountError && !phoneError;
 
@@ -201,13 +210,14 @@ export default function TopUpPage() {
     try {
       const response = await postJson<TopUpCreated>('/api/student/topup', {
         amount: effectiveAmount,
-        network,
-        phone,
+        paymentMethod,
+        ...(paymentMethod === 'mobile_money' ? { network } : {}),
+        ...(paymentMethod === 'mobile_money' ? { phone } : {}),
       });
       setCreated(response);
       setSlow(false);
       if (response.checkoutUrl) {
-        toast.success('Unaelekezwa kwenye Whop', { description: response.message });
+        toast.success('Unaelekezwa kwenye malipo salama', { description: response.message });
         window.location.assign(response.checkoutUrl);
         return;
       }
@@ -307,7 +317,7 @@ export default function TopUpPage() {
         backHref="/student"
         eyebrow="Top up • Weka pesa"
         title="Weka pesa kwenye wallet"
-        description="Ongeza salio kwa M-Pesa, Tigo Pesa, Airtel Money au Halotel. Pesa inaingia mara moja baada ya uthibitisho."
+        description="Ongeza salio kwa mobile money au kadi ya benki. Pesa inaingia baada ya uthibitisho wa malipo."
       />
 
       <ol className="flex items-center gap-1.5" aria-label="Hatua za kuweka pesa">
@@ -414,71 +424,112 @@ export default function TopUpPage() {
               )}
             </div>
 
-            <div className="space-y-2.5">
-              <Label>Mtandao</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {MOBILE_NETWORKS.map((option) => {
-                  const selected = network === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setNetwork(option.id)}
-                      aria-pressed={selected}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all',
-                        selected
-                          ? 'border-primary-500 bg-primary-50/60 ring-2 ring-primary-500/20'
-                          : 'border-slate-200 bg-white hover:border-slate-300',
-                      )}
-                    >
-                      <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
-                        style={{ backgroundColor: option.color }}
-                        aria-hidden
+            {azamPayEnabled ? (
+              <div className="space-y-2.5">
+                <Label>Njia ya malipo</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: 'mobile_money', label: 'Mobile money', icon: Smartphone },
+                    { id: 'card', label: 'Bank card', icon: CreditCard },
+                  ] as const).map((option) => {
+                    const selected = paymentMethod === option.id;
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setPaymentMethod(option.id)}
+                        aria-pressed={selected}
+                        className={cn(
+                          'flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-all',
+                          selected
+                            ? 'border-primary-500 bg-primary-50/60 text-primary-800 ring-2 ring-primary-500/20'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                        )}
                       >
-                        {option.short.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold text-slate-800">
-                          {option.name}
-                        </span>
-                        <span className="block truncate text-[10px] text-slate-400">
-                          {option.short}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                        <Icon className="h-4 w-4" aria-hidden />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className="space-y-2">
-              <Label htmlFor="topup-phone">Namba ya simu</Label>
-              <div className="relative">
-                <Phone
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                  aria-hidden
-                />
-                <Input
-                  id="topup-phone"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder="+255 712 345 678"
-                  className="pl-10 tabular"
-                  error={touched && phoneError ? true : undefined}
-                />
-              </div>
-              {touched && phoneError ? (
-                <p className="text-[11px] font-medium text-red-600">{phoneError}</p>
-              ) : (
-                <p className="text-[11px] text-slate-500">
-                  Tutatuma push ya {NETWORK_LABEL[network]} kwenye namba hii.
-                </p>
-              )}
-            </div>
+            {paymentMethod === 'mobile_money' ? (
+              <>
+                <div className="space-y-2.5">
+                  <Label>Mtandao</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MOBILE_NETWORKS.map((option) => {
+                      const selected = network === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setNetwork(option.id)}
+                          aria-pressed={selected}
+                          className={cn(
+                            'flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all',
+                            selected
+                              ? 'border-primary-500 bg-primary-50/60 ring-2 ring-primary-500/20'
+                              : 'border-slate-200 bg-white hover:border-slate-300',
+                          )}
+                        >
+                          <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
+                            style={{ backgroundColor: option.color }}
+                            aria-hidden
+                          >
+                            {option.short.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-xs font-semibold text-slate-800">
+                              {option.name}
+                            </span>
+                            <span className="block truncate text-[10px] text-slate-400">
+                              {option.short}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="topup-phone">Namba ya simu</Label>
+                  <div className="relative">
+                    <Phone
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                      aria-hidden
+                    />
+                    <Input
+                      id="topup-phone"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="+255 712 345 678"
+                      className="pl-10 tabular"
+                      error={touched && phoneError ? true : undefined}
+                    />
+                  </div>
+                  {touched && phoneError ? (
+                    <p className="text-[11px] font-medium text-red-600">{phoneError}</p>
+                  ) : (
+                    <p className="text-[11px] text-slate-500">
+                      Tutatuma push ya {NETWORK_LABEL[network]} kwenye namba hii.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <Alert variant="info">
+                Utaingiza taarifa za kadi kwenye ukurasa salama wa AzamPay. Kuonekana kwa Visa na
+                kadi nyingine hutegemea njia zilizowashwa kwenye akaunti yako ya AzamPay.
+              </Alert>
+            )}
 
             <Alert variant="info">
               Hakuna ada ya ziada kwako. Kiasi unachoweka ndicho kinachofika kwenye wallet.
@@ -516,9 +567,19 @@ export default function TopUpPage() {
             <SummaryRow label="Kiasi" value={formatTZS(effectiveAmount ?? 0)} />
             <SummaryRow
               label="Njia"
-              value={useAzamPay ? 'AzamPay mobile money' : useWhop ? 'Whop checkout' : NETWORK_LABEL[network]}
+              value={
+                useAzamPayCard
+                  ? 'AzamPay bank card'
+                  : useWhop
+                    ? 'Whop card checkout'
+                    : useAzamPay
+                      ? 'AzamPay mobile money'
+                      : NETWORK_LABEL[network]
+              }
             />
-            <SummaryRow label="Namba" value={phone} mono />
+            {paymentMethod === 'mobile_money' ? (
+              <SummaryRow label="Namba" value={phone} mono />
+            ) : null}
           </div>
 
           {directProvider ? (
@@ -528,14 +589,18 @@ export default function TopUpPage() {
                   ? azamPayEnvironment === 'sandbox'
                     ? 'AzamPay sandbox imepokea ombi lako.'
                     : 'AzamPay itatuma ombi la uthibitisho kwenye simu yako.'
-                  : 'Utalipia kwenye ukurasa salama wa Whop.'}
+                  : useAzamPayCard
+                    ? 'Utalipia kwenye ukurasa salama wa AzamPay.'
+                    : 'Utalipia kwenye ukurasa salama wa Whop.'}
               </p>
               <p className="mt-1 text-emerald-800/80">
                 {useAzamPay
                   ? azamPayEnvironment === 'sandbox'
                     ? 'Kwa sandbox, tumia akaunti yako ya test mobile wallet au namba za majaribio zilizoonyeshwa kwenye dashboard ya AzamPay. Usitume ombi jingine kama hili bado linasubiri.'
                     : `Thibitisha malipo kwa PIN ya ${NETWORK_LABEL[network]}. Wallet yako itaongezwa baada ya AzamPay kuthibitisha.`
-                  : 'Wallet yako itaongezwa mara tu Whop itakapothibitisha malipo. Hakuna PIN ya mtandao inayohitajika hapa.'}
+                  : useAzamPayCard
+                    ? 'Wallet yako itaongezwa baada tu ya AzamPay kuthibitisha malipo. Kurudi kwenye app peke yake hakuthibitishi malipo.'
+                    : 'Wallet yako itaongezwa mara tu Whop itakapothibitisha malipo. Hakuna PIN ya mtandao inayohitajika hapa.'}
               </p>
             </div>
           ) : (
@@ -580,7 +645,13 @@ export default function TopUpPage() {
             disabled={(!directProvider && pin.length !== 4) || submitting}
             onClick={() => void submitTopUp()}
           >
-            {useAzamPay ? 'Tuma USSD push' : useWhop ? 'Lipa kwa Whop' : 'Thibitisha'} •{' '}
+            {useAzamPay
+              ? 'Tuma USSD push'
+              : useAzamPayCard
+                ? 'Lipa kwa kadi'
+                : useWhop
+                  ? 'Lipa kwa Whop'
+                  : 'Thibitisha'} •{' '}
             {formatTZS(effectiveAmount ?? 0)}
           </Button>
         </Card>
@@ -591,7 +662,11 @@ export default function TopUpPage() {
           <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
             <span className="absolute inset-0 animate-ping rounded-full bg-primary-200/50" aria-hidden />
             <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-              <Smartphone className="h-7 w-7" aria-hidden />
+              {created.provider === 'azampay-card' || created.provider === 'whop' ? (
+                <CreditCard className="h-7 w-7" aria-hidden />
+              ) : (
+                <Smartphone className="h-7 w-7" aria-hidden />
+              )}
             </span>
           </div>
           <p className="mt-4 text-base font-semibold text-slate-900">Tunasubiri uthibitisho</p>
@@ -601,10 +676,18 @@ export default function TopUpPage() {
 
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
             <SummaryRow label="Kiasi" value={formatTZS(effectiveAmount ?? 0)} />
-            <SummaryRow label="Mtandao" value={NETWORK_LABEL[network]} />
-            <SummaryRow label="Namba" value={maskPhone(phone)} mono />
+            {created.provider === 'azampay-card' || created.provider === 'whop' ? (
+              <SummaryRow label="Njia" value="Bank card" />
+            ) : (
+              <>
+                <SummaryRow label="Mtandao" value={NETWORK_LABEL[network]} />
+                <SummaryRow label="Namba" value={maskPhone(phone)} mono />
+              </>
+            )}
             <SummaryRow label="Kumbukumbu" value={created.reference} mono />
-            <SummaryRow label="Lipa Namba" value={created.routeCode} mono />
+            {created.routeCode ? (
+              <SummaryRow label="Lipa Namba" value={created.routeCode} mono />
+            ) : null}
           </div>
 
           {slow ? (

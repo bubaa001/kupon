@@ -3,17 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowDownToLine,
   CalendarDays,
   ChefHat,
   ChevronRight,
   History,
-  PlusCircle,
   Receipt,
   RotateCcw,
   ScanLine,
   UtensilsCrossed,
-  Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -27,17 +24,12 @@ import { cn, formatTZS } from '@/lib/utils';
 import type { OrderView, StudentOrdersData } from '@/lib/orders/types';
 import { ErrorState } from './_components/error-state';
 import { TransactionRow } from './_components/transaction-row';
-import type { WalletData } from './_lib/types';
+import type { StudentDashboardData } from './_lib/types';
 
 const QUICK_ACTIONS = [
-  {
-    href: '/student/topup',
-    label: 'Weka pesa',
-    icon: PlusCircle,
-    tone: 'bg-emerald-50 text-emerald-600',
-  },
-  { href: '/student/pay', label: 'Scan', icon: ScanLine, tone: 'bg-sky-50 text-sky-600' },
+  { href: '/student/pay', label: 'Lipa kwa simu', icon: ScanLine, tone: 'bg-sky-50 text-sky-600' },
   { href: '/student/history', label: 'Historia', icon: History, tone: 'bg-violet-50 text-violet-600' },
+  { href: '/student/pay', label: 'Coupons', icon: Receipt, tone: 'bg-emerald-50 text-emerald-600' },
   {
     href: '/student/refunds',
     label: 'Refund',
@@ -82,7 +74,7 @@ function HomeSkeleton() {
 }
 
 export default function StudentHomePage() {
-  const [data, setData] = useState<WalletData | null>(null);
+  const [data, setData] = useState<StudentDashboardData | null>(null);
   const [pendingOrders, setPendingOrders] = useState<OrderView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,17 +83,17 @@ export default function StudentHomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [walletData, ordersData] = await Promise.all([
-        apiFetch<WalletData>('/api/student/wallet'),
+      const [dashboardData, ordersData] = await Promise.all([
+        apiFetch<StudentDashboardData>('/api/student/dashboard'),
         apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING').catch(() => null),
       ]);
-      setData(walletData);
+      setData(dashboardData);
       setPendingOrders(
         (ordersData?.orders ?? []).filter((entry) => entry.status === 'PENDING'),
       );
     } catch (err) {
       setError(
-        err instanceof ApiClientError ? err.message : 'Imeshindikana kupakia wallet yako.',
+        err instanceof ApiClientError ? err.message : 'Imeshindikana kupakia taarifa zako.',
       );
     } finally {
       setLoading(false);
@@ -118,11 +110,11 @@ export default function StudentHomePage() {
     return (
       <div className="space-y-5">
         <PageHeader
-          eyebrow="Wallet"
-          title="Salio lako"
-          description="Angalia salio, matumizi na shughuli zako za hivi karibuni."
+          eyebrow="Kupon • Mlo wako"
+          title="Tayari kuagiza?"
+          description="Changanua QR ya cafeteria, chagua chakula na ulipe kwa mobile money."
         />
-        <ErrorState message={error ?? 'Imeshindikana kupakia wallet yako.'} onRetry={() => void load()} />
+        <ErrorState message={error ?? 'Imeshindikana kupakia taarifa zako.'} onRetry={() => void load()} />
       </div>
     );
   }
@@ -132,32 +124,31 @@ export default function StudentHomePage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow={`${data.student.university.code} • Student wallet`}
+        eyebrow={`${data.student.university.code} • Cafeteria ordering`}
         title={`${greeting()}, ${firstName}`}
-        description="Hii ni salio lako, matumizi ya leo na shughuli za hivi karibuni."
+        description="Agiza chakula kinachopatikana leo. Lipa moja kwa moja kwa mobile money; hakuna salio la wallet."
         actions={
           <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex">
-            <Link href="/student/topup">
-              <PlusCircle aria-hidden />
-              Weka pesa
+            <Link href="/student/pay">
+              <ScanLine aria-hidden />
+              Anza kuagiza
             </Link>
           </Button>
         }
       />
 
-      {/* Balance hero */}
-      <section className="balance-card animate-fade-up p-5 sm:p-6" aria-label="Salio la wallet">
+      <section className="balance-card animate-fade-up p-5 sm:p-6" aria-label="Lipa kwa mobile money">
         <div className="relative z-10 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
-              <Wallet className="h-3.5 w-3.5" aria-hidden />
-              Salio lako
+              <ScanLine className="h-3.5 w-3.5" aria-hidden />
+              Agiza • Lipa • Pata coupon
             </p>
-            <p className="mt-2 text-[2rem] font-semibold leading-none tracking-tight tabular sm:text-[2.4rem]">
-              {formatTZS(data.balance)}
+            <p className="mt-2 text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+              Lipa tu unapoagiza
             </p>
-            <p className="mt-2.5 truncate text-xs text-emerald-100/70">
-              {data.student.studentId} • {data.student.university.name}
+            <p className="mt-2.5 max-w-xl text-xs leading-relaxed text-emerald-100/80">
+              Malipo yakithibitishwa, Kupon itakupa QR coupon ya kuonyesha kwa staff wa cafeteria.
             </p>
           </div>
           <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-100">
@@ -171,9 +162,9 @@ export default function StudentHomePage() {
             size="lg"
             className="w-full bg-white px-3 text-sm text-primary-800 hover:bg-emerald-50 sm:px-6 sm:text-base"
           >
-            <Link href="/student/topup">
-              <PlusCircle aria-hidden />
-              Weka pesa
+            <Link href="/student/pay">
+              <ScanLine aria-hidden />
+              Scan cafeteria QR
             </Link>
           </Button>
           <Button
@@ -240,10 +231,10 @@ export default function StudentHomePage() {
               tone: 'bg-sky-50 text-sky-600',
             },
             {
-              label: 'Top-ups',
-              value: String(data.stats.totalTopUps),
-              hint: 'Zilizofanikiwa',
-              icon: ArrowDownToLine,
+              label: 'Coupons zimetumika',
+              value: String(data.stats.couponsUsed),
+              hint: 'Zilizokaguliwa',
+              icon: Receipt,
               tone: 'bg-emerald-50 text-emerald-600',
             },
           ].map((item) => {
@@ -300,7 +291,7 @@ export default function StudentHomePage() {
       <Card className="p-5">
         <SectionHeading
           title="Shughuli za hivi karibuni"
-          description="Miamala ya mwisho kwenye wallet yako"
+          description="Malipo na refunds zako za hivi karibuni"
           actionLabel="Ona zote"
           actionHref="/student/history"
         />
@@ -309,11 +300,11 @@ export default function StudentHomePage() {
             <EmptyState
               icon={Receipt}
               title="Hakuna shughuli bado"
-              description="Weka pesa kwenye wallet yako kisha lipa chakula kwa kuchagua. Miamala yako itaonekana hapa."
+              description="Baada ya kulipia oda kwa mobile money, malipo na hali ya coupon yako vitaonekana hapa."
               compact
               action={
                 <Button asChild size="sm">
-                  <Link href="/student/topup">Weka pesa kwa mara ya kwanza</Link>
+                  <Link href="/student/pay">Agiza chakula</Link>
                 </Button>
               }
             />

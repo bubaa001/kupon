@@ -2,7 +2,6 @@ import type { Prisma, RefundRequest } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { requireApiUser, requireStudent, type AuthUser } from '@/lib/auth';
 import { notFound } from '@/lib/errors';
-import { ensureStudentWallet } from '@/lib/wallet';
 import { NETWORK_LABEL, type TxType } from '@/lib/constants';
 import { safeJson } from '@/lib/utils';
 import type { RefundRequestApi, StudentTx } from '@/app/student/_lib/types';
@@ -21,7 +20,6 @@ export type StudentContext = {
 export async function getStudentContext(): Promise<StudentContext> {
   const user = await requireApiUser(['STUDENT']);
   const student = requireStudent(user);
-  await ensureStudentWallet(student.id);
   return { user, student };
 }
 
@@ -32,6 +30,7 @@ export type TransactionWithVendor = Prisma.TransactionGetPayload<{
 function channelFor(tx: TransactionWithVendor, metadata: Record<string, unknown>): string {
   switch (tx.type) {
     case 'TOPUP':
+      if (metadata.channel === 'AZAMPAY_CARD') return 'Bank card';
       return tx.network ? NETWORK_LABEL[tx.network] ?? tx.network : 'Mobile money';
     case 'PAYMENT':
       return metadata.channel === 'USSD' ? 'USSD' : 'QR';
@@ -51,6 +50,7 @@ function summaryFor(tx: TransactionWithVendor, metadata: Record<string, unknown>
         ? metadata.item
         : 'Cafeteria meal';
     case 'TOPUP':
+      if (metadata.channel === 'AZAMPAY_CARD') return 'Wallet top-up by card';
       return tx.routeCode ? `Lipa Namba ${tx.routeCode}` : 'Mobile money top-up';
     case 'REFUND': {
       if (typeof metadata.reasonLabel === 'string' && metadata.reasonLabel.length > 0) {

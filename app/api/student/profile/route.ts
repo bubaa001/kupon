@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db';
 import { fail, ok } from '@/lib/api';
 import { notFound } from '@/lib/errors';
-import { snippeMock } from '@/lib/payments/snippe';
 import type { StudentProfileData } from '@/app/student/_lib/types';
 import { getStudentContext } from '../_lib/student';
 
@@ -11,26 +10,20 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/student/profile
  *
- * Everything the profile/settings screen shows: registration details, the
- * university context, the wallet and a few lifetime stats.
+ * Student identity, university context and lifetime ordering stats.
  */
 export async function GET() {
   try {
     const { student } = await getStudentContext();
-    await snippeMock.settleStaleTopUps(student.id);
 
-    const [profile, totalTopUps, mealsCount, totalSpent, transactionsCount, pendingRefunds] =
+    const [profile, mealsCount, totalSpent, transactionsCount, pendingRefunds] =
       await Promise.all([
         prisma.studentProfile.findUnique({
           where: { id: student.id },
           include: {
             user: { select: { name: true, phone: true, createdAt: true } },
             university: { select: { id: true, name: true, code: true, city: true } },
-            wallet: { select: { balance: true, currency: true } },
           },
-        }),
-        prisma.transaction.count({
-          where: { studentId: student.id, type: 'TOPUP', status: 'SETTLED' },
         }),
         prisma.transaction.count({
           where: {
@@ -73,12 +66,7 @@ export async function GET() {
         code: profile.university.code,
         city: profile.university.city,
       },
-      wallet: {
-        balance: profile.wallet?.balance ?? profile.walletBalance,
-        currency: profile.wallet?.currency ?? 'TZS',
-      },
       stats: {
-        totalTopUps,
         mealsCount,
         totalSpent: totalSpent._sum.amount ?? 0,
         transactionsCount,

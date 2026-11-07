@@ -36,7 +36,7 @@ Base path `/api/student`. All endpoints derive the student from the session —
 | --- | --- | --- | --- |
 | GET | `/wallet` | — | `{ student: { name, studentId, course, year, phone, university: { name, code } }, balance, stats: { todaySpent, weekSpent, mealsThisWeek, totalTopUps }, recentTransactions: Tx[] }` |
 | GET | `/transactions` | `range=today\|week\|month` (default month), optional `type`, `status` | `{ transactions: Tx[], counts: { total, settled, pending, failed }, totalIn, totalOut }` |
-| POST | `/topup` | `{ amount: 1000..500000, network: 'M-PESA'\|'TIGO_PESA'\|'AIRTEL_MONEY'\|'HALOTEL', phone? }` | `{ transactionId, reference, status:'PENDING', routeCode, message, aggregatorFee }` |
+| POST | `/topup` | `{ amount: 1000..500000, paymentMethod?: 'mobile_money'\|'card', network?: 'M-PESA'\|'TIGO_PESA'\|'AIRTEL_MONEY'\|'HALOTEL', phone? }` | `{ transactionId, reference, status:'PENDING', routeCode, message, aggregatorFee, checkoutUrl? }` — card checkouts redirect to the provider; wallet credit still requires provider confirmation |
 | GET | `/topup?id=` | id | `{ transaction: { id, reference, amount, status, network, createdAt, settledAt }, balance }` — lazily settles stale mock top-ups |
 | POST | `/payment-token` | `{}` | `{ tokenId, token, code, expiresAt, expiresIn:120, student:{name,studentId}, balance }` |
 | GET | `/payment-token?id=` | tokenId | `{ status:'ACTIVE'\|'USED'\|'EXPIRED', expiresAt, transaction?: { vendor, amount, status, createdAt } }` |

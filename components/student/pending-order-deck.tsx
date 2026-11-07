@@ -69,7 +69,7 @@ export function PendingOrderDeck({
   error?: string | null;
   onRetry?: () => void;
   onOpen: (order: OrderView) => void;
-  onCancel: (order: OrderView) => void;
+  onCancel?: (order: OrderView) => void;
   cancelingId?: string | null;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -318,7 +318,7 @@ export function PendingOrderDeck({
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className={onCancel ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2'}>
             <Button
               className="h-11 text-xs"
               onClick={() => active && onOpen(active)}
@@ -328,20 +328,22 @@ export function PendingOrderDeck({
               <Ticket aria-hidden />
               Onyesha coupon
             </Button>
-            <Button
-              variant="outline"
-              className="h-11 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-              onClick={() => active && onCancel(active)}
-              disabled={!active || (active ? cancelingId === active.id : false)}
-              aria-label={`Ghairi order ${active?.reference ?? ''}`}
-            >
-              {active && cancelingId === active.id ? (
-                <Loader2 className="animate-spin" aria-hidden />
-              ) : (
-                <XCircle aria-hidden />
-              )}
-              Ghairi order
-            </Button>
+            {onCancel ? (
+              <Button
+                variant="outline"
+                className="h-11 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                onClick={() => active && onCancel(active)}
+                disabled={!active || (active ? cancelingId === active.id : false)}
+                aria-label={`Ghairi order ${active?.reference ?? ''}`}
+              >
+                {active && cancelingId === active.id ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <XCircle aria-hidden />
+                )}
+                Ghairi order
+              </Button>
+            ) : null}
           </div>
         </>
       )}

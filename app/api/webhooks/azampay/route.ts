@@ -3,6 +3,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { failAzamPayTopUp, settleAzamPayTopUp } from '@/lib/payments/azampay';
+import { failOrderCheckout, settleOrderCheckout } from '@/lib/orders/settle-checkout';
+import { safeJson } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,13 +32,21 @@ export async function POST(request: Request) {
   }
 
   const reference = String(
-    body.externalId ?? body.externalid ?? body.utilityref ?? body.reference ?? '',
+    body.externalId ??
+      body.externalid ??
+      body.externalreference ??
+      body.reference ??
+      body.utilityref ??
+      '',
   ).trim();
   const status = String(
     body.transactionstatus ?? body.transactionStatus ?? body.status ?? '',
   ).toLowerCase();
+  const rawAzamTransactionId = body.transactionId ?? body.transid;
   const azamTransactionId =
-    typeof body.transactionId === 'string' ? body.transactionId : null;
+    typeof rawAzamTransactionId === 'string' || typeof rawAzamTransactionId === 'number'
+      ? String(rawAzamTransactionId)
+      : null;
 
   if (!reference) {
     return NextResponse.json({ error: 'Missing transaction reference.' }, { status: 400 });
@@ -49,21 +59,35 @@ export async function POST(request: Request) {
           { reference },
           { metadata: { contains: reference } },
         ],
-        type: 'TOPUP',
+        type: { in: ['TOPUP', 'PAYMENT'] },
       },
-      select: { reference: true },
+      select: { reference: true, type: true, metadata: true },
     });
-    if (!transaction) {
-      return NextResponse.json({ error: 'Top-up not found.' }, { status: 404 });
+    const metadata = safeJson<Record<string, unknown>>(transaction?.metadata, {});
+    const isOrderCheckout =
+      transaction?.type === 'PAYMENT' && metadata.channel === 'MOBILE_MONEY_ORDER';
+    if (!transaction || (transaction.type !== 'TOPUP' && !isOrderCheckout)) {
+      return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
     }
 
     if (status === 'success' || status === 'successful' || status === 'completed') {
-      await settleAzamPayTopUp({
-        reference: transaction.reference,
-        azampayTransactionId: azamTransactionId,
-      });
+      if (isOrderCheckout) {
+        await settleOrderCheckout({
+          reference: transaction.reference,
+          providerTransactionId: azamTransactionId,
+        });
+      } else {
+        await settleAzamPayTopUp({
+          reference: transaction.reference,
+          azampayTransactionId: azamTransactionId,
+        });
+      }
     } else if (status === 'failed' || status === 'rejected' || status === 'cancelled') {
-      await failAzamPayTopUp(transaction.reference, `AzamPay ${status}`);
+      if (isOrderCheckout) {
+        await failOrderCheckout(transaction.reference, `Mobile-money payment ${status}`);
+      } else {
+        await failAzamPayTopUp(transaction.reference, `AzamPay ${status}`);
+      }
     }
 
     return NextResponse.json({ received: true });

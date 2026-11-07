@@ -3,27 +3,22 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Banknote,
   Clock3,
   Home,
   LogOut,
   ScanLine,
   UserRound,
-  Wallet,
   Wifi,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { Avatar } from '@/components/ui/avatar';
-import { cn, formatTZS } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { signOut } from '@/lib/logout';
 
 const NAV = [
   { href: '/student', label: 'Home', icon: Home },
   { href: '/student/history', label: 'History', icon: Clock3 },
   { href: '/student/pay', label: 'Scan', icon: ScanLine, primary: true },
-  // Cash-out only. Order refunds are reached from the money tabs on
-  // /student/withdrawals and /student/refunds, never from a mislabelled nav item.
-  { href: '/student/withdrawals', label: 'Cash out', icon: Banknote },
   { href: '/student/profile', label: 'Profile', icon: UserRound },
 ];
 
@@ -33,7 +28,6 @@ export type StudentShellUser = {
   studentId: string;
   universityName: string;
   universityCode: string;
-  balance: number;
 };
 
 function isActive(pathname: string, href: string) {
@@ -59,7 +53,7 @@ export function StudentShell({
 
         <div className="relative mt-8 flex-1">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            My wallet
+            Student
           </p>
           <nav className="space-y-1">
             {NAV.map((item) => {
@@ -90,21 +84,6 @@ export function StudentShell({
             })}
           </nav>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-primary-300">
-              <Wallet className="h-3.5 w-3.5" />
-              Salio
-            </div>
-            <p className="mt-2 text-xl font-semibold tracking-tight text-white tabular">
-              {formatTZS(user.balance)}
-            </p>
-            <Link
-              href="/student/topup"
-              className="mt-3 inline-flex min-h-[36px] w-full items-center justify-center rounded-lg bg-primary-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-primary-400"
-            >
-              Top up wallet
-            </Link>
-          </div>
         </div>
 
         <div className="relative mt-4 border-t border-white/10 pt-4">
@@ -148,7 +127,7 @@ export function StudentShell({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="font-medium text-slate-700">{user.universityName}</span>
             <span className="text-slate-300">/</span>
-            <span>Student wallet</span>
+            <span>Kupon student</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500">
@@ -169,7 +148,7 @@ export function StudentShell({
           className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
           aria-label="Student navigation"
         >
-          <div className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-center px-1">
+          <div className="mx-auto grid h-[68px] max-w-md grid-cols-4 items-center px-1">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);

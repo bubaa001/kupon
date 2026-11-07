@@ -4,7 +4,12 @@
  * Kept free of Prisma/server imports so student pages, vendor pages and shared
  * coupon components can all use exactly the same shapes.
  */
-export type OrderStatus = 'PENDING' | 'VERIFIED' | 'CANCELLED';
+export type OrderStatus =
+  | 'PAYMENT_PENDING'
+  | 'PAYMENT_FAILED'
+  | 'PENDING'
+  | 'VERIFIED'
+  | 'CANCELLED';
 
 export type OrderItemView = {
   id: string;
@@ -133,6 +138,8 @@ export type CancelOrderResult = {
 
 export type PlaceOrderInput = {
   vendorId: string;
+  phone: string;
+  network: string;
   items: Array<{ menuItemId: string; quantity: number }>;
   note?: string;
 };

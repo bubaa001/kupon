@@ -18,14 +18,16 @@ export const orderInclude = {
 export type OrderRecord = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 
 export function serializeOrder(order: OrderRecord, couponToken: string | null = null): OrderView {
+  const paymentUnconfirmed =
+    order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED';
   return {
     id: order.id,
     reference: order.reference,
     status: order.status as OrderView['status'],
     total: order.total,
     itemCount: order.itemCount,
-    couponCode: order.couponCode,
-    couponToken,
+    couponCode: paymentUnconfirmed ? '' : order.couponCode,
+    couponToken: paymentUnconfirmed ? null : couponToken,
     note: order.note,
     createdAt: order.createdAt.toISOString(),
     verifiedAt: order.verifiedAt ? order.verifiedAt.toISOString() : null,

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
   BadgeCheck,
-  Banknote,
   BookOpen,
   Building2,
   CalendarDays,
@@ -17,7 +16,6 @@ import {
   LogOut,
   Mail,
   Phone,
-  PlusCircle,
   RefreshCcw,
   RotateCcw,
   ScanLine,
@@ -25,7 +23,6 @@ import {
   Smartphone,
   Ticket,
   UtensilsCrossed,
-  Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -41,7 +38,7 @@ import { ErrorState } from '../../_components/error-state';
 import type { StudentProfileData } from '../../_lib/types';
 
 export type ProfileIdentity = {
-  /** Email already linked to this wallet (masked in the UI). */
+  /** Email already linked to this student account (masked in the UI). */
   email: string | null;
   /** Whether a Google `sub` is stored — i.e. Google sign-in is active. */
   googleLinked: boolean;
@@ -191,28 +188,23 @@ function ActionRow({
 }
 
 /**
- * Profile/settings screen for a Google-first student wallet. Identity comes from
- * the server session (so it never trusts a client-supplied email), while the
- * wallet and stats refresh through the student API.
+ * Profile/settings screen for a Google-first student. Identity comes from the
+ * server session, while ordering stats refresh through the student API.
  */
 export function ProfileView({ identity }: { identity: ProfileIdentity }) {
   const [data, setData] = useState<StudentProfileData | null>(null);
   const [pendingOrders, setPendingOrders] = useState<OrderView[]>([]);
-  const [money, setMoney] = useState<{ refunds: number | null; withdrawals: number | null }>({
-    refunds: null,
-    withdrawals: null,
-  });
+  const [pendingRefunds, setPendingRefunds] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [profileResult, ordersResult, refundsResult, withdrawalsResult] = await Promise.allSettled([
+    const [profileResult, ordersResult, refundsResult] = await Promise.allSettled([
       apiFetch<StudentProfileData>('/api/student/profile'),
       apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING'),
       apiFetch<MoneyRequestList>('/api/student/refunds'),
-      apiFetch<MoneyRequestList>('/api/student/withdrawals'),
     ]);
 
     if (profileResult.status === 'fulfilled') {
@@ -227,16 +219,11 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
     if (ordersResult.status === 'fulfilled') {
       setPendingOrders(ordersResult.value.orders.filter((order) => order.status === 'PENDING'));
     }
-    setMoney({
-      refunds:
-        refundsResult.status === 'fulfilled'
-          ? countPendingRequests(refundsResult.value)
-          : null,
-      withdrawals:
-        withdrawalsResult.status === 'fulfilled'
-          ? countPendingRequests(withdrawalsResult.value)
-          : null,
-    });
+    setPendingRefunds(
+      refundsResult.status === 'fulfilled'
+        ? countPendingRequests(refundsResult.value)
+        : null,
+    );
     setLoading(false);
   }, []);
 
@@ -252,14 +239,14 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         <PageHeader
           eyebrow="Akaunti"
           title="Wasifu wangu"
-          description="Taarifa zako za chuo, wallet na usalama."
+          description="Taarifa zako za chuo, oda na usalama wa akaunti."
         />
         <ErrorState message={error ?? 'Imeshindikana kupakia wasifu.'} onRetry={() => void load()} />
       </div>
     );
   }
 
-  const { student, university, wallet, stats } = data;
+  const { student, university, stats } = data;
   const googleEmail = identity.email ? maskEmail(identity.email) : null;
   const googleState = identity.googleLinked
     ? { label: 'Google session', variant: 'success' as const, dot: true }
@@ -272,7 +259,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
       <PageHeader
         eyebrow="Akaunti • Profile"
         title="Wasifu wangu"
-        description="Taarifa zako za chuo, wallet, coupons na usalama wa kikao."
+        description="Taarifa zako za chuo, oda zako na usalama wa kikao."
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
             <RefreshCcw aria-hidden />
@@ -323,61 +310,26 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         </div>
       </Card>
 
-      {/* Wallet */}
-      <section className="balance-card p-5" aria-label="Salio la wallet">
-        <div className="relative z-10 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
-              <Wallet className="h-3.5 w-3.5" aria-hidden />
-              Salio lako
-            </p>
-            <p className="mt-2 text-[2rem] font-semibold leading-none tracking-tight tabular">
-              {formatTZS(wallet.balance)}
-            </p>
-            <p className="mt-2 text-[11px] text-emerald-100/70">{wallet.currency} wallet</p>
-          </div>
-          <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-100">
-            {university.code}
-          </span>
+      <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Lipa moja kwa moja</p>
+          <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
+            Hakuna salio la Kupon. Unalipa kwa mobile money wakati wa kuagiza; coupon hutolewa
+            baada ya malipo kuthibitishwa.
+          </p>
+          <p className="mt-3 text-xs text-slate-500">
+            Matumizi yaliyorekodiwa: <strong className="text-slate-800">{formatTZS(stats.totalSpent)}</strong>
+            <span className="px-1.5 text-slate-300">•</span>
+            {stats.transactionsCount} shughuli
+          </p>
         </div>
-        <div className="relative z-10 mt-4 grid grid-cols-2 gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2">
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-emerald-100/70">
-              Matumizi yote
-            </p>
-            <p className="text-sm font-semibold tabular text-white">
-              {formatTZS(stats.totalSpent)}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-emerald-100/70">
-              Miamala
-            </p>
-            <p className="text-sm font-semibold tabular text-white">{stats.transactionsCount}</p>
-          </div>
-        </div>
-        <div className="relative z-10 mt-4 grid grid-cols-2 gap-2">
-          <Button
-            asChild
-            className="w-full bg-white px-3 text-sm text-primary-800 hover:bg-emerald-50"
-          >
-            <Link href="/student/topup">
-              <PlusCircle aria-hidden />
-              Weka pesa
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="secondary"
-            className="w-full border border-white/20 bg-white/10 px-3 text-sm text-white shadow-none hover:bg-white/20"
-          >
-            <Link href="/student/pay">
-              <ScanLine aria-hidden />
-              Scan
-            </Link>
-          </Button>
-        </div>
-      </section>
+        <Button asChild className="shrink-0">
+          <Link href="/student/pay">
+            <ScanLine aria-hidden />
+            Anza kuagiza
+          </Link>
+        </Button>
+      </Card>
 
       {/* Stats that link to the next action */}
       <div className="grid grid-cols-2 gap-2">
@@ -392,24 +344,16 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         <StatLink
           href="/student/refunds"
           label="Refunds"
-          value={money.refunds === null ? '—' : String(money.refunds)}
+          value={pendingRefunds === null ? '—' : String(pendingRefunds)}
           hint="Order refunds • admin"
           icon={RotateCcw}
           tone="bg-violet-50 text-violet-600"
         />
         <StatLink
-          href="/student/withdrawals"
-          label="Cash out"
-          value={money.withdrawals === null ? '—' : String(money.withdrawals)}
-          hint="Withdrawals • admin"
-          icon={Banknote}
-          tone="bg-sky-50 text-sky-600"
-        />
-        <StatLink
           href="/student/history"
-          label="Milo"
-          value={String(stats.mealsCount)}
-          hint="Zilizolipwa"
+          label="Matumizi"
+          value={formatTZS(stats.totalSpent)}
+          hint={`${stats.mealsCount} oda zilizolipwa`}
           icon={UtensilsCrossed}
           tone="bg-rose-50 text-rose-600"
         />
@@ -431,8 +375,8 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
           <ActionRow
             href="/student/history"
             icon={History}
-            title="Historia ya wallet"
-            description="Top-ups, malipo ya chakula na refunds zote"
+            title="Historia ya oda"
+            description="Malipo ya mobile money, coupons na refunds"
             tone="bg-sky-50 text-sky-600"
           />
           <ActionRow
@@ -441,13 +385,6 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
             title="Refunds"
             description="Order refunds tu: omba refund ya order iliyothibitishwa"
             tone="bg-violet-50 text-violet-600"
-          />
-          <ActionRow
-            href="/student/withdrawals"
-            icon={Banknote}
-            title="Cash out • Withdrawals"
-            description="Toa salio la wallet kwenda mobile money (admin huapprove)"
-            tone="bg-emerald-50 text-emerald-600"
           />
         </div>
       </Card>

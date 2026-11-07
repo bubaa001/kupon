@@ -14,19 +14,24 @@ export const dynamic = 'force-dynamic';
 
 const ordersQuerySchema = z.object({
   id: z.string().min(1).optional(),
-  status: z.enum(['PENDING', 'VERIFIED', 'CANCELLED', 'ALL']).optional().default('ALL'),
+  status: z
+    .enum(['PAYMENT_PENDING', 'PAYMENT_FAILED', 'PENDING', 'VERIFIED', 'CANCELLED', 'ALL'])
+    .optional()
+    .default('ALL'),
 });
 
 async function withCoupon<
   T extends {
     id: string;
     couponCode: string;
+    status: string;
     vendorId: string;
     universityId: string;
     studentId: string;
     expiresAt: Date;
   },
 >(order: T) {
+  if (order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED') return null;
   return signCouponToken(
     {
       orderId: order.id,
@@ -41,12 +46,12 @@ async function withCoupon<
 
 /**
  * GET /api/student/orders
- * Returns the student’s coupons with freshly signed QR tokens plus the most
- * recent PENDING coupon for the "your coupon is waiting" home state.
+ * Returns the student's paid coupons with freshly signed QR tokens. Payment
+ * intents do not include coupon details until the gateway confirms payment.
  *
  * POST /api/student/orders
- * Places a paid order from a vendor menu. The money path lives in
- * `lib/orders/place-order.ts` and is atomic with the coupon creation.
+ * Starts mobile-money checkout from a vendor menu. The coupon is issued only
+ * after the payment gateway confirms the transaction.
  */
 export async function GET(request: Request) {
   try {
@@ -94,7 +99,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireApiUser(['STUDENT']);
     const student = requireStudent(user);
-    if (!user.universityId) throw forbidden('Your wallet is not linked to a university.');
+    if (!user.universityId) throw forbidden('Your student account is not linked to a campus.');
 
     const limit = rateLimit(`student:place-order:${student.id}`, 8, 60_000);
     if (!limit.allowed) {

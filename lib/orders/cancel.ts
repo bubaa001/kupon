@@ -6,7 +6,7 @@ import { calcPaymentFees } from '@/lib/fees';
 import { postJournal, LEDGER_ACCOUNTS } from '@/lib/ledger';
 import { creditWallet } from '@/lib/wallet';
 import { sendSms } from '@/lib/sms';
-import { randomReference } from '@/lib/utils';
+import { randomReference, safeJson } from '@/lib/utils';
 import { orderInclude, serializeOrder } from './serialize';
 import {
   ORDER_CANCEL_REASONS,
@@ -131,6 +131,18 @@ export async function cancelStudentOrder(input: {
     include: orderInclude,
   });
   if (!order) throw notFound('Coupon not found.');
+  if (order.transactionId) {
+    const payment = await prisma.transaction.findUnique({
+      where: { id: order.transactionId },
+      select: { metadata: true },
+    });
+    const metadata = safeJson<Record<string, unknown>>(payment?.metadata, {});
+    if (metadata.channel === 'MOBILE_MONEY_ORDER') {
+      throw conflict(
+        'This order was paid directly by mobile money and cannot be refunded to a Kupon wallet. Contact cafeteria support to arrange a refund.',
+      );
+    }
+  }
   if (order.status === 'VERIFIED') {
     throw conflict(
       'This coupon was already verified at the counter, so it can no longer be cancelled.',
