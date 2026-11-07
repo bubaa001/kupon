@@ -2,7 +2,7 @@
   "name": "kupon",
   "version": "1.0.0",
   "private": true,
-  "description": "Kupon — digital campus wallet, QR cafeteria payments and profit intelligence for Tanzanian universities.",
+  "description": "Kupon records cafeteria orders, collects direct mobile-money payments and issues verified meal coupons for Tanzanian universities.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

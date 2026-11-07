@@ -1,12 +1,12 @@
 # Kupon.
 
-**Digital campus wallet, QR cafeteria payments and live profit intelligence for Tanzanian universities.**
+**Direct mobile-money checkout and trusted cafeteria sales records for Tanzanian universities.**
 
-Kupon replaces the paper coupon book and the handwritten cafeteria ledger with a wallet students can top up from M-Pesa, Tigo Pesa, Airtel Money or Halotel, QR menu ordering with verified meal coupons, and a real-time financial console for every university. It is a multi-tenant SaaS: **UDSM money stays at UDSM, MUST money stays at MUST.**
+Kupon replaces paper coupon books and handwritten sales ledgers with QR menu ordering, direct mobile-money checkout, payment-confirmed meal coupons and searchable cafeteria sales records. Students pay at checkout without holding a Kupon wallet. Vendor applications are reviewed before access is approved.
 
 Built with Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui patterns, Prisma + PostgreSQL, Recharts, `qrcode.react` and `html5-qrcode`.
 
-![Kupon social preview](public/og-kupon.png)
+![Kupon social preview](public/og-kupon.jpg)
 
 ---
 
@@ -352,10 +352,9 @@ scripts/                      Seed verification, smoke tests, screenshots
 ## Data architecture: database-backed UI
 
 No marketing metric, wallet balance, demo account, transaction, coupon, ledger line or vendor list is hardcoded in the UI.
-- `lib/public-data.ts` is the public read model for the landing page: active universities/vendors/students, settled volume, wallet float, meals today, the latest coupon, recent wallet transactions and a real double-entry journal.
+- `lib/public-data.ts` provides live platform totals for the public landing page, including the value of verified meal orders. The landing page itself is image-free.
 - The login page reads its campus snapshot from Prisma (students/vendors/dishes) and the staff page has no seeded credentials; credentials live in this README only.
 - The student scanner fetches active vendors from the database via `GET /api/student/vendors`; there is no `DEMO_VENDORS` array.
-- The landing hero uses the supplied Kupon brand artwork at `public/marketing/kupon-campus-food-wallet.webp`; the live metrics, ledger card and role cards around it are database reads. Remove or replace that asset if you want a different hero visual.
 - Food photos are vendor-uploaded files (`POST /api/vendor/menu/upload`) and stored on `MenuItem.imageUrl`; emoji are ignored in the interface. Uploaded files are served by `GET /api/uploads/food/<filename>` because Next.js production does not serve files added to `public/` after the build. In production, point the upload route at S3/R2/Cloudinary instead.
 
 ## Authentication architecture

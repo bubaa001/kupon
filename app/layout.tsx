@@ -9,20 +9,19 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: 'Kupon — Digital campus wallet & cafeteria payments',
+    default: 'Kupon | Cafeteria orders and payments',
     template: '%s • Kupon',
   },
   description:
-    'Kupon replaces paper coupons and ledgers in Tanzanian universities with a digital wallet, QR cafeteria payments and live profit intelligence.',
+    'Kupon records cafeteria orders, collects direct mobile-money payments and issues verified meal coupons for Tanzanian universities.',
   applicationName: 'Kupon',
   keywords: [
     'Tanzania',
     'university',
     'cafeteria',
-    'digital wallet',
     'mobile money',
     'M-Pesa',
-    'campus payments',
+    'cafeteria sales records',
     'Kupon',
   ],
   authors: [{ name: 'Bubaa Comp' }],
@@ -40,27 +39,27 @@ export const metadata: Metadata = {
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
   },
   openGraph: {
-    title: 'Kupon — Campus wallet, simplified',
+    title: 'Kupon | Cafeteria orders and payments',
     description:
-      'Top up with mobile money, pay any campus cafeteria by QR, and give administrators real-time financial visibility.',
+      'Pay for cafeteria meals directly with mobile money. Coupons appear after payment confirmation, and sales are recorded.',
     type: 'website',
     locale: 'sw_TZ',
     siteName: 'Kupon',
     images: [
       {
-        url: '/og-kupon.png',
+        url: '/og-kupon.jpg',
         width: 1200,
         height: 630,
-        alt: 'Kupon — digital campus wallet and QR cafeteria payments',
+        alt: 'Kupon cafeteria orders, direct mobile-money checkout and verified meal coupons',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Kupon — Campus wallet, simplified',
+    title: 'Kupon | Cafeteria orders and payments',
     description:
-      'Mobile-money top-ups, 2-minute QR meal payments and live profit intelligence for Tanzanian universities.',
-    images: ['/og-kupon.png'],
+      'Direct mobile-money checkout and verified meal coupons for Tanzanian university cafeterias.',
+    images: ['/og-kupon.jpg'],
   },
   robots: { index: true, follow: true },
 };

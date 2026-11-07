@@ -1,6 +1,6 @@
 """Generate Kupon PWA icons and the social preview image with Pillow."""
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 ICONS = ROOT / "public" / "icons"
@@ -86,58 +86,28 @@ save_icon("icon-maskable-512.png", 512, full_bleed=True)
 save_icon("apple-touch-icon.png", 180)
 save_icon("favicon-32.png", 32)
 
-# Social preview 1200x630
+# Social preview uses real cafeteria photography, not a fictional wallet interface.
 W, H = 1200, 630
 og = Image.new("RGB", (W, H), (248, 250, 252))
+photo = Image.open(ROOT / "public" / "food" / "photos" / "pilau-nyama.jpg").convert("RGB")
+og.paste(ImageOps.fit(photo, (480, H)), (720, 0))
 d = ImageDraw.Draw(og)
-for y in range(H):
-    t = y / H
-    d.line([(0, y), (W, y)], fill=(int(248 - 20 * t), int(250 - 18 * t), int(252 - 16 * t)))
-# decorative blobs
-for (x, y, r, color) in [(1010, 60, 250, (16, 185, 129)), (1120, 520, 190, (52, 211, 153))]:
-    overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
-    od.ellipse([x - r, y - r, x + r, y + r], fill=(*color, 32))
-    og = Image.alpha_composite(og.convert("RGBA"), overlay).convert("RGB")
-d = ImageDraw.Draw(og)
+d.rectangle([0, 0, 720, H], fill=(248, 250, 252))
 
-mark = draw_mark(86)
+mark = draw_mark(74)
 og.paste(mark, (72, 58), mark)
 
-d.text((172, 70), "Kupon", font=font(44), fill=(15, 23, 42))
-d.text((74, 190), "Paper coupons out.", font=font(66), fill=(15, 23, 42))
-d.text((74, 264), "Campus wallets in.", font=font(66), fill=(5, 150, 105))
+d = ImageDraw.Draw(og)
+d.text((164, 72), "Kupon", font=font(42), fill=(15, 23, 42))
+d.text((72, 210), "Every meal,", font=font(62), fill=(15, 23, 42))
+d.text((72, 282), "properly recorded.", font=font(58), fill=(5, 150, 105))
 d.text(
-    (78, 372),
-    "Mobile-money top-ups, 2-minute QR meal payments and a\nlive profit ledger for every Tanzanian campus.",
-    font=font(25, False),
+    (76, 390),
+    "Direct mobile-money checkout.\nVerified meal coupons.\nClear cafeteria sales records.",
+    font=font(24, False),
     fill=(71, 85, 105),
-    spacing=12,
+    spacing=14,
 )
-# chips
-chips = ["UDSM", "MUST", "M-Pesa", "Tigo Pesa", "Airtel Money", "Halotel"]
-x = 78
-for chip in chips:
-    w = d.textlength(chip, font=font(19)) + 34
-    d.rounded_rectangle([x, 486, x + w, 532], radius=23, fill=(255, 255, 255), outline=(203, 213, 225))
-    d.text((x + 17, 497), chip, font=font(19), fill=(51, 65, 85))
-    x += w + 10
 
-# phone mock on the right
-phone = [820, 110, 1120, 590]
-d.rounded_rectangle(phone, radius=42, fill=(15, 23, 42))
-d.rounded_rectangle([834, 124, 1106, 576], radius=32, fill=(248, 250, 252))
-d.rounded_rectangle([846, 140, 1094, 300], radius=24, fill=(6, 78, 59))
-d.text((872, 168), "Salio lako", font=font(20), fill=(167, 243, 208))
-d.text((872, 202), "TZS 24,500", font=font(40), fill=(255, 255, 255))
-d.rounded_rectangle([872, 262, 1000, 292], radius=15, fill=(16, 185, 129))
-d.text((892, 270), "Top up", font=font(16), fill=(255, 255, 255))
-d.rounded_rectangle([846, 324, 1094, 456], radius=22, fill=(255, 255, 255), outline=(226, 232, 240))
-d.text((870, 344), "Mama Asha Café", font=font(21), fill=(15, 23, 42))
-d.text((870, 378), "Ugali & Nyama", font=font(17, False), fill=(100, 116, 139))
-d.text((870, 410), "- TZS 3,500", font=font(22), fill=(5, 150, 105))
-d.rounded_rectangle([846, 474, 1094, 550], radius=20, fill=(236, 253, 245))
-d.text((878, 500), "Scan. Pay. Done.", font=font(21), fill=(6, 95, 70))
-
-og.save(ROOT / "public" / "og-kupon.png", format="PNG", optimize=True)
-print("Generated icons and og-kupon.png")
+og.save(ROOT / "public" / "og-kupon.jpg", format="JPEG", quality=88, optimize=True, progressive=True)
+print("Generated icons and og-kupon.jpg")

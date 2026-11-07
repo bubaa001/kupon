@@ -2,10 +2,10 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Kupon — Campus Wallet',
+    name: 'Kupon Cafeteria',
     short_name: 'Kupon',
     description:
-      'Digital campus wallet and QR cafeteria payments for Tanzanian universities. Top up with mobile money, pay vendors, track every shilling.',
+      'Order cafeteria meals, pay directly with mobile money and receive a verified coupon.',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
@@ -39,13 +39,6 @@ export default function manifest(): MetadataRoute.Manifest {
         short_name: 'Lipa',
         description: 'Open your 2-minute payment code',
         url: '/student/pay',
-        icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }],
-      },
-      {
-        name: 'Top up wallet',
-        short_name: 'Top up',
-        description: 'Add money with mobile money',
-        url: '/student/topup',
         icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }],
       },
     ],
