@@ -33,6 +33,7 @@ const NAV = [
   { href: '/vendor', label: 'Home', icon: Home },
   { href: '/vendor/sales', label: 'Sales', icon: BadgeDollarSign },
   { href: '/vendor/scan', label: 'Orders', icon: ClipboardCheck, primary: true },
+  { href: '/vendor/credit-requests', label: 'Credit cases', icon: LifeBuoy },
   { href: '/vendor/menu', label: 'Menu', icon: UtensilsCrossed },
   { href: '/vendor/settlement', label: 'Settlement', icon: Wallet },
 ];

@@ -184,8 +184,7 @@ export const vendorMenuScanSchema = z
 
 export const placeOrderSchema = z.object({
   vendorId: z.string().min(1),
-  phone: phoneSchema,
-  network: z.enum(MOBILE_NETWORKS.map((network) => network.id) as [string, ...string[]]),
+  useCredit: z.boolean().optional().default(false),
   items: z
     .array(
       z.object({

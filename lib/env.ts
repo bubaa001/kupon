@@ -21,12 +21,6 @@ const EnvSchema = z.object({
   MOCK_SETTLEMENT_DELAY_MS: z.coerce.number().min(0).max(60_000).default(2000),
   SMS_PROVIDER: z.enum(['mock']).default('mock'),
   USSD_SHORTCODE: z.string().default('*150*88#'),
-  // Offline/USSD payments are paused. Keep the implementation behind this
-  // server-side flag; it is not exposed as a public client flag.
-  USSD_ENABLED: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((value) => value === 'true'),
   DEMO_MODE: booleanFromString,
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -35,20 +29,6 @@ const EnvSchema = z.object({
   // Optional HTTPS callback for a public origin different from the canonical app URL.
   // Register this exact callback in Google Cloud Console when using it.
   GOOGLE_MOBILE_REDIRECT_URI: optionalUrl,
-  WHOP_API_KEY: z.string().optional(),
-  WHOP_ACCOUNT_ID: z.string().optional(),
-  WHOP_PRODUCT_ID: z.string().optional(),
-  WHOP_VARIANT_ID: z.string().optional(),
-  WHOP_CHECKOUT_ID: z.string().optional(),
-  WHOP_CHECKOUT_URL: optionalUrl,
-  WHOP_WEBHOOK_SECRET: z.string().optional(),
-  WHOP_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
-  AZAMPAY_CLIENT_ID: z.string().optional(),
-  AZAMPAY_CLIENT_SECRET: z.string().optional(),
-  AZAMPAY_API_KEY: z.string().optional(),
-  AZAMPAY_APP_NAME: z.string().optional(),
-  AZAMPAY_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
-  AZAMPAY_CALLBACK_TOKEN: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse({
@@ -62,27 +42,12 @@ const parsed = EnvSchema.safeParse({
   MOCK_SETTLEMENT_DELAY_MS: process.env.MOCK_SETTLEMENT_DELAY_MS,
   SMS_PROVIDER: process.env.SMS_PROVIDER,
   USSD_SHORTCODE: process.env.USSD_SHORTCODE,
-  USSD_ENABLED: process.env.USSD_ENABLED,
   DEMO_MODE: process.env.DEMO_MODE,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
   GOOGLE_MOBILE_REDIRECT_URI: process.env.GOOGLE_MOBILE_REDIRECT_URI,
-  WHOP_API_KEY: process.env.WHOP_API_KEY,
-  WHOP_ACCOUNT_ID: process.env.WHOP_ACCOUNT_ID,
-  WHOP_PRODUCT_ID: process.env.WHOP_PRODUCT_ID,
-  WHOP_VARIANT_ID: process.env.WHOP_VARIANT_ID,
-  WHOP_CHECKOUT_ID: process.env.WHOP_CHECKOUT_ID,
-  WHOP_CHECKOUT_URL: process.env.WHOP_CHECKOUT_URL,
-  WHOP_WEBHOOK_SECRET: process.env.WHOP_WEBHOOK_SECRET,
-  WHOP_ENVIRONMENT: process.env.WHOP_ENVIRONMENT,
-  AZAMPAY_CLIENT_ID: process.env.AZAMPAY_CLIENT_ID,
-  AZAMPAY_CLIENT_SECRET: process.env.AZAMPAY_CLIENT_SECRET,
-  AZAMPAY_API_KEY: process.env.AZAMPAY_API_KEY,
-  AZAMPAY_APP_NAME: process.env.AZAMPAY_APP_NAME,
-  AZAMPAY_ENVIRONMENT: process.env.AZAMPAY_ENVIRONMENT,
-  AZAMPAY_CALLBACK_TOKEN: process.env.AZAMPAY_CALLBACK_TOKEN,
 });
 
 if (!parsed.success) {

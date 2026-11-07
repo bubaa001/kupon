@@ -16,7 +16,7 @@ export async function GET() {
   try {
     const { student } = await getStudentContext();
 
-    const [profile, mealsCount, totalSpent, transactionsCount, pendingRefunds] =
+    const [profile, mealsCount, totalSpent, transactionsCount, pendingCreditRequests, pendingCoupons] =
       await Promise.all([
         prisma.studentProfile.findUnique({
           where: { id: student.id },
@@ -43,7 +43,13 @@ export async function GET() {
           _sum: { amount: true },
         }),
         prisma.transaction.count({ where: { studentId: student.id } }),
-        prisma.refundRequest.count({
+        prisma.creditRequest.count({
+          where: {
+            studentId: student.id,
+            status: { in: ['PENDING_VENDOR', 'PENDING_FINANCE'] },
+          },
+        }),
+        prisma.order.count({
           where: { studentId: student.id, status: 'PENDING' },
         }),
       ]);
@@ -70,7 +76,8 @@ export async function GET() {
         mealsCount,
         totalSpent: totalSpent._sum.amount ?? 0,
         transactionsCount,
-        pendingRefunds,
+        pendingCreditRequests,
+        pendingCoupons,
       },
     };
 

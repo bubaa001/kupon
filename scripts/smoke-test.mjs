@@ -4,8 +4,8 @@
  * Requires the app to be running (`pnpm dev` or `pnpm start`) and a seeded DB.
  *   node scripts/smoke-test.mjs
  *
- * This mutates the demo wallet (one top-up + one QR payment) and writes an
- * audit trail. Run `pnpm db:reset` afterwards for pristine screenshots.
+ * This creates test-only orders, Finance audit events and an audit trail.
+ * Run only against a disposable seeded database.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -147,47 +147,19 @@ async function main() {
     me.json?.data?.user?.university?.code === 'UDSM',
   );
 
-  const walletBefore = await request('/api/student/wallet', { cookie: student.cookie });
-  check('wallet endpoint responds', walletBefore.status === 200, String(walletBefore.status));
-  const startBalance = walletBefore.json?.data?.balance ?? 0;
-  check('wallet has a TZS balance', typeof startBalance === 'number' && startBalance > 0);
-
+  const wallet = await request('/api/student/wallet', { cookie: student.cookie });
+  check('legacy wallet endpoint is disabled', wallet.status === 410);
   const topup = await request('/api/student/topup', {
     method: 'POST',
-    body: { amount: 1000, network: 'M-PESA' },
+    body: { amount: 1000 },
     cookie: student.cookie,
   });
-  check('top-up accepted', topup.status === 200 || topup.status === 201, JSON.stringify(topup.json));
-  check('top-up is pending', topup.json?.data?.status === 'PENDING');
-  check('top-up has the UDSM route code', topup.json?.data?.routeCode === '555111');
-  const whopCheckout = Boolean(topup.json?.data?.checkoutUrl);
-  const azamPayPush = topup.json?.data?.provider === 'azampay';
-  const remoteTopUp = whopCheckout || azamPayPush;
-  const expectedTopUpCredit = remoteTopUp ? 0 : 1000;
-  if (remoteTopUp) {
-    if (whopCheckout) {
-      check('top-up returns a Whop checkout URL', /^https:\/\//.test(topup.json.data.checkoutUrl));
-    } else {
-      check('AzamPay top-up requests an MNO USSD push', /USSD push/i.test(topup.json?.data?.message ?? ''));
-    }
-    const walletBeforeWebhook = await request('/api/student/wallet', { cookie: student.cookie });
-    check(
-      'remote top-up does not credit before its verified callback',
-      (walletBeforeWebhook.json?.data?.balance ?? -1) === startBalance,
-    );
-  } else {
-    await new Promise((resolve) => setTimeout(resolve, 2600));
-    const status = await request(`/api/student/topup?id=${topup.json?.data?.transactionId}`, {
-      cookie: student.cookie,
-    });
-    check('mock top-up settles after ~2s', status.json?.data?.transaction?.status === 'SETTLED');
-    const walletAfterTopup = await request('/api/student/wallet', { cookie: student.cookie });
-    check(
-      'wallet credited after settlement',
-      (walletAfterTopup.json?.data?.balance ?? 0) === startBalance + 1000,
-      `${walletAfterTopup.json?.data?.balance} vs ${startBalance + 1000}`,
-    );
-  }
+  check('legacy wallet top-ups are disabled', topup.status === 410);
+  const paymentToken = await request('/api/student/payment-token', {
+    method: 'POST',
+    cookie: student.cookie,
+  });
+  check('legacy wallet payment codes are disabled', paymentToken.status === 410);
 
   console.log('\nVendor + meal order + coupon flow');
   const vendor = await loginVendor('V-UDSM-001', '1234');
@@ -224,15 +196,45 @@ async function main() {
     cookie: student.cookie,
   });
   check('order placement succeeds', placed.status === 201, JSON.stringify(placed.json?.error));
-  check('order is pending vendor verification', placed.json?.data?.order?.status === 'PENDING');
-  check(
-    'order returns a signed coupon QR',
-    Boolean(placed.json?.data?.order?.couponToken),
-  );
+  check('order waits for test-payment confirmation', placed.json?.data?.order?.status === 'PAYMENT_PENDING');
+  check('coupon is withheld while payment is pending', !placed.json?.data?.order?.couponToken);
+  check('order payment is explicitly test-only', placed.json?.data?.payment?.demo === true);
   check(
     'order total is computed server-side',
     placed.json?.data?.order?.total === chosen?.price,
   );
+
+  console.log('\nFinance test-payment flow');
+  const superAdmin = await loginStaff('+255745000000', 'super1234');
+  const financePhone = `+2557${Date.now().toString().slice(-8)}`;
+  const financePassword = 'FinanceSmoke123A';
+  const financeCreated = await request('/api/super-admin/finance-users', {
+    method: 'POST',
+    body: { name: 'Finance Smoke Test', phone: financePhone, password: financePassword },
+    cookie: superAdmin.cookie,
+  });
+  check('super admin can create a Finance account', financeCreated.status === 201);
+  const finance = await loginStaff(financePhone, financePassword);
+  const financeQueue = await request('/api/finance/test-payments', { cookie: finance.cookie });
+  check('Finance can view test payments', financeQueue.status === 200);
+  check(
+    'student is blocked from Finance test payments',
+    (await request('/api/finance/test-payments', { cookie: student.cookie })).status === 403,
+  );
+  const paymentReference = placed.json?.data?.transactionId;
+  for (const stage of ['RECEIVED', 'CONFIRMED']) {
+    const transition = await request(
+      `/api/finance/test-payments/${encodeURIComponent(paymentReference)}`,
+      { method: 'POST', body: { stage, note: 'Smoke-test transition' }, cookie: finance.cookie },
+    );
+    check(`Finance records ${stage}`, transition.status === 200, JSON.stringify(transition.json?.error));
+  }
+  const confirmedOrder = await request(
+    `/api/student/orders?id=${encodeURIComponent(placed.json?.data?.order?.id)}`,
+    { cookie: student.cookie },
+  );
+  check('confirmed test payment issues the coupon', confirmedOrder.json?.data?.orders?.[0]?.status === 'PENDING');
+  check('issued coupon has a QR token', Boolean(confirmedOrder.json?.data?.orders?.[0]?.couponToken));
 
   const incoming = await request('/api/vendor/orders?status=PENDING', { cookie: vendor.cookie });
   check(
@@ -282,13 +284,6 @@ async function main() {
   });
   check('cross-tenant vendor QR is rejected', crossTenantScan.status === 403);
 
-  const walletFinal = await request('/api/student/wallet', { cookie: student.cookie });
-  check(
-    'wallet debited by the order total',
-    (walletFinal.json?.data?.balance ?? 0) === startBalance + expectedTopUpCredit - chosen?.price,
-    `${walletFinal.json?.data?.balance} vs ${startBalance + expectedTopUpCredit - chosen?.price}`,
-  );
-
   console.log('\nAdmin flow + tenant isolation');
   const admin = await loginStaff('+255745000001', 'admin1234');
   const dashboard = await request('/api/admin/dashboard', { cookie: admin.cookie });
@@ -319,7 +314,6 @@ async function main() {
   check('settings expose Lipa Namba', settings.json?.data?.university?.paymentRouteCode === '555111');
 
   console.log('\nSuper admin');
-  const superAdmin = await loginStaff('+255745000000', 'super1234');
   const overview = await request('/api/super-admin/overview', { cookie: superAdmin.cookie });
   check('platform overview responds', overview.status === 200);
   check(

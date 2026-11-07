@@ -19,6 +19,7 @@ const orderSelect = {
   reference: true,
   status: true,
   total: true,
+  testOnly: true,
   itemCount: true,
   couponCode: true,
   vendorId: true,

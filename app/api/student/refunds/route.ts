@@ -3,7 +3,6 @@ import { fail, ok, parseJson } from '@/lib/api';
 import { conflict, notFound, tooManyRequests } from '@/lib/errors';
 import { rateLimit } from '@/lib/rate-limit';
 import { orderRefundRequestSchema } from '@/lib/validators';
-import { snippeMock } from '@/lib/payments/snippe';
 import {
   moneyRequestInclude,
   serializeStudentMoneyRequest,
@@ -34,8 +33,6 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const { student } = await getStudentContext();
-    await snippeMock.settleStaleTopUps(student.id);
-
     const [requests, orders, balance] = await Promise.all([
       prisma.refundRequest.findMany({
         where: { studentId: student.id, kind: 'REFUND' },
@@ -157,10 +154,11 @@ export async function POST(request: Request) {
         reference: true,
         status: true,
         total: true,
+        testOnly: true,
         universityId: true,
         transactionId: true,
         transaction: {
-          select: { id: true, type: true, status: true, amount: true },
+          select: { id: true, type: true, status: true, amount: true, isTest: true },
         },
       },
     });
@@ -180,6 +178,9 @@ export async function POST(request: Request) {
     }
     if (!order.transactionId || !order.transaction) {
       throw conflict('We could not find the original payment for this order.');
+    }
+    if (order.testOnly || order.transaction.isTest) {
+      throw conflict('Test-only orders cannot be refunded as real money.');
     }
     if (order.transaction.type !== 'PAYMENT' || order.transaction.status !== 'SETTLED') {
       throw conflict('The original order payment is not settled, so it cannot be refunded.');

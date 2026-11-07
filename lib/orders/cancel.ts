@@ -131,6 +131,11 @@ export async function cancelStudentOrder(input: {
     include: orderInclude,
   });
   if (!order) throw notFound('Coupon not found.');
+  if (order.testOnly) {
+    throw conflict(
+      'Test orders cannot be refunded to a Kupon wallet. Submit a cafeteria credit request instead.',
+    );
+  }
   if (order.transactionId) {
     const payment = await prisma.transaction.findUnique({
       where: { id: order.transactionId },
@@ -172,6 +177,11 @@ export async function cancelStudentOrder(input: {
           include: orderInclude,
         });
         if (!current) throw notFound('Coupon not found.');
+        if (current.testOnly) {
+          throw conflict(
+            'Test orders cannot be refunded to a Kupon wallet. Submit a cafeteria credit request instead.',
+          );
+        }
 
         if (current.status === 'VERIFIED') {
           throw conflict(

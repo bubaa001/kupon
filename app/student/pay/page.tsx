@@ -38,8 +38,7 @@ import { FoodCoupon } from '@/components/orders/food-coupon';
 import { PendingOrderDeck } from '@/components/student/pending-order-deck';
 import { QrScanner } from '@/components/qr/qr-scanner';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
-import { cn, formatTZS, isValidTzPhone } from '@/lib/utils';
-import { MOBILE_NETWORKS, type MobileNetwork } from '@/lib/constants';
+import { cn, formatTZS } from '@/lib/utils';
 import type {
   OrderView,
   PlaceOrderInput,
@@ -47,14 +46,14 @@ import type {
   VendorMenuData,
 } from '@/lib/orders/types';
 import { parseVendorQr } from '@/lib/orders/qr-payload';
-import type { StudentDashboardData, StudentProfileData } from '../_lib/types';
+import type { StudentCheckoutData, StudentDashboardData } from '../_lib/types';
 import { ErrorState } from '../_components/error-state';
 
 type Phase = 'boot' | 'scan' | 'menu' | 'payment' | 'payment-failed' | 'coupon';
 
 type PlaceOrderResponse = {
   order: OrderView;
-  transactionId: string;
+  transactionId: string | null;
   payment: {
     status: 'PENDING' | 'SETTLED';
     message: string;
@@ -63,8 +62,6 @@ type PlaceOrderResponse = {
 };
 
 type MenuItem = VendorMenuData['items'][number];
-
-type CampusVendor = { id: string; code: string; name: string; description: string };
 
 function vibrate(pattern: number | number[]) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
@@ -95,9 +92,9 @@ function PayingPanel() {
           <UtensilsCrossed className="h-7 w-7" aria-hidden />
         </span>
       </span>
-      <p className="mt-4 text-base font-semibold text-slate-900">Tunatuma ombi la malipo…</p>
+      <p className="mt-4 text-base font-semibold text-slate-900">Tunaandaa test payment…</p>
       <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-slate-500">
-        Thibitisha kwenye simu yako. Coupon itatolewa baada ya malipo kuthibitishwa.
+        Finance itarekodi hatua za payment kwenye Kupon API. Hakuna pesa halisi inayohamishwa.
       </p>
       <p className="mt-4 flex items-center gap-2 text-[11px] text-slate-400">
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -111,10 +108,10 @@ export default function PayPage() {
   const [phase, setPhase] = useState<Phase>('boot');
   const [bootError, setBootError] = useState<string | null>(null);
   const [student, setStudent] = useState<StudentDashboardData['student'] | null>(null);
-  const [phone, setPhone] = useState('');
-  const [network, setNetwork] = useState<MobileNetwork>('M-PESA');
   const [paymentMessage, setPaymentMessage] = useState('');
-  const [campusVendors, setCampusVendors] = useState<CampusVendor[]>([]);
+  const [useCredit, setUseCredit] = useState(false);
+  const [campusVendors, setCampusVendors] = useState<StudentCheckoutData['vendors']>([]);
+  const [vendorLoadError, setVendorLoadError] = useState(false);
 
   const [scanActive, setScanActive] = useState(false);
   const [scanningBusy, setScanningBusy] = useState(false);
@@ -140,51 +137,40 @@ export default function PayPage() {
     setPhase('boot');
     setBootError(null);
     setPendingLoading(true);
-    const [studentResult, ordersResult] = await Promise.allSettled([
-      apiFetch<StudentProfileData>('/api/student/profile'),
-      apiFetch<StudentOrdersData>('/api/student/orders?status=ALL'),
-    ]);
-
-    if (studentResult.status === 'fulfilled') {
-      setStudent({
-        ...studentResult.value.student,
-        university: {
-          name: studentResult.value.university.name,
-          code: studentResult.value.university.code,
-        },
-      });
-      setPhone((current) => current || studentResult.value.student.phone);
-    }
-    let pending: OrderView[] = [];
-    let paymentWaiting: OrderView | undefined;
-    if (ordersResult.status === 'fulfilled') {
-      pending = ordersResult.value.orders.filter((entry) => entry.status === 'PENDING');
-      paymentWaiting = ordersResult.value.orders.find(
-        (entry) => entry.status === 'PAYMENT_PENDING',
-      );
+    try {
+      const data = await apiFetch<StudentCheckoutData>('/api/student/checkout');
+      setStudent(data.student);
+      setCampusVendors(data.vendors);
+      setVendorLoadError(data.vendorLoadError);
+      const pending = data.orders.filter((entry) => entry.status === 'PENDING');
+      const paymentWaiting = data.orders.find((entry) => entry.status === 'PAYMENT_PENDING');
       setPendingOrders(pending);
       setPendingError(null);
-    } else {
+      setPendingLoading(false);
+
+      // Open an outstanding payment first; otherwise show a single ready coupon.
+      if (paymentWaiting) {
+        setOrder(paymentWaiting);
+        setPaymentMessage('Tunasubiri uthibitisho wa malipo kwenye simu yako.');
+        setPhase('payment');
+      } else if (pending.length === 1) {
+        setOrder(pending[0]);
+        setPhase('coupon');
+      } else {
+        setPhase('scan');
+      }
+    } catch (error) {
       setPendingError(
-        'Imeshindikana kupakia coupons zako. Angalia muunganisho wako kisha ujaribu tena.',
+        error instanceof ApiClientError
+          ? error.message
+          : 'Imeshindikana kupakia coupons zako. Angalia muunganisho wako kisha ujaribu tena.',
       );
-    }
-    if (studentResult.status === 'rejected' && ordersResult.status === 'rejected') {
       setBootError(
-        'Imeshindikana kupakia taarifa zako. Angalia muunganisho wako kisha ujaribu tena.',
+        error instanceof ApiClientError
+          ? error.message
+          : 'Imeshindikana kupakia taarifa zako. Angalia muunganisho wako kisha ujaribu tena.',
       );
-    }
-    setPendingLoading(false);
-    // One waiting coupon opens the expanded coupon view (the familiar single
-    // coupon screen). Two or more render as the quartett hand on the scanner.
-    if (paymentWaiting) {
-      setOrder(paymentWaiting);
-      setPaymentMessage('Tunasubiri uthibitisho wa malipo kwenye simu yako.');
-      setPhase('payment');
-    } else if (pending.length === 1) {
-      setOrder(pending[0]);
-      setPhase('coupon');
-    } else {
+      setPendingLoading(false);
       setPhase('scan');
     }
   }, []);
@@ -193,28 +179,10 @@ export default function PayPage() {
     void loadBoot();
   }, [loadBoot]);
 
-  // Vendor discovery comes from the DB (active vendors in this university),
-  // never from a hardcoded demo list.
-  const universityCode = student?.university.code;
-  useEffect(() => {
-    if (!universityCode) return;
-    let cancelled = false;
-    apiFetch<{ vendors: CampusVendor[] }>('/api/student/vendors')
-      .then((data) => {
-        if (!cancelled) setCampusVendors(data.vendors);
-      })
-      .catch(() => {
-        if (!cancelled) setCampusVendors([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [universityCode]);
-
   const refreshPending = useCallback(async () => {
     setPendingLoading(true);
     try {
-      const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=ALL');
+      const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING');
       setPendingOrders(data.orders.filter((entry) => entry.status === 'PENDING'));
       setPendingError(null);
     } catch (err) {
@@ -243,6 +211,7 @@ export default function PayPage() {
         const data = await postJson<VendorMenuData>('/api/student/vendor-scan', payload);
         setMenu(data);
         setCart({});
+        setUseCredit(false);
         setCategory('Zote');
         setNote('');
         setFormError(null);
@@ -329,12 +298,11 @@ export default function PayPage() {
 
   const itemCount = cartEntries.reduce((sum, entry) => sum + entry.quantity, 0);
   const subtotal = cartEntries.reduce((sum, entry) => sum + entry.item.price * entry.quantity, 0);
+  const cafeteriaCreditUsed = useCredit
+    ? Math.min(subtotal, menu?.student.cafeteriaCreditBalance ?? 0)
+    : 0;
+  const amountDue = subtotal - cafeteriaCreditUsed;
   const canPay = itemCount > 0 && !submitting;
-  const phoneError =
-    phone.trim().length === 0 || !isValidTzPhone(phone)
-      ? 'Weka namba sahihi ya simu ya Tanzania.'
-      : null;
-
   function changeQuantity(menuItemId: string, quantity: number) {
     setCart((previous) => {
       const next = { ...previous };
@@ -348,17 +316,12 @@ export default function PayPage() {
 
   async function submitOrder() {
     if (!menu || !canPay) return;
-    if (phoneError) {
-      setFormError(phoneError);
-      return;
-    }
     setSubmitting(true);
     setFormError(null);
     try {
       const payload: PlaceOrderInput = {
         vendorId: menu.vendor.id,
-        phone,
-        network,
+        useCredit,
         items: cartEntries.map(({ item, quantity }) => ({
           menuItemId: item.id,
           quantity,
@@ -382,12 +345,13 @@ export default function PayPage() {
       if (result.payment.status === 'SETTLED') {
         vibrate([30, 40, 60]);
         toast.success('Malipo yamethibitishwa. Coupon yako iko tayari.', {
-          description: result.payment.demo
-            ? 'Mazingira ya majaribio. Hakuna pesa halisi iliyohamishwa.'
-            : `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
+          description:
+            result.order.creditApplied > 0 && result.order.creditApplied === result.order.total
+              ? `Cafeteria credit imetumika kwa ${formatTZS(result.order.creditApplied)}. Hakuna pesa mpya iliyokusanywa.`
+              : 'Order ya majaribio imethibitishwa. Hakuna pesa halisi iliyohamishwa.',
         });
       } else {
-        toast.info('Thibitisha malipo kwenye simu yako.', {
+        toast.info('Test payment imeanzishwa. Finance ataendelea na hatua zinazofuata.', {
           description: `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
         });
       }
@@ -479,13 +443,18 @@ export default function PayPage() {
           <PageHeader
             eyebrow="Meals on campus"
             title="Find your lunch"
-            description="Scan a cafeteria QR to see today's menu. Pay with mobile money, then show your verified Kupon coupon."
+            description="Scan a cafeteria QR to see today's menu. This test environment records payment events through Kupon's internal API."
             actions={
               <Button asChild variant="outline" size="sm">
                 <Link href="/student/history">Historia</Link>
               </Button>
             }
           />
+
+          <Alert variant="warning">
+            Test environment: orders do not charge a phone or move real money. A coupon is issued
+            only after Finance confirms the test payment.
+          </Alert>
 
           {bootError ? <ErrorState message={bootError} onRetry={() => void loadBoot()} /> : null}
 
@@ -573,8 +542,18 @@ export default function PayPage() {
 
             <div className="mt-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-400">
-Cafeterias at {student?.university.name ?? 'your campus'}
+                Cafeterias at {student?.university.name ?? 'your campus'}
               </p>
+              {vendorLoadError ? (
+                <p className="mt-2 text-xs leading-relaxed text-amber-700" role="status">
+                  Orodha ya cafeterias haikupatikana. Tumia QR au code iliyo kwenye counter.
+                </p>
+              ) : null}
+              {!vendorLoadError && campusVendors.length === 0 ? (
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  Hakuna cafeteria zinazopatikana kwa sasa. Scan QR au code ya counter.
+                </p>
+              ) : null}
               <div className="mt-2 space-y-2">
                 {demoVendors.map((vendor) => (
                   <button
@@ -779,9 +758,9 @@ Cafeterias at {student?.university.name ?? 'your campus'}
       {phase === 'payment' && order ? (
         <section className="mx-auto w-full max-w-lg space-y-4">
           <PageHeader
-            eyebrow="Kupon mobile money"
-            title="Confirm on your phone"
-            description="Approve the payment request from your mobile-money service. Your coupon appears as soon as Kupon confirms payment."
+            eyebrow="Kupon internal test API"
+            title="Test payment pending"
+            description="Finance records receipt and confirmation through Kupon's API. No mobile-money request is sent."
           />
           <Card className="p-5">
             <div className="flex items-start gap-3">
@@ -799,8 +778,8 @@ Cafeterias at {student?.university.name ?? 'your campus'}
               <Loader2 className="mt-1 h-4 w-4 shrink-0 animate-spin text-primary-600" aria-hidden />
             </div>
             <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-              Keep this page open while the payment is confirmed. Kupon will show your coupon here
-              once the payment is verified.
+              Keep this page open while the test payment is reviewed. Kupon will show your coupon
+              once Finance confirms the test transaction.
             </p>
           </Card>
           <Button asChild variant="outline" className="w-full">
@@ -814,13 +793,13 @@ Cafeterias at {student?.university.name ?? 'your campus'}
           <PageHeader
             eyebrow="Payment not confirmed"
             title="No coupon was issued"
-            description="Check your mobile-money messages before trying again. Contact Kupon support if money was deducted."
+            description="The internal test payment was not confirmed. No real money was collected and no coupon was issued."
           />
           <Card className="p-5">
             <p className="text-sm font-semibold text-slate-900">{order.vendor.name}</p>
             <p className="mt-1 text-sm tabular text-slate-600">{formatTZS(order.total)}</p>
             <p className="mt-3 text-xs leading-relaxed text-slate-500">
-              Your payment provider did not confirm this order. The order cannot be collected.
+              The test transaction did not reach a confirmed state. The order cannot be collected.
             </p>
           </Card>
           <Button onClick={resetToScan} className="w-full">
@@ -833,10 +812,15 @@ Cafeterias at {student?.university.name ?? 'your campus'}
       {phase === 'coupon' && order ? (
         <>
           <PageHeader
-            eyebrow="Coupon • Order"
+            eyebrow={order.paymentTest ? 'TEST COUPON • Order' : 'Coupon • Order'}
             title="Coupon yako"
             description="Onyesha coupon hii kwa vendor. Status inasasishwa yenyewe mara vendor anapoi-verify."
           />
+          {order.paymentTest ? (
+            <Alert variant="warning">
+              Test payment confirmed by Kupon Finance. No real money was collected.
+            </Alert>
+          ) : null}
           <FoodCoupon order={order} onNewOrder={resetToScan} />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button asChild variant="outline">
@@ -914,45 +898,43 @@ Cafeterias at {student?.university.name ?? 'your campus'}
                   <span className="text-slate-500">Jumla</span>
                   <span className="font-semibold tabular text-slate-900">{formatTZS(subtotal)}</span>
                 </div>
+                {menu && menu.student.cafeteriaCreditBalance > 0 ? (
+                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-100 bg-white p-3">
+                    <input
+                      type="checkbox"
+                      checked={useCredit}
+                      onChange={(event) => setUseCredit(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="flex-1">
+                      <span className="block font-semibold text-slate-800">
+                        Use {menu.vendor.name} credit
+                      </span>
+                      <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-500">
+                        Up to {formatTZS(menu.student.cafeteriaCreditBalance)}. Credit is limited to
+                        this cafeteria.
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
+                {cafeteriaCreditUsed > 0 ? (
+                  <div className="flex justify-between gap-3 text-emerald-700">
+                    <span>Cafeteria credit</span>
+                    <span className="font-semibold tabular">− {formatTZS(cafeteriaCreditUsed)}</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-3 border-t border-slate-200 pt-1.5">
+                  <span className="text-slate-500">
+                    {amountDue > 0 ? 'Remaining test payment' : 'Due'}
+                  </span>
+                  <span className="font-semibold tabular text-slate-900">{formatTZS(amountDue)}</span>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mobile-network">Mobile-money service</Label>
-                <select
-                  id="mobile-network"
-                  value={network}
-                  onChange={(event) => {
-                    const selected = MOBILE_NETWORKS.find(
-                      (provider) => provider.id === event.target.value,
-                    );
-                    if (selected) setNetwork(selected.id);
-                  }}
-                  className="flex h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                >
-                  {MOBILE_NETWORKS.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.name}
-                    </option>
-                  ))}
-                </select>
-                <Label htmlFor="payment-phone">Phone number for the payment prompt</Label>
-                <Input
-                  id="payment-phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(event) => {
-                    setPhone(event.target.value);
-                    setFormError(null);
-                  }}
-                  aria-describedby="payment-phone-help"
-                />
-                <p id="payment-phone-help" className="text-[11px] leading-relaxed text-slate-500">
-                  Kupon will send a payment request to this number. Your phone PIN stays with your
-                  mobile-money service.
-                </p>
-              </div>
+              <Alert variant="warning">
+                Test order only. No mobile-money request will be sent and no money will be
+                collected.
+              </Alert>
 
               <div className="space-y-1.5">
                 <Label htmlFor="order-note">Note kwa vendor (hiari)</Label>
@@ -978,7 +960,7 @@ Cafeterias at {student?.university.name ?? 'your campus'}
                 </Button>
                 <Button onClick={() => void submitOrder()} loading={submitting} disabled={!canPay}>
                   <Smartphone aria-hidden />
-                  Pay {formatTZS(subtotal)}
+                  {amountDue > 0 ? `Continue · ${formatTZS(amountDue)} test` : 'Use cafeteria credit'}
                 </Button>
               </DialogFooter>
             </>

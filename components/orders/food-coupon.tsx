@@ -41,6 +41,13 @@ const STATUS: Record<
     dot: 'bg-red-500',
     description: 'Payment was not confirmed, so this order cannot be collected.',
   },
+  EXPIRED: {
+    label: 'Coupon expired',
+    short: 'Expired',
+    tone: 'border-slate-200 bg-slate-100 text-slate-600',
+    dot: 'bg-slate-400',
+    description: 'This coupon has expired and can no longer be collected.',
+  },
   PENDING: {
     label: 'Waiting for vendor',
     short: 'Pending',

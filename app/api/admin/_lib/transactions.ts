@@ -25,6 +25,7 @@ export type TxQuery = z.infer<typeof txQuerySchema>;
 /** Builds the tenant-scoped `where` for transaction list, export and search. */
 export function buildTxWhere(user: AuthUser, query: TxQuery): Prisma.TransactionWhereInput {
   const where: Prisma.TransactionWhereInput = {
+    isTest: false,
     ...tenantWhere(user, query.universityId),
   };
 

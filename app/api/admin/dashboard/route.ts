@@ -56,29 +56,31 @@ export async function GET(request: Request) {
           })
         : Promise.resolve(null),
       prisma.transaction.aggregate({
-        where: scopeWhereWith({ type: 'PAYMENT', status: 'SETTLED', createdAt: { gte: todayStart } }),
+        where: scopeWhereWith({ type: 'PAYMENT', status: 'SETTLED', isTest: false, createdAt: { gte: todayStart } }),
         _sum: { amount: true },
       }),
       prisma.transaction.count({
-        where: scopeWhereWith({ type: 'PAYMENT', status: 'SETTLED', createdAt: { gte: todayStart } }),
+        where: scopeWhereWith({ type: 'PAYMENT', status: 'SETTLED', isTest: false, createdAt: { gte: todayStart } }),
       }),
-      prisma.transaction.count({ where: scopeWhereWith({ createdAt: { gte: todayStart } }) }),
+      prisma.transaction.count({ where: scopeWhereWith({ isTest: false, createdAt: { gte: todayStart } }) }),
       prisma.transaction.aggregate({
         where: scopeWhereWith({
           type: 'PAYMENT',
           status: 'SETTLED',
+          isTest: false,
           createdAt: { gte: yesterdayStart, lte: yesterdayWindowEnd },
         }),
         _sum: { amount: true },
       }),
       prisma.transaction.count({
         where: scopeWhereWith({
+          isTest: false,
           createdAt: { gte: yesterdayStart, lte: yesterdayWindowEnd },
         }),
       }),
       prisma.transaction.groupBy({
         by: ['studentId'],
-        where: scopeWhereWith({ createdAt: { gte: weekStart } }),
+        where: scopeWhereWith({ isTest: false, createdAt: { gte: weekStart } }),
       }),
       prisma.studentProfile.count({ where: scopeWhere }),
       prisma.refundRequest.count({
@@ -92,13 +94,14 @@ export async function GET(request: Request) {
         where: scopeWhereWith({
           type: 'PAYMENT',
           status: 'SETTLED',
+          isTest: false,
           createdAt: { gte: weekStart },
         }),
         select: { amount: true, universityRevenue: true, metadata: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
       prisma.transaction.findMany({
-        where: scopeWhere,
+        where: scopeWhereWith({ isTest: false }),
         include: txInclude,
         orderBy: { createdAt: 'desc' },
         take: 9,

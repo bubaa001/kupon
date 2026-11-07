@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { fail, ok } from '@/lib/api';
 import { notFound } from '@/lib/errors';
 import type { StudentDashboardData } from '@/app/student/_lib/types';
+import { getStudentActiveOrders } from '../_lib/orders';
 import { getStudentContext, serializeTransaction } from '../_lib/student';
 
 export const runtime = 'nodejs';
@@ -15,7 +16,7 @@ export async function GET() {
     const todayStart = startOfDay(now);
     const weekStart = startOfDay(subDays(now, 6));
 
-    const [profile, todaySpent, weekSpent, mealsThisWeek, couponsUsed, recent] =
+    const [profile, todaySpent, weekSpent, mealsThisWeek, couponsUsed, recent, activeOrders] =
       await Promise.all([
         prisma.studentProfile.findUnique({
           where: { id: student.id },
@@ -65,6 +66,7 @@ export async function GET() {
           orderBy: { createdAt: 'desc' },
           take: 6,
         }),
+        getStudentActiveOrders(student.id),
       ]);
 
     if (!profile) throw notFound('Student profile not found.');
@@ -85,6 +87,7 @@ export async function GET() {
         couponsUsed,
       },
       recentTransactions: recent.map(serializeTransaction),
+      pendingOrders: activeOrders.filter((order) => order.status === 'PENDING'),
     };
 
     return ok(data);

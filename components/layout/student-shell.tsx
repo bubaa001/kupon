@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Clock3,
+  CircleDollarSign,
   Home,
   LogOut,
   ScanLine,
@@ -16,10 +17,11 @@ import { cn } from '@/lib/utils';
 import { signOut } from '@/lib/logout';
 
 const NAV = [
-  { href: '/student', label: 'Home', icon: Home },
-  { href: '/student/history', label: 'History', icon: Clock3 },
-  { href: '/student/pay', label: 'Scan', icon: ScanLine, primary: true },
-  { href: '/student/profile', label: 'Profile', icon: UserRound },
+  { href: '/student', label: 'Nyumbani', icon: Home },
+  { href: '/student/history', label: 'Historia', icon: Clock3 },
+  { href: '/student/credit-requests', label: 'Credit', icon: CircleDollarSign },
+  { href: '/student/pay', label: 'Agiza', icon: ScanLine, primary: true },
+  { href: '/student/profile', label: 'Wasifu', icon: UserRound },
 ];
 
 export type StudentShellUser = {
@@ -53,7 +55,7 @@ export function StudentShell({
 
         <div className="relative mt-8 flex-1">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Student
+            Mwanafunzi
           </p>
           <nav className="space-y-1">
             {NAV.map((item) => {
@@ -78,12 +80,11 @@ export function StudentShell({
                   >
                     <Icon className="h-4 w-4" />
                   </span>
-                  {item.label === 'Scan' ? 'Scan vendor & order' : item.label}
+                  {item.label === 'Agiza' ? 'Scan QR na uagize' : item.label}
                 </Link>
               );
             })}
           </nav>
-
         </div>
 
         <div className="relative mt-4 border-t border-white/10 pt-4">
@@ -107,7 +108,7 @@ export function StudentShell({
 
       <div className="lg:pl-64">
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md lg:hidden">
+        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-canvas/95 backdrop-blur-xl lg:hidden">
           <div className="mx-auto flex h-16 max-w-md items-center justify-between px-4">
             <Logo href="/student" size="sm" />
             <div className="flex items-center gap-2">
@@ -127,11 +128,11 @@ export function StudentShell({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="font-medium text-slate-700">{user.universityName}</span>
             <span className="text-slate-300">/</span>
-            <span>Kupon student</span>
+            <span>Mwanafunzi</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500">
-              375px ready • PWA
+            <span className="rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-[10px] font-semibold text-primary-800">
+              {user.universityCode}
             </span>
             <Link href="/student/profile" aria-label="Profile">
               <Avatar name={user.name} size="sm" />
@@ -139,16 +140,16 @@ export function StudentShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
+        <main className="student-workspace mx-auto w-full max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
           {children}
         </main>
 
         {/* Mobile bottom navigation */}
         <nav
           className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
-          aria-label="Student navigation"
+          aria-label="Urambazaji wa mwanafunzi"
         >
-          <div className="mx-auto grid h-[68px] max-w-md grid-cols-4 items-center px-1">
+          <div className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-center px-1">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);

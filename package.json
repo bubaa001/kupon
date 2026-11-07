@@ -2,7 +2,7 @@
   "name": "kupon",
   "version": "1.0.0",
   "private": true,
-  "description": "Kupon records cafeteria orders, collects direct mobile-money payments and issues verified meal coupons for Tanzanian universities.",
+  "description": "Kupon records cafeteria orders, test-payment events, verified meal coupons and cafeteria credit for Tanzanian universities.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -38,7 +38,6 @@
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",
-    "@whop/sdk": "^2.7.0",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

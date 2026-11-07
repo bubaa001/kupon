@@ -1,17 +1,17 @@
 import { fail } from '@/lib/api';
-import { badRequest } from '@/lib/errors';
+import { AppError } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function rejectWalletTopUp() {
-  try {
-    throw badRequest(
-      'Wallet top-ups are no longer available. Pay for each cafeteria order with mobile money at checkout.',
-    );
-  } catch (error) {
-    return fail(error);
-  }
+  return fail(
+    new AppError(
+      'Wallet top-ups are no longer available. Use the cafeteria order test checkout.',
+      410,
+      'WALLET_DISABLED',
+    ),
+  );
 }
 
 export async function GET() {

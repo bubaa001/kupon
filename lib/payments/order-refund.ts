@@ -82,6 +82,10 @@ export async function approveOrderRefund(input: {
   const order = request.order;
   const payment = request.transaction;
 
+  if (order.testOnly || payment.isTest) {
+    throw conflict('Test-only orders cannot be refunded as real money.');
+  }
+
   if (order.studentId !== request.studentId || order.universityId !== request.universityId) {
     throw new AppError('Cross-tenant refund blocked.', 403, 'TENANT_MISMATCH');
   }

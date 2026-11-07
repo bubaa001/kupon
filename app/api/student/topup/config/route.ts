@@ -1,19 +1,11 @@
 import { ok } from '@/lib/api';
 import { requireApiUser } from '@/lib/auth';
-import { isWhopEnabled } from '@/lib/payments/whop';
-import { getAzamPayConfig, isAzamPayEnabled } from '@/lib/payments/azampay';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Tells the student top-up screen whether to use the Whop card checkout. */
+/** Legacy wallet top-ups are disabled; checkout is order-specific. */
 export async function GET() {
   await requireApiUser(['STUDENT']);
-  const azampayConfig = getAzamPayConfig();
-  return ok({
-    whopEnabled: isWhopEnabled(),
-    azampayEnabled: azampayConfig !== null,
-    azampayEnvironment: azampayConfig?.environment ?? null,
-    preferredProvider: isAzamPayEnabled() ? 'azampay' : isWhopEnabled() ? 'whop' : 'mock',
-  });
+  return ok({ enabled: false, message: 'Wallet top-ups are not available.' });
 }

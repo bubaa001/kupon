@@ -58,13 +58,16 @@ export async function verifyOrderCoupon(input: {
   if (order.status === 'VERIFIED') {
     throw conflict('This coupon has already been verified.');
   }
+  if (order.expiresAt <= new Date()) {
+    throw conflict('This coupon has expired and can no longer be redeemed.');
+  }
   if (order.status !== 'PENDING') {
     throw conflict('This order can no longer be verified.');
   }
 
   const verified = await prisma.$transaction(async (tx) => {
     const claimed = await tx.order.updateMany({
-      where: { id: order.id, status: 'PENDING' },
+      where: { id: order.id, status: 'PENDING', expiresAt: { gt: new Date() } },
       data: {
         status: 'VERIFIED',
         verifiedById: input.actorId,

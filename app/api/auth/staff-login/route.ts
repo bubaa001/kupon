@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     const hash = user?.passwordHash ?? '$2a$10$jvPplD9ywuj93bbTBoZL7Ovo1NdNQ.Zhm60O8kFZ64m9i4z4aCPFG';
     const validPassword = await bcrypt.compare(body.password, hash);
-    if (!user || !validPassword || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+    if (!user || !validPassword || !['ADMIN', 'SUPER_ADMIN', 'FINANCE'].includes(user.role)) {
       throw unauthorized('Phone number or password is incorrect.');
     }
     if (user.role === 'ADMIN' && user.university?.status !== 'ACTIVE') {

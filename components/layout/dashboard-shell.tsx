@@ -29,7 +29,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { cn } from '@/lib/utils';
 import { signOut } from '@/lib/logout';
 
-export type DashboardKind = 'admin' | 'super';
+export type DashboardKind = 'admin' | 'super' | 'finance';
 
 export type DashboardUser = {
   name: string;
@@ -74,6 +74,18 @@ const SUPER_NAV: NavGroup[] = [
       { href: '/super-admin/tenants', label: 'Universities', icon: Building2 },
       { href: '/super-admin/revenue', label: 'Platform revenue', icon: TrendingUp },
       { href: '/super-admin/health', label: 'System health', icon: Activity },
+      { href: '/super-admin/finance-users', label: 'Finance access', icon: Users },
+    ],
+  },
+];
+
+const FINANCE_NAV: NavGroup[] = [
+  {
+    title: 'Finance',
+    items: [
+      { href: '/finance', label: 'Overview', icon: LayoutDashboard },
+      { href: '/finance/test-payments', label: 'Test payments', icon: ArrowLeftRight },
+      { href: '/finance/requests', label: 'Credit & support', icon: RotateCcw },
     ],
   },
 ];
@@ -94,8 +106,9 @@ function SidebarContent({
   pathname: string;
   onNavigate?: () => void;
 }) {
-  const groups = kind === 'admin' ? ADMIN_NAV : SUPER_NAV;
-  const root = kind === 'admin' ? '/admin' : '/super-admin';
+  const groups =
+    kind === 'admin' ? ADMIN_NAV : kind === 'finance' ? FINANCE_NAV : SUPER_NAV;
+  const root = kind === 'admin' ? '/admin' : kind === 'finance' ? '/finance' : '/super-admin';
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-navy text-white">
@@ -146,12 +159,18 @@ function SidebarContent({
         <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.05] p-3.5">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-300">
             <ShieldCheck className="h-3.5 w-3.5" />
-            {kind === 'admin' ? 'Isolated tenant' : 'Platform operations'}
+            {kind === 'admin'
+              ? 'Isolated tenant'
+              : kind === 'finance'
+                ? 'Finance operations'
+                : 'Platform operations'}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
             {kind === 'admin'
               ? `You are viewing ${user.universityCode ?? 'this campus'} only. Cross-tenant records are blocked at the API.`
-              : 'All universities are visible here. Financial writes are audit-logged.'}
+              : kind === 'finance'
+                ? 'Platform-wide case review and test payment controls. Test records do not represent collected money.'
+                : 'All universities are visible here. Financial writes are audit-logged.'}
           </p>
         </div>
       </div>
@@ -188,7 +207,7 @@ export function DashboardShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const root = kind === 'admin' ? '/admin' : '/super-admin';
+  const root = kind === 'admin' ? '/admin' : kind === 'finance' ? '/finance' : '/super-admin';
 
   return (
     <div className="min-h-dvh bg-canvas">

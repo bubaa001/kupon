@@ -32,7 +32,12 @@ export async function GET(request: Request) {
     const where = {
       vendorId: vendor.id,
       universityId: user.universityId,
-      ...(query.status !== 'ALL' ? { status: query.status } : {}),
+      ...(query.status !== 'ALL'
+        ? {
+            status: query.status,
+            ...(query.status === 'PENDING' ? { expiresAt: { gt: new Date() } } : {}),
+          }
+        : {}),
     };
 
     const [orders, pending, verified, today] = await Promise.all([
@@ -42,7 +47,14 @@ export async function GET(request: Request) {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
-      prisma.order.count({ where: { vendorId: vendor.id, universityId: user.universityId, status: 'PENDING' } }),
+      prisma.order.count({
+        where: {
+          vendorId: vendor.id,
+          universityId: user.universityId,
+          status: 'PENDING',
+          expiresAt: { gt: new Date() },
+        },
+      }),
       prisma.order.count({ where: { vendorId: vendor.id, universityId: user.universityId, status: 'VERIFIED' } }),
       prisma.order.count({
         where: {

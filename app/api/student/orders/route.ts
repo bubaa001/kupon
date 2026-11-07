@@ -31,7 +31,13 @@ async function withCoupon<
     expiresAt: Date;
   },
 >(order: T) {
-  if (order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED') return null;
+  if (
+    order.status === 'PAYMENT_PENDING' ||
+    order.status === 'PAYMENT_FAILED' ||
+    (order.status === 'PENDING' && order.expiresAt <= new Date())
+  ) {
+    return null;
+  }
   return signCouponToken(
     {
       orderId: order.id,
@@ -50,8 +56,8 @@ async function withCoupon<
  * intents do not include coupon details until the gateway confirms payment.
  *
  * POST /api/student/orders
- * Starts mobile-money checkout from a vendor menu. The coupon is issued only
- * after the payment gateway confirms the transaction.
+ * Starts an internal test-payment from a vendor menu. The coupon is issued only
+ * after Finance records a test confirmation.
  */
 export async function GET(request: Request) {
   try {
@@ -75,7 +81,12 @@ export async function GET(request: Request) {
     const orders = await prisma.order.findMany({
       where: {
         studentId: student.id,
-        ...(query.status && query.status !== 'ALL' ? { status: query.status } : {}),
+        ...(query.status && query.status !== 'ALL'
+          ? {
+              status: query.status,
+              ...(query.status === 'PENDING' ? { expiresAt: { gt: new Date() } } : {}),
+            }
+          : {}),
       },
       include: orderInclude,
       orderBy: { createdAt: 'desc' },

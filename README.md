@@ -1,8 +1,8 @@
 # Kupon.
 
-**Direct mobile-money checkout and trusted cafeteria sales records for Tanzanian universities.**
+**Trusted cafeteria orders, coupons and sales records for Tanzanian universities.**
 
-Kupon replaces paper coupon books and handwritten sales ledgers with QR menu ordering, direct mobile-money checkout, payment-confirmed meal coupons and searchable cafeteria sales records. Students pay at checkout without holding a Kupon wallet. Vendor applications are reviewed before access is approved.
+Kupon replaces unreliable notebooks with QR-based menu ordering, traceable coupons and searchable transaction records. The current checkout is an internal test system: it does not collect mobile money or move cash. Students have no Kupon wallet; test cafeteria credit is limited to the cafeteria that issued it.
 
 Built with Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui patterns, Prisma + PostgreSQL, Recharts, `qrcode.react` and `html5-qrcode`.
 
@@ -17,7 +17,7 @@ Captured from the running app with real seeded data at 375px and desktop widths
 
 <table>
   <tr>
-    <td width="50%"><img src="screenshots/03-student-home-mobile.png" alt="Student wallet home" /></td>
+    <td width="50%"><img src="screenshots/03-student-home-mobile.png" alt="Student order dashboard" /></td>
     <td width="50%"><img src="screenshots/21-student-menu-mobile.png" alt="Photo-led student food menu" /></td>
   </tr>
   <tr>
@@ -53,14 +53,13 @@ Captured from the running app with real seeded data at 375px and desktop widths
 
 ## Why Kupon
 
-| Problem today | Kupon |
+| Problem today | Kupon's intended fix |
 | --- | --- |
-| Printed coupon booklets get lost, stolen or forged | Single-use QR / 6-digit meal coupon tied to a paid order and verified by the vendor |
-| Vendors keep paper ledgers and argue about totals | Every sale settles instantly into a vendor pending balance with a double-entry journal |
-| Students lose leftover change and cannot see spending | Wallet balance, TZS top-ups, meal history and refunds in one place |
-| University finance offices see numbers days later | Live dashboard: revenue, transactions, vendors, top meals, refunds, CSV/PDF export |
-| One tenant's data could leak into another campus | Tenant ID is enforced in every API route, not only in the UI |
-| Students need a smartphone browser | Installable PWA plus Google sign-in; offline USSD payments are intentionally paused in this build |
+| Paper records fill up, disappear or are difficult to search | Append-only transaction and coupon records with audit history |
+| A change of notebook or staff makes a customer's claim hard to verify | A consistent record for every order and credit decision; the problem is record reliability, not assumed dishonesty |
+| Students may need to find cash or leave money with the cafeteria | Direct mobile-money checkout is the planned live flow; this build only records test payment states and holds no student wallet |
+| Cafeterias lack dependable sales visibility | Database-backed transaction and menu analytics for transparency and decisions |
+| The system must grow beyond one cafeteria | Vendor-scoped data and role boundaries are designed to support multiple outlets |
 
 ---
 
@@ -68,37 +67,35 @@ Captured from the running app with real seeded data at 375px and desktop widths
 
 ### Student (mobile-first, installable PWA)
 
-- **Google-first auth** for students and vendors. Students sign in or create a fresh wallet with Google; vendors sign in with Google or submit a business application for admin approval. The phone-OTP implementation is retained in the code but **temporarily disabled** (`OTP_LOGIN_ENABLED = false`) so it can be switched back on when SMS delivery is ready.
-- Wallet home: **Salio**, top-up, scan-to-order CTA, pending-coupon banner, today's spend, meals this week, recent activity.
-- Top up with **1,000 / 2,000 / 5,000 / 10,000 TZS** or a custom amount, choose network, mock STK push, polling and success state with new balance and Lipa Namba.
-- **Student scans the vendor's counter QR** (or types the vendor code), browses the approved menu with food images, chooses meals with quantity steppers and pays from the wallet.
-- A **live meal coupon** with food image, items, order ID, 6-digit code, QR and status appears after payment. It animates to **VERIFIED** when the vendor checks it, with polling, haptic feedback and a confetti/check animation.
+- **Google sign-in** for students and vendors. Vendors submit an application for platform review; there is no student wallet or top-up flow.
+- **Scan the cafeteria counter QR**, browse the available menu, choose meals and submit an order. The order creates an auditable internal test-payment record; Finance advances it through receipt, confirmation, failure or expiry.
+- A **meal coupon** with items, order ID, fallback code, QR and status appears only after the test transaction is confirmed. It animates to **VERIFIED** when cafeteria staff redeem it.
 - Transaction history with Today / Week / Month tabs, type/status filters and totals.
-- Refund request with status tracking and admin notes.
+- Credit request for an unfulfilled, active coupon; an accepted credit is restricted to that cafeteria. A further-review ticket records a TZS 1,500 test-only vendor charge; no cash refund or fee movement occurs.
 - Profile, university, student ID, PWA install hint and logout.
 
 ### Vendor (mobile-first POS)
 
 - Vendor Google sign-in, a Google-first application form, and university-admin approval before the terminal goes live. The legacy vendor code + PIN form is preserved behind a demo toggle.
 - A printable, camera-friendly **counter QR** (`KPN:V:<vendor code>`) for students to scan. It opens the vendor's live approved menu and cannot move money on its own.
-- **Live order desk:** incoming paid orders with food images, student identity, items, totals and coupon status; polling every 3 seconds, new-order toasts/haptics and animated cards.
+- **Live order desk:** incoming confirmed test orders with student identity, items, totals and coupon status; polling every 3 seconds, new-order toasts/haptics and animated cards.
 - **Coupon verification:** scan the student's coupon QR or enter the 6-digit code shown on their phone. Single-use conditional status transition plus a celebratory verified screen; the student coupon updates live.
 - Menu management with a live student preview, real photo uploads, prices, categories and availability. Vendors upload their own dish photos; there is no emoji fallback. Food is vendor-owned and goes live immediately; the university admin vets the vendor, not each dish.
-- Today's sales, transaction count, top items, recent payments.
-- Pending settlement, paid history and a mock instant payout request.
+- Menu availability, order history and cafeteria-scoped credit decisions.
+- Sales analytics exclude internal test payments from real-money totals.
 - Vendor never sees another vendor's or university's orders or sales.
 
 ### University admin (responsive dashboard)
 
-- 4 live stat cards: revenue today, transactions, active students, pending refunds.
+- Database-backed sales and vendor oversight; test-only transactions are excluded from real-money reporting.
 - 7-day revenue area chart with transaction counts and net profit.
 - Top-selling meals with progress bars and a horizontal bar chart.
 - Live transaction feed with status badges.
 - Searchable/filterable transaction table, CSV download and print-to-PDF report.
 - Vendor onboarding, suspension, per-vendor sales.
-- Student search, wallet visibility, manual credit/debit with mandatory reason + audit log.
+- Student search and audit history.
 - Vendor vetting: add, view sales, suspend or reactivate a vendor. Admins do not approve individual dishes.
-- Refund approve/reject with notes; approval triggers the mock payout.
+- Vendor onboarding and support oversight; Finance reviews cafeteria credit and escalation requests.
 - University profile, **Lipa Namba** routing code, SaaS billing invoices, ledger health, audit trail.
 - Daily/weekly/monthly profit & loss, fee waterfall, revenue leakage and top vendors.
 
@@ -108,11 +105,17 @@ Captured from the running app with real seeded data at 375px and desktop widths
 - Onboard a university: code, route code, city, SaaS fee, first admin account.
 - Suspend/reactivate tenants, edit Lipa Namba with uniqueness validation and audit.
 - Platform revenue: GMV, transaction fees, university share, aggregator cost, SaaS revenue, net.
-- System health: real success rate, failed transactions, ledger balance check, mock uptime/latency and service status.
+- System health: transaction status, ledger balance check, mock uptime/latency and service status.
+
+### Finance (platform-wide)
+
+- Review internal test-payment records and advance their auditable lifecycle.
+- Review closing-time credit requests and escalated support tickets.
+- Finance actions are recorded separately from vendor/cashier input; they do not represent actual collection or payout.
 
 ### USSD — paused
 
-USSD/offline payments are **not supported in this build**. The simulator page, API route and `chargeViaUssd()` implementation are retained behind `USSD_ENABLED=false` so they can be re-enabled later. `/ussd` renders the not-found page and `/api/ussd` returns `404 USSD_DISABLED` while the flag is off. No USSD link is rendered on the landing page, login page, footer or 404 page.
+USSD/offline payments are **not supported in this build**. The legacy wallet-based simulator and API are disabled unconditionally. `/ussd` renders the not-found page and `/api/ussd` returns `404 USSD_DISABLED`.
 
 ---
 
@@ -128,8 +131,8 @@ USSD/offline payments are **not supported in this build**. The simulator page, A
 | Auth | `jose` HS256 JWT in an httpOnly, SameSite=Lax cookie; bcrypt for staff credentials; Google OAuth 2.0 for student sign-in/signup and vendor sign-in/application |
 | Validation | Zod on every mutation + query filter |
 | Database | Prisma 6 + PostgreSQL (Supabase) |
-| Payments | Provider interface + mock **Snippe** implementation (STK push, settlement, refund, smart routing) |
-| SMS | Mock SMS logger; USSD code retained but disabled via feature flag |
+| Payments | Internal, Finance-operated test-payment API; no live provider integration |
+| SMS | Mock SMS logger; legacy wallet-based USSD flow is disabled |
 | PWA | Web manifest, maskable icons, offline fallback, service worker (never caches API/HTML) |
 | Deploy | Vercel-compatible Next app; use Postgres for persistent serverless data (see below) |
 
@@ -159,8 +162,8 @@ Open **http://localhost:3000**.
 > pooler) in `.env` before running Prisma commands. The example URLs use a
 > placeholder password; URL-encode special characters in your real password.
 > `pnpm db:seed` creates destructive demo data; run it only against a disposable
-> development project, never the production database. If a StudentProfile ever
-> exists without its Wallet row, run `pnpm db:repair`; student routes also self-heal wallets.
+> development project, never the production database. The legacy Wallet table remains for
+> historical compatibility only; current student checkout and credit flows do not use it.
 
 
 
@@ -191,16 +194,17 @@ pnpm start
 
 | Role | Credentials | Where it lands |
 | --- | --- | --- |
-| **New student (Google)** | Any verified Google account → **Continue with Google** | Creates a fresh TZS 0 wallet |
-| Seeded student wallet | `amina.mwinyi@udsm.ac.tz` (after an admin links your real Google email) | Continue with Google |
-| Seeded student wallet | `kelvin.mwakalinga@must.ac.tz` (after linking) | Continue with Google |
+| **New student (Google)** | Any verified Google account → **Continue with Google** | Creates a student account with no wallet |
+| Seeded student | `amina.mwinyi@udsm.ac.tz` (after an admin links your real Google email) | Continue with Google |
+| Seeded student | `kelvin.mwakalinga@must.ac.tz` (after linking) | Continue with Google |
 | **New vendor (Google)** | Vendor tab → Continue with Google → application | `/vendor-pending`, then `/vendor` after approval |
 | **Vendor (UDSM) legacy** | `V-UDSM-001` · PIN `1234` via the demo terminal toggle | `/vendor` |
 | Vendor (MUST) legacy | `V-MUST-001` · PIN `1234` via the demo terminal toggle | `/vendor` |
 | **University admin (UDSM)** | `+255745000001` · `admin1234` | `/staff/login` → `/admin` |
 | University admin (MUST) | `+255745000002` · `admin1234` | `/staff/login` → `/admin` |
 | **Super admin (Bubaa Comp)** | `+255745000000` · `super1234` | `/staff/login` → `/super-admin` |
-| USSD (paused) | `USSD_ENABLED=false` | `/ussd` not found; API returns 404 |
+| **Finance** | Create a platform-wide account from Super Admin → Finance Users | `/finance` |
+| USSD (paused) | Disabled in code | `/ussd` not found; API returns 404 |
 
 **Staff do not use the public landing login.** The public `/login` page exposes only Student and Vendor tabs. University and platform staff enter through `/staff/login`; old `/login?role=staff` bookmarks redirect there. The staff page is `noindex`, not linked from the landing page, and staff sign-out returns to `/staff/login`.
 
@@ -212,9 +216,9 @@ Phone OTP is temporarily disabled in the UI (`OTP_LOGIN_ENABLED = false` in `app
 
 **Student — Continue with Google** handles both paths:
 
-1. **Existing wallet** — the Google email is already linked (`User.email` / `googleId`), so the callback signs the student straight into that wallet.
-2. **New student** — a verified Google email with no wallet is redirected to `/signup/google`. The student confirms their name, mobile-money number, student number, course and year. Kupon creates a **fresh wallet with TZS 0**, signs them in, and writes an audit entry. No SMS OTP is involved and no admin approval is needed.
-3. **Existing wallet with an unlinked Google account** — the callback deliberately does **not** attach the Google account automatically, because that would let someone claim a funded wallet by guessing an email. An admin links it from **Students → Google sign-in fallback**, or the CLI links it.
+1. **Existing student account** — the Google email is already linked (`User.email` / `googleId`), so the callback signs the student into that account.
+2. **New student** — a verified Google email with no account is redirected to `/signup/google`. The student confirms their name, mobile number, student number, course and year. Kupon creates a student profile and writes an audit entry. No SMS OTP is involved and no admin approval is needed.
+3. **Existing student account with an unlinked Google account** — the callback does **not** attach the Google account automatically. An admin links it from **Students → Google sign-in fallback**, or the CLI links it.
 
 Security model:
 
@@ -224,7 +228,7 @@ Security model:
 4. The signup route re-checks university status, unique Google email/sub, unique phone and unique student number inside one transaction, then writes `User`, `StudentProfile`, `Wallet` and the audit log atomically.
 5. The same httpOnly Kupon session cookie is issued after signup or sign-in; the client secret never reaches the browser.
 
-> Open Gmail signup is intentionally enabled for this MVP. For a production campus rollout, restrict signup to the university's Google Workspace domain (or match student numbers against the registry) so personal Gmail accounts cannot create university wallets.
+> Open Gmail signup is intentionally enabled for this MVP. For a production campus rollout, restrict signup to the university's Google Workspace domain (or match student numbers against the registry).
 
 **Vendor — Continue with Google**
 
@@ -247,7 +251,7 @@ GOOGLE_REDIRECT_URI="http://localhost:3000/api/auth/callback/google"
 
 Add the exact redirect URI to **Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Web Client**. For production, set `GOOGLE_REDIRECT_URI` to the deployed URL and add that exact URI in Google Cloud Console.
 
-Link a real Google email to an existing demo wallet, either from the admin UI or the CLI:
+Link a real Google email to an existing demo student account, either from the admin UI or the CLI:
 
 1. **Admin UI:** sign in as university admin → **Students** → open the student → **Overview** → **Google sign-in fallback** → enter the student's Google email → **Link email**. Audit-logged.
 2. **CLI:**
@@ -264,51 +268,40 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 - **`redirect_uri_mismatch`:** add exactly `http://localhost:3000/api/auth/callback/google` (and the production equivalent) under Google Cloud Console → APIs & Services → Credentials → your OAuth 2.0 Web Client → Authorised redirect URIs. Set `GOOGLE_REDIRECT_URI` to the same value.
 - **`Access blocked` / app not verified:** while the OAuth consent screen is in Testing, add your Google account as a test user in Google Cloud Console, or publish the app.
 - **Google auth on the hosted app:** open the stable Vercel domain from your phone. Set `GOOGLE_REDIRECT_URI` to `https://<your-domain>/api/auth/callback/google` in Vercel and add that exact URI to the OAuth client’s authorized redirect URIs in Google Cloud Console. A local tunnel is not needed for the hosted app.
-- **Existing wallet not linked to Google:** the callback does not attach Google to a funded wallet automatically. Link it from **Admin → Students → student → Google sign-in fallback**, or run `pnpm link:google <phone> <email>`. New students do not need this step — they get the signup form.
+- **Existing account not linked to Google:** the callback does not attach Google automatically. Link it from **Admin → Students → student → Google sign-in fallback**, or run `pnpm link:google <phone> <email>`. New students do not need this step — they get the signup form.
 - **`google_signup_expired`:** the 15-minute signup ticket expired. Start **Continue with Google** again.
 - **`google_vendor_expired`:** the 15-minute vendor application ticket expired. Start again from the Vendor tab.
 - **`google_vendor_missing`:** that Google account has no vendor record yet — submit a vendor application from the Vendor tab.
-- **Phone or student number already registered:** ask an admin to link the Google email to the existing wallet. The signup route never merges two wallets.
+- **Phone or student number already registered:** ask an admin to link the Google email to the existing student account. Signup never merges identities.
 
 ---
 
 ## Five-minute demo script
 
-1. **Student:** open `/login` → Student tab → pick UDSM → **Continue with Google**. A new Google account creates a fresh TZS 0 wallet. To use the seeded Amina wallet and its pending coupon, first sign in as admin at `/staff/login` → Students → Amina → **Google sign-in fallback** → link your Gmail, then sign in with Google. OTP is temporarily disabled.
-2. **Scan / order:** open **Scan**, tap **New order** on the coupon, then **Open camera** (or use the demo vendor chip for *Mama Asha Café* in headless demo environments). Browse the photo menu, add *Ugali & Nyama* and *Soda*, review the cart, and pay from the wallet.
-3. **Coupon:** the phone animates in a meal coupon with the food image, order ID, 6-digit code, QR and **Waiting for vendor** status. It polls every 3 seconds.
-4. **Vendor application:** in a second browser window, open `/login` → Vendor tab → pick UDSM → **Continue with Google** → submit the application. You land on `/vendor-pending`. In the admin window (`/staff/login`), open **Vendors → Pending** and click **Approve**.
-5. **Vendor:** back in the vendor window, refresh `/vendor-pending` → you land on the order desk. The new order appears (toast + animation). Tap **Enter code**, type the 6 digits from the student coupon, and verify. The vendor sees the celebratory verified screen. (Demo shortcut: **Use an existing terminal code** → `V-UDSM-001` / `1234`.)
-6. **Student:** within ~3 seconds the coupon animates to **Verified**, with the check/confetti and haptic feedback. Show it at the counter to collect the meal.
-7. **Admin:** sign in at `/staff/login` as UDSM admin. Dashboard revenue and the live feed update. Open **Refunds**, approve a pending request with a note; the student wallet is debited and the refund transaction appears. Try **Students → manual credit** and check the audit log in Settings.
-8. **Tenant isolation:** sign in at `/staff/login` as MUST admin (`+255745000002`). You will not find UDSM students, vendors or transactions anywhere; direct API attempts for another tenant return `403`.
-9. **Super admin:** see both tenants, per-tenant revenue, SaaS invoices and the ledger health check.
+1. **Student:** sign in at `/login` with Google. Student accounts do not have a Kupon wallet.
+2. **Order:** open the student order screen, scan/select a cafeteria, choose available meals and place an order. This creates a pending internal test-payment record; it does not collect money.
+3. **Finance:** a Super Admin creates a Finance account under **Finance Users**. Sign in at `/finance/test-payments`, record `RECEIVED`, then `CONFIRMED` for the order reference. This is a test status transition only.
+4. **Coupon:** after confirmation the student receives a QR and fallback code. The coupon disappears from active orders when it expires.
+5. **Vendor:** open the vendor order desk and verify the student's coupon by QR or fallback code.
+6. **Credit flow:** from an active coupon, submit an unfulfilled-order request. The cafeteria can accept it; the resulting test credit is limited to that cafeteria and can be applied to a later test order.
+7. **Escalation:** the student may open a further-review ticket. The TZS 1,500 vendor charge is a test ledger entry only; Finance review does not issue a cash refund.
+8. **Tenant isolation:** sign in as a different university admin. Cross-tenant records remain inaccessible.
+9. **Super Admin:** manage platform-wide tenants and create Finance accounts.
 
 
 ---
 
-## Money flow & fee waterfall
+## Internal test-payment lifecycle
 
-Every campus payment is settled inside one PostgreSQL transaction:
+Order payments move through auditable states: `INITIATED → RECEIVED → CONFIRMED`, or
+`FAILED` / `EXPIRED`. Only Finance can record these transitions. Confirmation issues the
+coupon and records test-ledger entries; it does **not** debit a student's wallet, collect
+mobile money, settle real vendor earnings or trigger a payout.
 
-```
-Student wallet (debit 100%)
-├─ Vendor pending settlement   97.5%
-└─ Platform fee                 2.5%
-   ├─ University revenue        0.5%   (20% of the platform fee)
-   ├─ Aggregator rail cost      1.5%
-   └─ Kupon net revenue         0.5%
-```
-
-- Current fee constants live in `.env` (`PLATFORM_FEE_PERCENT`, `AGGREGATOR_FEE_PERCENT`, `UNIVERSITY_REVENUE_SHARE_PERCENT`).
-- Every wallet, payment, top-up, refund and manual-adjustment movement writes a **balanced double-entry journal** in `LedgerEntry`. Debits must equal credits; `postJournal()` throws and rolls the whole Prisma transaction back otherwise. Vendor bank payouts move the vendor's `pendingBalance` to `totalSettled` and are recorded in `Settlement` (a treasury movement outside the student-facing journal).
-- Top-up: debit `CASH_TRUST`, credit `STUDENT_WALLET`.
-- Payment: debit `STUDENT_WALLET`; credit `VENDOR_PENDING`, `UNIVERSITY_REVENUE`, `AGGREGATOR_PAYABLE`, `PLATFORM_REVENUE`.
-- Refund: debit `STUDENT_WALLET`, credit `CASH_TRUST`.
-- Admin manual adjustment: wallet + `CASH_TRUST` + an immutable `AuditLog` row.
-- Wallet debits are **conditional** (`UPDATE ... WHERE balance >= amount`), so two simultaneous QR scans can never overdraw a wallet.
-
-Smart routing: each transaction stores `routeCode = university.paymentRouteCode` (the Lipa Namba) in both `Transaction.routeCode` and metadata. `chargeWithToken()` verifies student, vendor and token all belong to the same university before any money moves.
+Unfulfilled-order credits are stored separately from any future live-credit account and are
+restricted to the issuing student/cafeteria pair. Failed or expired test payments restore
+reserved test credit. The TZS 1,500 escalation fee is also test-only. A production payment
+rail, money custody, refunds or payouts are not implemented.
 
 ---
 
@@ -318,11 +311,12 @@ Smart routing: each transaction stores `routeCode = university.paymentRouteCode`
 app/
   page.tsx                    Marketing landing (supplied brand hero image)
   login/                      Google-first student/vendor auth + staff password (OTP code retained, disabled)
-  student/                    Wallet, top up, QR pay, history, refunds, profile
-  vendor/                     POS home, scan & charge, sales, menu, settlement
-  admin/                      Dashboard, transactions, vendors, students, refunds, menu, reports, settings
+  student/                    QR ordering, test checkout, coupons, cafeteria credit, history
+  vendor/                     POS home, coupon verification, sales and menu
+  finance/                    Test-payment lifecycle and cafeteria support review
+  admin/                      Dashboard, transactions, vendors, students, reports, settings
   super-admin/                Tenants, platform revenue, health
-  ussd/                       Feature-phone simulator (paused via feature flag)
+  ussd/                       Legacy feature-phone simulator (disabled)
   api/                        Route handlers with RBAC + Zod
     auth/ student/ vendor/ admin/ super-admin/ ussd/ universities/
 components/
@@ -334,8 +328,8 @@ lib/
   auth.ts                     JWT session, page/API guards, tenant assertion
   api.ts / errors.ts          Response envelope + typed errors
   db.ts                       Prisma singleton
-  payments/                   PaymentProvider interface, mock Snippe, charge service
-  ledger.ts / wallet.ts       Double-entry journal + conditional wallet operations
+  payments/                   Internal test-payment transitions and legacy compatibility
+  ledger.ts / wallet.ts       Test ledger + dormant legacy wallet code
   qr.ts                       Signed 120s QR token + 6-digit fallback
   tenant.ts                   Admin tenant scoping
   validators/                 Zod schemas
@@ -351,7 +345,7 @@ scripts/                      Seed verification, smoke tests, screenshots
 
 ## Data architecture: database-backed UI
 
-No marketing metric, wallet balance, demo account, transaction, coupon, ledger line or vendor list is hardcoded in the UI.
+No marketing metric, test account, transaction, coupon, ledger line or vendor list is hardcoded in the UI.
 - `lib/public-data.ts` provides live platform totals for the public landing page, including the value of verified meal orders. The landing page itself is image-free.
 - The login page reads its campus snapshot from Prisma (students/vendors/dishes) and the staff page has no seeded credentials; credentials live in this README only.
 - The student scanner fetches active vendors from the database via `GET /api/student/vendors`; there is no `DEMO_VENDORS` array.
@@ -378,69 +372,45 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 ## Security model
 
 - **RBAC on every API route:** `requireApiUser(['STUDENT'])`, `['VENDOR']`, `['ADMIN','SUPER_ADMIN']`, `['SUPER_ADMIN']`.
-- **Google OAuth fallback:** state-cookie-protected authorization-code flow; server-side code exchange; `email_verified` required. Existing wallets sign in only when the Google email is pre-linked. New students receive a signed 15-minute signup ticket and create a separate zero-balance wallet with a unique phone/student number; Google never attaches itself to a funded wallet.
-- **Meal coupons:** camera-friendly short QR (`KPN:C:<6-digit code>`) plus the visible 6-digit fallback. Vendor verification requires the coupon to belong to the signed-in vendor and university; a conditional `PENDING → VERIFIED` update prevents double redemption. Legacy signed coupon JWTs are still accepted.
+- **Google OAuth fallback:** state-cookie-protected authorization-code flow; server-side code exchange; `email_verified` required. Existing student accounts sign in only when the Google email is pre-linked. New students receive a signed 15-minute signup ticket.
+- **Meal coupons:** camera-friendly short QR (`KPN:C:<6-digit code>`) plus the visible 6-digit fallback. A coupon is available only after a Finance-confirmed internal test payment; vendor verification requires the coupon to belong to the signed-in vendor and university, and a conditional update prevents double redemption.
 - **QR production settings:** payloads are short pointers (`KPN:V:<vendor code>`) rather than JWTs; 224 px (196 px compact), error correction Q, 4-module quiet zone, black on white. This avoids the 60–77 module QR grids that phone cameras could not resolve.
 - **Tenant isolation:** admin queries use `resolveTenantScope()`; students/vendors are derived from the session, never from a client-supplied ID. `assertTenant()` blocks cross-university reads/writes.
 - **Session rehydration:** the JWT is verified, then the user is reloaded from the DB so suspended vendors/universities lose access immediately. Suspended university kills every tenant role.
-- **Single-use payment tokens:** signed JWT (`jti`) + DB row + 6-digit unique code; server validates signature, expiry, tenant and `usedAt` inside a conditional update.
+- **Internal test payments:** Finance-only state transitions are recorded as ordered payment events. Test transactions and test credits are isolated from real-money reporting and wallet refunds.
 - **Zod validation** on every body/query mutation; stable `{ok,error}` envelope with human messages and no stack traces.
-- **Rate limiting** (in-memory mock): OTP request/verify, vendor/staff login, top-up, token creation and charge. **Swap for Upstash Redis/KV in production** — the helper is `lib/rate-limit.ts`.
-- **Audit log** for manual wallet adjustments, refund decisions, vendor onboarding/suspension, coupon verification, tenant onboarding and route-code changes.
+- **Rate limiting** (in-memory mock): OTP request/verify, vendor/staff login, payment-state transitions and credit/support actions. **Swap for Upstash Redis/KV before production** — the helper is `lib/rate-limit.ts`.
+- **Audit log** for payment-state changes, cafeteria credit, support tickets, vendor onboarding/suspension and coupon verification.
 - **Double-entry ledger invariant** checked when writing and exposed in Settings / Super-admin health.
 - Security headers (`X-Frame-Options`, `nosniff`, Referrer-Policy, camera-only Permissions-Policy).
-- The service worker **never caches HTML or `/api/*`**, so a shared campus phone cannot show another user's cached balance.
+- The service worker **never caches HTML or `/api/*`**, so a shared campus phone cannot show another user's cached order data.
 
 ### Intentional MVP shortcuts (replace before production)
 
 - OTP login is disabled in the UI for now; the code and APIs are retained for when SMS delivery is enabled. OTP codes are stored in plaintext (with 5-minute expiry, attempt limit and rate limit) and are returned by the API in `DEMO_MODE=true`.
 - SMS is logged to the server console, not delivered.
-- Google signup is open to any verified Google email in this MVP. In production, restrict it to the university's Google Workspace domain or verify the student number against the registry. Existing wallet linking is admin-controlled (or CLI) by design; there is no self-service claim of a funded wallet.
+- Google signup is open to any verified Google email in this MVP. In production, restrict it to the university's Google Workspace domain or verify the student number against the registry. Existing student-account linking is admin-controlled (or CLI) by design.
 - Session JWT is stateless; no refresh-token rotation or device revocation list.
 - Rate limiting is per-instance memory.
-- The mock cash-in has **no collection fee**; a real aggregator will charge roughly 1.5% on top-ups, so decide whether to absorb it or pass a convenience fee to the student. Payment-level aggregator costs are fully modelled.
+- There is no live mobile-money collection or payout rail in this build. Test payment and ticket events are not evidence of funds received.
 - Vendor applications have a PENDING state and admin approval, but there is no formal rejection workflow yet — an admin can suspend/reject by leaving the vendor pending or suspending it. Add a dedicated rejection reason before a real pilot.
 - Vendor food photos are written to `public/uploads/food` and served through `/api/uploads/food/<filename>` on the local filesystem. Serverless hosts need object storage (S3/R2/Cloudinary) for durable uploads; the menu contract only stores the returned URL.
 - Phone photos are resized in the browser to a maximum 1600px JPEG before upload, so large Android photos and most mobile gallery formats work without hitting the 5 MB limit.
-- Vendor settlements are mock instant payouts recorded in `Settlement`; no bank/aggregator payout API is called.
+- No bank or mobile-money payout API is called. Legacy settlement records must not be interpreted as cash transfers.
 
 ---
 
-## Replace the mock payment aggregator
+## Internal test payments
 
-The whole app talks to one interface in `lib/payments/types.ts`:
+Kupon currently records cafeteria-order payment events through an internal test API. Finance
+users can record receipt, confirmation, failure, or expiry. These test events are auditable but
+do not contact a mobile-money provider, collect money, send payouts, or increase real vendor
+balances. Test cafeteria credit is isolated from any future live-credit ledger.
 
-```ts
-export interface PaymentProvider {
-  readonly name: string;
-  initiateTopUp(input: TopUpRequest): Promise<TopUpResult>;
-  settlePayment(transactionId: string): Promise<{ transactionId: string; status: string; balance?: number }>;
-  initiateRefund(input: RefundRequest): Promise<RefundResult>;
-}
-```
-
-The current provider is `lib/payments/snippe.ts`. To connect **Selcom / AzamPay / N-Card / M-Pesa**:
-
-1. Implement a class with the same three methods. In `initiateTopUp`:
-   - Resolve the university's `paymentRouteCode` (Lipa Namba).
-   - Call the aggregator's collection/STK-push API with the payer MSISDN.
-   - Create the `Transaction` row with `status: 'PENDING'`, `routeCode`, and the aggregator reference in metadata.
-   - Return the pending reference. **Do not credit the wallet yet.**
-2. Add a verified webhook at `app/api/webhooks/payments/route.ts`:
-   - Verify the aggregator signature/timestamp.
-   - Find the transaction by provider reference.
-   - Call `provider.settleTopUp(transaction.id)` (or `settlePayment`) only after verification.
-   - Return `200` quickly and make settlement idempotent (`updateMany WHERE status='PENDING'` already does this).
-3. Implement `initiateRefund` with the aggregator payout API and keep the wallet debit atomic; only mark the refund final after payout confirmation.
-4. Register the class in `lib/payments/index.ts` and set:
-   ```env
-   PAYMENT_PROVIDER=selcom   # or azampay, ncard
-   ```
-5. Replace the mock SMS in `lib/sms.ts` with Beem Africa, NextSMS or Africa's Talking.
-6. Replace the in-memory limiter with Upstash Redis and add a real OTP provider (or keep SMS OTP).
-7. Keep `routeCode` attached to every transaction — this is what decides which university account receives the money.
-
-The mock's comments mark each line that must change. No route handler or UI component imports Snippe directly; they all use `getPaymentProvider()`.
+Wallet top-ups, student wallet payment codes, legacy counter charges, legacy USSD flows, and
+AzamPay/Whop callbacks are disabled. Do not treat a test confirmation, credit balance, ticket fee,
+or vendor payout record as real money movement. A future live payment integration must be
+implemented and reviewed separately before enabling collection or payouts.
 
 ---
 
@@ -486,8 +456,8 @@ pnpm lint                       # next/core-web-vitals
 pnpm build                      # production build
 pnpm db:reset                   # deterministic seed + ledger check
 
-# With the app running on :3000 and a freshly seeded DB:
-pnpm smoke                      # 48-assertion end-to-end API + ledger test
+# With the app running on :3000 and a disposable seeded DB:
+pnpm smoke                      # Creates a Finance account and test-only orders
 pnpm audit:mobile               # every route at 375px: horizontal-overflow audit
 pnpm screenshots                # 19 mobile + desktop screenshots
 pnpm screenshots:flow           # food/menu, vendor apply, Google signup and staff login states
@@ -495,7 +465,7 @@ pnpm screenshots:flow           # food/menu, vendor apply, Google signup and sta
 
 The repository also includes:
 
-- `scripts/smoke-test.mjs` — logs in as every role and exercises the critical API paths (Google OAuth start, tenant isolation, wallet, vendor menu QR, order placement, coupon verification/replay, disabled-USSD guard, dashboard, health and the double-entry ledger). It mutates the demo wallet; run `pnpm db:reset` afterwards.
+- `scripts/smoke-test.mjs` — exercises the Finance-confirmed test-payment and coupon flow, tenant isolation, disabled wallet endpoints, dashboard and ledger. It creates test-only orders and a Finance account; use only a disposable seeded database.
 - `scripts/audit-mobile.mjs` — opens every authenticated route at 375px and fails loudly if `scrollWidth > clientWidth`.
 - `scripts/screenshots.mjs` — captures the main 20-screenshot set in `screenshots/`.
 - `scripts/screenshots-flow.mjs` — captures the interactive design states (student food menu/cart, vendor add-dish dialog, student preview, Google signup, vendor application and the staff entrance).
@@ -503,10 +473,11 @@ The repository also includes:
 Manual checks worth doing before a real pilot:
 
 - Two concurrent scans with the same QR: second must fail with “already used”.
-- Student worth TZS 1,000 trying to pay TZS 3,500: API returns `402 INSUFFICIENT_FUNDS`; no journal row.
+- A pending test payment has no coupon; only Finance `CONFIRMED` issues one.
 - UDSM admin requesting a MUST student ID: `403`.
-- Approve a refund twice: second request cannot revert an approved request.
-- Kill the dev server during a mock top-up: after restart, the wallet endpoint lazily settles the stale top-up (the mock sweep) exactly once.
+- Test-only order refunds cannot create live wallet value.
+- Failed or expired test payments restore reserved test credit exactly once.
+- Legacy wallet, top-up and counter-charge endpoints return `WALLET_DISABLED`.
 
 ---
 
@@ -517,13 +488,13 @@ Manual checks worth doing before a real pilot:
 - OTP delivery via Beem/NextSMS and IP + device fingerprint rate limits.
 - Offline-first vendor queue for flaky campus Wi-Fi (IndexedDB + idempotency keys).
 - Vendor payout batching (T+1) and bank reconciliation.
-- Student meal plans / daily limits / parental top-ups.
+- Mobile-money checkout after a real provider, reconciliation and settlement controls have been implemented and reviewed.
 - Swahili-first localization with next-intl.
 - Receipt PDFs and WhatsApp notifications.
 - SOC2-style audit export and per-tenant data retention controls.
 
 ---
 
-Built for the Tanzanian campus. **Kupon — salio lako, chakula chako, kwa mkupuo mmoja.**
+Built for the Tanzanian campus. **Kupon — oda zako, kumbukumbu zako.**
 
 © 2026 Bubaa Comp. MVP reference implementation.

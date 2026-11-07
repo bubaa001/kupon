@@ -1,4 +1,4 @@
-export const ROLES = ['STUDENT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN'] as const;
+export const ROLES = ['STUDENT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'FINANCE'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const TX_TYPES = [
@@ -118,6 +118,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   VENDOR: 'Vendor',
   ADMIN: 'University admin',
   SUPER_ADMIN: 'Platform admin',
+  FINANCE: 'Finance',
 };
 
 export const DEFAULT_FEES = {
@@ -132,4 +133,3 @@ export const MAX_TOPUP = 500_000;
 
 export const QR_TTL_SECONDS = 120;
 export const DEMO_MODE = process.env.DEMO_MODE !== 'false';
-

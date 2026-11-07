@@ -5,8 +5,8 @@ import snippeMock from './snippe';
 let cached: PaymentProvider | null = null;
 
 /**
- * Selects the configured payment rail. Add Selcom / AzamPay / N-Card providers
- * here; every caller uses the PaymentProvider interface, so nothing else moves.
+ * Selects the legacy mock rail. Real providers are intentionally unsupported
+ * while order payments use the Finance-operated internal test API.
  */
 export function getPaymentProvider(): PaymentProvider {
   if (cached) return cached;
@@ -22,7 +22,7 @@ export function getPaymentProvider(): PaymentProvider {
       // provider in an environment that expects real money to move.
       throw new Error(
         `PAYMENT_PROVIDER=${env.PAYMENT_PROVIDER} is configured but not implemented. ` +
-          'Implement the provider in lib/payments and register it here.',
+          'Real provider payments are not enabled in this build.',
       );
     default:
       cached = snippeMock;

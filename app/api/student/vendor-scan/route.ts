@@ -94,9 +94,15 @@ export async function POST(request: Request) {
       },
     });
 
-    const profile = await prisma.studentProfile.findUnique({
-      where: { id: student.id },
-      select: { walletBalance: true, wallet: { select: { balance: true } } },
+    const cafeteriaCredit = await prisma.cafeteriaCredit.findUnique({
+      where: {
+        studentId_vendorId_isTest: {
+          studentId: student.id,
+          vendorId: vendor.id,
+          isTest: true,
+        },
+      },
+      select: { balance: true },
     });
 
     return ok({
@@ -111,7 +117,7 @@ export async function POST(request: Request) {
       student: {
         name: user.name,
         studentId: student.studentId,
-        walletBalance: profile?.wallet?.balance ?? profile?.walletBalance ?? 0,
+        cafeteriaCreditBalance: cafeteriaCredit?.balance ?? 0,
       },
       items,
     });

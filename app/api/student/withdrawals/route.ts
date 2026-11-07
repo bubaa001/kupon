@@ -1,15 +1,13 @@
-import { badRequest } from '@/lib/errors';
+import { AppError } from '@/lib/errors';
 import { fail } from '@/lib/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function rejectWalletWithdrawal() {
-  try {
-    throw badRequest('Student wallet withdrawals are not part of Kupon checkout.');
-  } catch (error) {
-    return fail(error);
-  }
+  return fail(
+    new AppError('Student wallet withdrawals are not part of Kupon checkout.', 410, 'WALLET_DISABLED'),
+  );
 }
 
 export async function GET() {

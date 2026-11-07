@@ -82,9 +82,9 @@ export default function HistoryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Transactions • Historia"
-        title="Historia ya wallet"
-        description="Miamala yote ya wallet yako: top-ups, malipo ya chakula na refunds."
+        eyebrow="Miamala • Historia"
+        title="Historia ya oda na malipo"
+        description="Angalia malipo ya chakula na marejesho yako kwa kipindi unachochagua."
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
             <RefreshCcw aria-hidden />
@@ -130,11 +130,11 @@ export default function HistoryPage() {
             </Select>
           </div>
 
-          <Card className="p-5">
+          <Card className="overflow-hidden rounded-2xl p-4 shadow-card sm:p-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-                  Pesa zilizoingia
+                  Zilizoingia
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular text-emerald-700">
                   {loading || !data ? '—' : formatTZS(data.totalIn)}
@@ -142,7 +142,7 @@ export default function HistoryPage() {
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-                  Pesa zilizotoka
+                  Zilizotoka
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular text-slate-900">
                   {loading || !data ? '—' : formatTZS(data.totalOut)}
@@ -175,7 +175,7 @@ export default function HistoryPage() {
           {error ? (
             <ErrorState message={error} onRetry={() => void load()} />
           ) : (
-            <Card className="p-5">
+            <Card className="overflow-hidden rounded-2xl p-4 shadow-card sm:p-6">
               {loading ? (
                 <TransactionSkeleton />
               ) : !data || data.transactions.length === 0 ? (
@@ -185,7 +185,7 @@ export default function HistoryPage() {
                   description={
                     hasFilters
                       ? 'Hakuna muamala unaolingana na vichujio ulivyochagua. Jaribu kuviondoa.'
-                      : 'Bado hujaweka pesa wala kuagiza chakula. Miamala yako itaonekana hapa mara moja.'
+                      : 'Bado hujaagiza chakula. Malipo na oda zako zitaonekana hapa.'
                   }
                   action={
                     <div className="flex flex-wrap justify-center gap-2">
@@ -195,7 +195,7 @@ export default function HistoryPage() {
                         </Button>
                       ) : null}
                       <Button asChild size="sm">
-                        <Link href="/student/topup">Weka pesa</Link>
+                        <Link href="/student/pay">Agiza chakula</Link>
                       </Button>
                     </div>
                   }

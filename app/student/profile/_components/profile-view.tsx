@@ -33,7 +33,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { signOut } from '@/lib/logout';
 import { cn, formatDate, formatDateTime, formatTZS, relativeTime } from '@/lib/utils';
-import type { OrderView, StudentOrdersData } from '@/lib/orders/types';
 import { ErrorState } from '../../_components/error-state';
 import type { StudentProfileData } from '../../_lib/types';
 
@@ -45,21 +44,6 @@ export type ProfileIdentity = {
   /** Last successful sign-in, ISO string. */
   lastLoginAt: string | null;
 };
-
-/**
- * Minimal structural view of the two money-request endpoints. Refunds (order
- * refunds) and withdrawals (cash out) are deliberately separate products, so
- * the profile counts each queue independently instead of implying one is the
- * other.
- */
-type MoneyRequestList = {
-  requests?: Array<{ status?: string }>;
-};
-
-function countPendingRequests(value: MoneyRequestList | null): number | null {
-  if (!value || !Array.isArray(value.requests)) return null;
-  return value.requests.filter((request) => request?.status === 'PENDING').length;
-}
 
 function ProfileSkeleton() {
   return (
@@ -193,38 +177,23 @@ function ActionRow({
  */
 export function ProfileView({ identity }: { identity: ProfileIdentity }) {
   const [data, setData] = useState<StudentProfileData | null>(null);
-  const [pendingOrders, setPendingOrders] = useState<OrderView[]>([]);
-  const [pendingRefunds, setPendingRefunds] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [profileResult, ordersResult, refundsResult] = await Promise.allSettled([
-      apiFetch<StudentProfileData>('/api/student/profile'),
-      apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING'),
-      apiFetch<MoneyRequestList>('/api/student/refunds'),
-    ]);
-
-    if (profileResult.status === 'fulfilled') {
-      setData(profileResult.value);
-    } else {
+    try {
+      setData(await apiFetch<StudentProfileData>('/api/student/profile'));
+    } catch (reason) {
       setError(
-        profileResult.reason instanceof ApiClientError
-          ? profileResult.reason.message
+        reason instanceof ApiClientError
+          ? reason.message
           : 'Imeshindikana kupakia wasifu wako.',
       );
+    } finally {
+      setLoading(false);
     }
-    if (ordersResult.status === 'fulfilled') {
-      setPendingOrders(ordersResult.value.orders.filter((order) => order.status === 'PENDING'));
-    }
-    setPendingRefunds(
-      refundsResult.status === 'fulfilled'
-        ? countPendingRequests(refundsResult.value)
-        : null,
-    );
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -269,7 +238,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
       />
 
       {/* Identity */}
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden rounded-[1.75rem] p-0 shadow-lift">
         <div className="relative overflow-hidden bg-navy px-5 pb-5 pt-5 text-white">
           <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary-500/20 blur-3xl" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.1)_0.7px,transparent_0.7px)] bg-[length:18px_18px] opacity-60" />
@@ -310,7 +279,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         </div>
       </Card>
 
-      <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex flex-col gap-4 rounded-2xl p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">Lipa moja kwa moja</p>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
@@ -336,17 +305,17 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         <StatLink
           href="/student/pay"
           label="Coupons"
-          value={String(pendingOrders.length)}
+          value={String(stats.pendingCoupons)}
           hint="Zinasubiri vendor"
           icon={Ticket}
           tone="bg-amber-50 text-amber-600"
         />
         <StatLink
-          href="/student/refunds"
-          label="Refunds"
-          value={pendingRefunds === null ? '—' : String(pendingRefunds)}
-          hint="Order refunds • admin"
-          icon={RotateCcw}
+          href="/student/credit-requests"
+          label="Credit & support"
+          value={String(stats.pendingCreditRequests)}
+          hint="Open cafeteria cases"
+          icon={Ticket}
           tone="bg-violet-50 text-violet-600"
         />
         <StatLink
@@ -380,10 +349,10 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
             tone="bg-sky-50 text-sky-600"
           />
           <ActionRow
-            href="/student/refunds"
-            icon={RotateCcw}
-            title="Refunds"
-            description="Order refunds tu: omba refund ya order iliyothibitishwa"
+            href="/student/credit-requests"
+            icon={Ticket}
+            title="Credit & support"
+            description="Ripoti oda isiyokamilika au omba mapitio zaidi"
             tone="bg-violet-50 text-violet-600"
           />
         </div>
@@ -467,7 +436,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         </p>
         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
           Usitoe coupon code yako kwa mtu yeyote isipokuwa vendor wa counter unayochukua chakula.
-          Kupon haitoi pesa kwenye wallet bila wewe kuomba.
+          Malipo ya oda yanaonekana baada ya kuthibitishwa na mfumo wa malipo.
         </p>
 
         <Button

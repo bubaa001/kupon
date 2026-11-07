@@ -7,6 +7,16 @@ export const orderInclude = {
   vendor: {
     select: { id: true, name: true, code: true, description: true },
   },
+  transaction: {
+    select: {
+      isTest: true,
+      paymentEvents: {
+        orderBy: { sequence: 'desc' },
+        take: 1,
+        select: { stage: true },
+      },
+    },
+  },
   student: {
     include: {
       user: { select: { name: true, phone: true } },
@@ -18,12 +28,13 @@ export const orderInclude = {
 export type OrderRecord = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 
 export function serializeOrder(order: OrderRecord, couponToken: string | null = null): OrderView {
+  const expired = order.status === 'PENDING' && order.expiresAt <= new Date();
   const paymentUnconfirmed =
-    order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED';
+    order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED' || expired;
   return {
     id: order.id,
     reference: order.reference,
-    status: order.status as OrderView['status'],
+    status: expired ? 'EXPIRED' : (order.status as OrderView['status']),
     total: order.total,
     itemCount: order.itemCount,
     couponCode: paymentUnconfirmed ? '' : order.couponCode,
@@ -32,6 +43,9 @@ export function serializeOrder(order: OrderRecord, couponToken: string | null = 
     createdAt: order.createdAt.toISOString(),
     verifiedAt: order.verifiedAt ? order.verifiedAt.toISOString() : null,
     expiresAt: order.expiresAt.toISOString(),
+    paymentTest: order.testOnly || (order.transaction?.isTest ?? false),
+    paymentStage: order.transaction?.paymentEvents[0]?.stage ?? null,
+    creditApplied: order.creditApplied,
     vendor: {
       id: order.vendor.id,
       name: order.vendor.name,

@@ -1,11 +1,9 @@
 import { randomInt } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { AppError, conflict, notFound } from '@/lib/errors';
-import { getAzamPayConfig, initiateAzamPayOrderCheckout } from '@/lib/payments/azampay';
 import { randomReference } from '@/lib/utils';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
-import { failOrderCheckout, settleOrderCheckout } from './settle-checkout';
 import type { PlaceOrderInput } from './types';
 
 const MAX_ITEMS = 20;
@@ -27,13 +25,14 @@ async function uniqueCouponCode(): Promise<string> {
 
 /**
  * Starts a meal order and requests payment from the student's mobile-money
- * account. A coupon is returned only after payment is confirmed.
+ * account through Kupon's internal test-payment API. A coupon is returned only
+ * after Finance confirms the test payment; no mobile-money collection occurs.
  *
  * The money path for the student-scans-vendor flow:
  *   validate tenant + menu availability + quantities
  *   → create a payment-pending order and transaction
- *   → request mobile-money authorization
- *   → confirm payment through the gateway callback
+ *   → create a test payment intent
+ *   → Finance records received and confirmed events through the internal API
  *   → issue the coupon and book the vendor settlement
  *
  * The vendor later verifies the coupon; verification is an operational step and
@@ -123,94 +122,121 @@ export async function placeOrder(input: {
   if (total > 200_000) throw new AppError('Order total is too large for one coupon.', 400);
 
   const reference = randomReference('ORD');
-  const paymentReference = randomReference('PAY');
   const couponCode = await uniqueCouponCode();
   const expiresAt = new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000);
-  const azamPayConfigured = Boolean(getAzamPayConfig());
-  if (!azamPayConfigured && process.env.NODE_ENV === 'production') {
-    throw conflict('Mobile-money checkout is unavailable right now. Please try again later.');
-  }
 
-  const order = await prisma.$transaction(async (tx) => {
-    const transaction = await tx.transaction.create({
-      data: {
-        reference: paymentReference,
-        universityId: student.universityId,
-        studentId: student.id,
-        vendorId: vendor.id,
-        amount: total,
-        type: 'PAYMENT',
-        status: 'PENDING',
-        phone: input.payload.phone,
-        network: input.payload.network,
-        routeCode: student.university.paymentRouteCode,
-        metadata: JSON.stringify({
-          channel: 'MOBILE_MONEY_ORDER',
-          orderReference: reference,
-          couponCode,
-          vendorCode: vendor.code,
-          vendorName: vendor.name,
-          item:
-            orderItems.length === 1
-              ? orderItems[0].name
-              : `${orderItems[0].name} + ${orderItems.length - 1} more`,
-          items: orderItems.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-          routeCode: student.university.paymentRouteCode,
-          lipaNamba: student.university.paymentRouteCode,
-          provider: azamPayConfigured ? 'kupon-payment-gateway' : 'demo-payment-gateway',
-        }),
-      },
-    });
+  const created = await prisma.$transaction(async (tx) => {
+    const creditAccount = input.payload.useCredit
+      ? await tx.cafeteriaCredit.findUnique({
+          where: {
+            studentId_vendorId_isTest: {
+              studentId: student.id,
+              vendorId: vendor.id,
+              isTest: true,
+            },
+          },
+          select: { id: true, balance: true },
+        })
+      : null;
+    const creditApplied = Math.min(creditAccount?.balance ?? 0, total);
+    if (creditApplied > 0 && creditAccount) {
+      const debited = await tx.cafeteriaCredit.updateMany({
+        where: { id: creditAccount.id, balance: { gte: creditApplied } },
+        data: { balance: { decrement: creditApplied } },
+      });
+      if (!debited.count) throw conflict('Your cafeteria credit balance changed. Try again.');
+    }
 
-    return tx.order.create({
+    const cashAmount = total - creditApplied;
+    const paymentReference = cashAmount > 0 ? randomReference('PAY') : null;
+    const transaction = paymentReference
+      ? await tx.transaction.create({
+          data: {
+            reference: paymentReference,
+            universityId: student.universityId,
+            studentId: student.id,
+            vendorId: vendor.id,
+            amount: cashAmount,
+            type: 'PAYMENT',
+            status: 'PENDING',
+            isTest: true,
+            metadata: JSON.stringify({
+              channel: 'MOBILE_MONEY_ORDER',
+              orderReference: reference,
+              couponCode,
+              vendorCode: vendor.code,
+              vendorName: vendor.name,
+              item:
+                orderItems.length === 1
+                  ? orderItems[0].name
+                  : `${orderItems[0].name} + ${orderItems.length - 1} more`,
+              items: orderItems.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+              })),
+              creditApplied,
+              provider: 'kupon-internal-test-api',
+              stage: 'INITIATED',
+            }),
+          },
+        })
+      : null;
+
+    if (transaction) {
+      await tx.paymentEvent.create({
+        data: {
+          transactionId: transaction.id,
+          sequence: 1,
+          stage: 'INITIATED',
+          source: 'KUPO_TEST_API',
+        },
+      });
+    }
+
+    const order = await tx.order.create({
       data: {
         reference,
         universityId: student.universityId,
         studentId: student.id,
         vendorId: vendor.id,
-        status: 'PAYMENT_PENDING',
+        status: transaction ? 'PAYMENT_PENDING' : 'PENDING',
         total,
+        creditApplied,
+        testOnly: true,
         itemCount,
         couponCode,
         note: input.payload.note?.trim() || null,
-        transactionId: transaction.id,
+        transactionId: transaction?.id ?? null,
         expiresAt,
         items: { create: orderItems },
       },
       include: orderInclude,
     });
+
+    if (creditApplied > 0 && creditAccount) {
+      const updatedAccount = await tx.cafeteriaCredit.findUniqueOrThrow({
+        where: { id: creditAccount.id },
+        select: { balance: true },
+      });
+      await tx.creditMovement.create({
+        data: {
+          reference: randomReference('CRD'),
+          creditId: creditAccount.id,
+          orderId: order.id,
+          kind: 'SPEND',
+          amount: creditApplied,
+          balanceAfter: updatedAccount.balance,
+          createdById: input.actorId,
+        },
+      });
+    }
+
+    return { order, paymentReference };
   });
 
-  let paymentMessage: string;
-  if (azamPayConfigured) {
-    try {
-      const checkout = await initiateAzamPayOrderCheckout({
-        reference: paymentReference,
-        phone: input.payload.phone,
-        network: input.payload.network,
-      });
-      paymentMessage = checkout.message;
-    } catch (error) {
-      await failOrderCheckout(
-        paymentReference,
-        error instanceof Error ? error.message : 'Mobile-money checkout failed.',
-      );
-      throw error;
-    }
-  } else {
-    await settleOrderCheckout({
-      reference: paymentReference,
-      providerTransactionId: 'DEMO',
-    });
-    paymentMessage = 'Demo checkout confirmed. No real money was moved.';
-  }
-
   const updatedOrder = await prisma.order.findUnique({
-    where: { id: order.id },
+    where: { id: created.order.id },
     include: orderInclude,
   });
   if (!updatedOrder) throw notFound('The order could not be loaded.');
@@ -231,11 +257,13 @@ export async function placeOrder(input: {
 
   return {
     order: serializeOrder(updatedOrder, couponToken),
-    transactionId: paymentReference,
+    transactionId: created.paymentReference,
     payment: {
-      status: updatedOrder.status === 'PAYMENT_PENDING' ? 'PENDING' : 'SETTLED',
-      message: paymentMessage,
-      demo: !azamPayConfigured,
+      status: created.paymentReference ? 'PENDING' : 'SETTLED',
+      message: created.paymentReference
+        ? `Test payment created for ${total - created.order.creditApplied} TZS. Finance must record receipt and confirm it; no money was collected.`
+        : 'Order paid with cafeteria credit. No new money was collected.',
+      demo: true,
     },
   };
 }

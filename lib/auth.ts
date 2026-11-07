@@ -126,7 +126,13 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   if (user.vendor?.status === 'SUSPENDED') return null;
   // A suspended university cuts off all tenant roles immediately, even if their
   // JWT has not expired yet.
-  if (user.role !== 'SUPER_ADMIN' && user.university?.status !== 'ACTIVE') return null;
+  if (
+    user.role !== 'SUPER_ADMIN' &&
+    user.role !== 'FINANCE' &&
+    user.university?.status !== 'ACTIVE'
+  ) {
+    return null;
+  }
 
   return {
     id: user.id,
@@ -173,7 +179,9 @@ export async function requirePageUser(
           ? '/vendor'
           : user.role === 'ADMIN'
             ? '/admin'
-            : '/super-admin';
+              : user.role === 'FINANCE'
+                ? '/finance'
+                : '/super-admin';
     redirect(home);
   }
   return user;
@@ -238,6 +246,8 @@ export function roleHome(role: Role): string {
       return '/vendor';
     case 'ADMIN':
       return '/admin';
+    case 'FINANCE':
+      return '/finance';
     default:
       return '/super-admin';
   }

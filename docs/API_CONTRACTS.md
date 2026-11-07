@@ -24,7 +24,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/logout` | any | clears cookie |
 | GET | `/api/auth/google/start?universityId=&role=student\|vendor` | public | Redirects to Google OAuth; sets 10-minute `kupon_google_state` cookie |
 | GET | `/api/auth/callback/google` | public | Verifies state + code. Existing student/vendor → session cookie; new student → `/signup/google` ticket; new vendor → `/vendor-apply` ticket |
-| POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates zero-balance wallet + session cookie |
+| POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates student profile + session cookie |
 | POST | `/api/auth/google/vendor-apply` | Google vendor ticket cookie | `{ ownerName, businessName, phone, description, confirm:true }` → creates PENDING vendor + session cookie, redirects `/vendor-pending` |
 
 ## Student (role STUDENT)
@@ -34,17 +34,15 @@ Base path `/api/student`. All endpoints derive the student from the session —
 
 | Method | Route | Body / Query | Data |
 | --- | --- | --- | --- |
-| GET | `/wallet` | — | `{ student: { name, studentId, course, year, phone, university: { name, code } }, balance, stats: { todaySpent, weekSpent, mealsThisWeek, totalTopUps }, recentTransactions: Tx[] }` |
+| GET | `/dashboard` | — | `{ student, stats: { todaySpent, weekSpent, mealsThisWeek, couponsUsed }, recentTransactions: Tx[], pendingOrders: OrderView[] }` |
+| GET | `/checkout` | — | `{ student, orders: OrderView[], vendors: [{ id, code, name, description }], vendorLoadError }` — compact scan-screen bootstrap; active campus vendors load alongside active orders |
+| GET | `/profile` | — | `{ student, university, stats: { mealsCount, totalSpent, transactionsCount, pendingRefunds, pendingCoupons } }` |
+| GET | `/wallet` | STUDENT | Disabled (`WALLET_DISABLED`). Students have no Kupon wallet. |
 | GET | `/transactions` | `range=today\|week\|month` (default month), optional `type`, `status` | `{ transactions: Tx[], counts: { total, settled, pending, failed }, totalIn, totalOut }` |
-| POST | `/topup` | `{ amount: 1000..500000, paymentMethod?: 'mobile_money'\|'card', network?: 'M-PESA'\|'TIGO_PESA'\|'AIRTEL_MONEY'\|'HALOTEL', phone? }` | `{ transactionId, reference, status:'PENDING', routeCode, message, aggregatorFee, checkoutUrl? }` — card checkouts redirect to the provider; wallet credit still requires provider confirmation |
-| GET | `/topup?id=` | id | `{ transaction: { id, reference, amount, status, network, createdAt, settledAt }, balance }` — lazily settles stale mock top-ups |
-| POST | `/payment-token` | `{}` | `{ tokenId, token, code, expiresAt, expiresIn:120, student:{name,studentId}, balance }` |
-| GET | `/payment-token?id=` | tokenId | `{ status:'ACTIVE'\|'USED'\|'EXPIRED', expiresAt, transaction?: { vendor, amount, status, createdAt } }` |
-| GET | `/withdrawals` | — | `{ requests: MoneyRequest[], balance, eligibleAmount, hasPending, minAmount }` — WITHDRAWAL kind only |
-| POST | `/withdrawals` | `{ amount: 1000..500000, reason }` | `{ request, message }` — files a cash-out request; no money moves until admin approval |
-| GET | `/refunds` | — | `{ requests: MoneyRequest[], refundableOrders: RefundableOrder[], balance }` — REFUND kind only |
-| POST | `/refunds` | `{ orderId, reason }` | `{ request, message }` — refund of one VERIFIED order; amount is the order total (server-derived) |
-| GET | `/profile` | — | `{ student, stats, university, wallet }` |
+| POST/GET | `/topup` | — | Disabled. Cafeteria orders are paid individually; no wallet top-ups. |
+| POST/GET | `/payment-token` | — | Disabled. Counter charges from student wallets are not supported. |
+| GET/POST | `/withdrawals` | — | Disabled. Students have no withdrawable Kupon wallet balance. |
+| GET/POST | `/refunds` | — | Legacy refund records may remain; test-only orders cannot be refunded into a wallet. Use cafeteria credit/support requests for current orders. |
 
 `MoneyRequest` shape: `{ id, reference, kind: 'WITHDRAWAL'|'REFUND', amount, reason, status:
 'PENDING'|'APPROVED'|'REJECTED', adminNote, createdAt, reviewedAt, payoutStatus, payoutReference,
@@ -53,11 +51,8 @@ orderId, orderReference, orderStatus, orderTotal, vendorName, itemSummary }`.
 `RefundableOrder` shape: `{ id, reference, total, itemCount, vendorName, vendorCode, itemSummary,
 createdAt, verifiedAt, refundRequestStatus: 'NONE'|'PENDING'|'APPROVED', refundRequestReference }`.
 
-**Withdrawal vs refund (non-negotiable).** A withdrawal cashes out available wallet balance to
-mobile money; it has no order and is never created by `/refunds`. An order refund reverses one
-paid, vendor-verified order back into the wallet; it is never created by `/withdrawals`. Pending
-orders are not refundable — the student cancels the coupon (auto-reversal). Creating either
-request moves no money; only admin approval in the matching admin queue does, exactly once.
+**No student wallet.** Legacy wallet endpoints and wallet payment codes are disabled. Credit
+issued for an unfulfilled order is cafeteria-specific and isolated from real-money ledgers.
 
 `Tx` shape: `{ id, reference, amount, type, status, createdAt, vendor?: { name, code }, channel, metadataSummary }`.
 Resolve vendor name by joining `vendor`. Never return full phone numbers of other users.
@@ -123,44 +118,55 @@ Base path `/api/super-admin`.
 ## Meal orders / coupons (student-scans-vendor flow)
 
 The primary purchase flow is: student scans the vendor's counter QR → sees the approved
-available menu → chooses meals → pays from wallet → receives a signed meal coupon with
-order ID and status. The vendor sees the incoming order and verifies the coupon (QR scan
-or 6-digit code); the student coupon polls and animates to VERIFIED.
+available menu → chooses meals → pays directly by mobile money → receives a meal coupon
+only after gateway confirmation. The vendor sees the incoming order and verifies the coupon
+(QR scan or fallback code); the student coupon polls and updates to VERIFIED.
 
-Shared DTOs live in `lib/orders/types.ts`. The signed coupon QR is a JWT returned only to
-the owning student. A coupon is a redemption proof; the wallet is debited once when the
-order is placed and verification never moves money again.
+Shared DTOs live in `lib/orders/types.ts`. The signed coupon QR is returned only to the
+owning student after the payment gateway confirms the mobile-money payment. Verification
+is a redemption step; it does not initiate or collect payment.
 
 | Method | Route | Role | Body / Query | Data |
 | --- | --- | --- | --- | --- |
 | GET | `/api/vendor/qr` | VENDOR | — | `{ payload, vendor:{id,name,code,description}, university:{name,code}, menuHint }` |
-| POST | `/api/student/vendor-scan` | STUDENT | `{ token?, code? }` | `{ vendor:{id,name,code,description,universityId,universityName}, student:{name,studentId,walletBalance}, items: MenuItem[] }` |
+| POST | `/api/student/vendor-scan` | STUDENT | `{ token?, code? }` | `{ vendor:{id,name,code,description,universityId,universityName}, student:{name,studentId,cafeteriaCreditBalance}, items: MenuItem[] }` |
 | GET | `/api/student/vendors` | STUDENT | — | `{ vendors:[{ id, code, name, description }] }` — active vendors in the student's university, used by the scanner fallback |
-| POST | `/api/student/orders` | STUDENT | `{ vendorId, items:[{menuItemId,quantity}], note? }` | `{ order: OrderView, balance, transactionId }` (201) |
+| POST | `/api/student/orders` | STUDENT | `{ vendorId, items:[{menuItemId,quantity}], useCredit?, note? }` | `{ order: OrderView, transactionId, payment:{ status, message, demo:true } }` (201); no provider is contacted |
 | GET | `/api/student/orders` | STUDENT | `?id=` or `?status=PENDING\|VERIFIED\|ALL` | `{ orders: OrderView[], active: OrderView \| null }` |
 | GET | `/api/vendor/orders` | VENDOR | `?status=PENDING\|VERIFIED\|ALL` | `{ orders: OrderView[], counts:{pending,verified,today} }` |
 | POST | `/api/vendor/orders/[id]/verify` | VENDOR | `{ token? , code? }` (one required) | `{ order: OrderView, message }` |
 | POST | `/api/vendor/orders/scan/verify` | VENDOR | `{ token? , code? }` (one required) | Scan-first coupon verification; `KPN:C:<code>` or legacy signed token |
+| POST | `/api/vendor/charge` | VENDOR | — | Disabled (`WALLET_DISABLED`). Use order coupon verification, not student-wallet charges. |
 
 **QR payloads.** New QR codes are short pointers, not signed JWTs: vendor `KPN:V:V-UDSM-001`, coupon `KPN:C:123456`. They render at 224 px (vendor compact 196 px), level Q, with a 4-module quiet zone. Legacy signed QR tokens remain accepted by the scan endpoints. The server still enforces vendor, tenant, expiry and single-use status.
 
-`OrderView` includes `id, reference, status: PENDING|VERIFIED|CANCELLED, total, itemCount,
+`OrderView` includes `id, reference, status: PAYMENT_PENDING|PAYMENT_FAILED|PENDING|VERIFIED|CANCELLED, total, itemCount,
 couponCode, couponToken, note, createdAt, verifiedAt, expiresAt, vendor, student, items`.
 `items` are snapshots `{ id, name, price, quantity, emoji, imageUrl }`.
 
-Order placement is atomic: conditional wallet debit + vendor pending credit + fee split +
-balanced ledger + PENDING order. Vendor verification uses a conditional status transition,
-so a coupon can only be redeemed once.
+Order placement starts a payment-pending, test-only transaction. Finance advances its recorded
+state through the internal Kupon test API; this does not contact a mobile-money provider, collect
+cash, or increase real vendor balances. Test cafeteria credit is held in an account separate from
+any future live credit and can only be used by test orders. Test-only orders cannot be refunded
+into the legacy wallet. The coupon is issued only after a Finance user records a test confirmation.
+Vendor verification uses a conditional status transition, so a coupon can only be redeemed once.
+
+| Method | Route | Role | Data |
+| --- | --- | --- | --- |
+| GET | `/api/finance/test-payments` | FINANCE | Recent test-only payment transactions with ordered lifecycle events |
+| POST | `/api/finance/test-payments/[reference]` | FINANCE | `{ stage:'RECEIVED'\|'CONFIRMED'\|'FAILED'\|'EXPIRED', note? }` — records an auditable test transition |
+| GET/POST | `/api/student/credit-requests` | STUDENT | Cafeteria-scoped credit balances, cases and tickets; POST `{ orderId, reason }` for an unfulfilled active coupon |
+| GET/POST | `/api/vendor/credit-requests` | VENDOR | Cafeteria cases; POST `{ orderId, reason }` for closing-time review |
+| PATCH | `/api/vendor/credit-requests/[id]` | VENDOR | `{ decision:'ACCEPT'\|'REJECT', note? }` — approved credit is scoped to its source order's test or live ledger |
+| GET | `/api/finance/requests` | FINANCE | Pending cafeteria-credit cases and escalation tickets |
+| PATCH | `/api/finance/requests/credits/[id]` | FINANCE | `{ decision:'APPROVE'\|'REJECT', note? }` |
+| POST | `/api/student/credit-requests/[id]/escalate` | STUDENT | `{ reason }` — opens a ticket and records a TZS 1,500 test-only vendor charge; no cash moves |
 
 ## USSD (paused — offline payments not supported)
 
-`POST /api/ussd` returns `404 USSD_DISABLED` while `NEXT_PUBLIC_USSD_ENABLED=false`. The implementation is retained in the codebase for a later release. When enabled, `{ action:'balance'\|'pay'\|'topup', phone, vendorCode?, amount?, pin?, universityId? }`
-
-- `balance`: returns `{ studentName, balance, university }` (simulation only; production
-  must trust the telco USSD session, never a browser payload).
-- `pay`: `chargeViaUssd()`; requires PIN `1234` in the demo.
-- `topup`: `getPaymentProvider().initiateTopUp()`; returns pending reference.
-Rate limited hard. Response includes `sms` strings for the phone terminal log.
+`POST /api/ussd` returns `404 USSD_DISABLED`. The legacy browser simulator and wallet-based
+USSD flows are disabled. A future real mobile-money integration must use a trusted telco session
+and verified provider callbacks, not a browser-supplied phone number or PIN.
 
 ## UI rules
 

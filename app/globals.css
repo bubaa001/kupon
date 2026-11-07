@@ -75,6 +75,16 @@
 }
 
 @layer components {
+  .student-workspace {
+    background-image: radial-gradient(circle at 92% 0, rgb(16 185 129 / 0.045), transparent 28rem);
+  }
+
+  .student-workspace .card-surface {
+    border-color: rgb(226 232 240 / 0.9);
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 24px -18px rgb(15 23 42 / 0.3);
+  }
+
   .landing-enter {
     animation: landing-enter 700ms cubic-bezier(0.23, 1, 0.32, 1) both;
   }

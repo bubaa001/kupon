@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     const [payments, failed, pending, refundGroups] = await Promise.all([
       prisma.transaction.findMany({
-        where: { ...tenant, type: 'PAYMENT', status: 'SETTLED', createdAt: dateFilter },
+        where: { ...tenant, type: 'PAYMENT', status: 'SETTLED', isTest: false, createdAt: dateFilter },
         select: {
           amount: true,
           platformFee: true,
@@ -45,12 +45,12 @@ export async function GET(request: Request) {
         },
       }),
       prisma.transaction.aggregate({
-        where: { ...tenant, type: 'PAYMENT', status: 'FAILED', createdAt: dateFilter },
+        where: { ...tenant, type: 'PAYMENT', status: 'FAILED', isTest: false, createdAt: dateFilter },
         _sum: { amount: true },
         _count: { _all: true },
       }),
       prisma.transaction.aggregate({
-        where: { ...tenant, type: 'PAYMENT', status: 'PENDING', createdAt: dateFilter },
+        where: { ...tenant, type: 'PAYMENT', status: 'PENDING', isTest: false, createdAt: dateFilter },
         _sum: { amount: true },
         _count: { _all: true },
       }),

@@ -9,6 +9,7 @@ import type {
   RefundableOrderView,
   StudentMoneyRequestView,
 } from '@/lib/payments/money-request-types';
+import type { OrderView } from '@/lib/orders/types';
 
 export type StudentTx = {
   id: string;
@@ -59,6 +60,14 @@ export type StudentDashboardData = {
     couponsUsed: number;
   };
   recentTransactions: StudentTx[];
+  pendingOrders: OrderView[];
+};
+
+export type StudentCheckoutData = {
+  student: StudentDashboardData['student'];
+  orders: OrderView[];
+  vendors: Array<{ id: string; code: string; name: string; description: string }>;
+  vendorLoadError: boolean;
 };
 
 export type TransactionsData = {
@@ -196,6 +205,7 @@ export type StudentProfileData = {
     mealsCount: number;
     totalSpent: number;
     transactionsCount: number;
-    pendingRefunds: number;
+    pendingCreditRequests: number;
+    pendingCoupons: number;
   };
 };

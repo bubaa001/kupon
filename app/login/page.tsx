@@ -5,7 +5,6 @@ import { ArrowLeft, Check, Smartphone } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { getAuthUser, roleHome } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { USSD_ENABLED } from '@/lib/features';
 import { LoginForm, type LoginRole } from './login-form';
 
 export const metadata: Metadata = {
@@ -75,20 +74,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <div className="relative">
             <Logo variant="light" />
             <p className="mt-16 max-w-md text-4xl font-semibold leading-[1.03] tracking-[-0.04em] xl:text-[2.9rem]">
-              One wallet. Every campus counter.
+              Clear orders. Trusted records.
             </p>
             <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-300">
-              Top up with mobile money, scan a vendor&apos;s QR to order, verify meal coupons, and
-              reconcile the whole campus in one ledger.
+              Browse a cafeteria menu, place an order, and keep every coupon and transaction
+              traceable without a campus wallet.
             </p>
             <ul className="mt-8 space-y-3 text-sm text-slate-300">
               <li className="flex gap-2.5">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-300" strokeWidth={2} />
-                A student wallet that works on any phone.
+                Order directly from an approved cafeteria.
               </li>
               <li className="flex gap-2.5">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-300" strokeWidth={2} />
-                Mobile-money top ups with an SMS receipt every time.
+                Coupons appear only after a payment status is recorded.
               </li>
               <li className="flex gap-2.5">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-300" strokeWidth={2} />
@@ -131,7 +130,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
 
           <p className="relative mt-10 text-xs text-slate-500">
-            Kupon demo environment · UDSM and MUST pilots
+            Kupon test environment · UDSM and MUST pilots
           </p>
         </aside>
 
@@ -147,25 +146,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               <ArrowLeft className="h-4 w-4" strokeWidth={2} />
               Back to home
             </Link>
-            {USSD_ENABLED ? (
-              <Link
-                href="/ussd"
-                className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
-              >
-                <Smartphone className="h-4 w-4" strokeWidth={1.9} />
-                Try USSD
-              </Link>
-            ) : null}
           </div>
 
           <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-7 lg:max-w-lg lg:py-10">
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card sm:p-7">
               <div className="mb-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-600">
-                  Kupon wallet
+                  Kupon account
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-navy sm:text-3xl">
-                  Sign in or create a wallet
+                  Sign in or create an account
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
                   Students sign up with Google. Vendors apply with Google and are approved by their

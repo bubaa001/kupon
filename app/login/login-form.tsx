@@ -79,7 +79,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_vendor_expired:
     'Your vendor application session expired. Start again from the Vendor tab.',
   google_student_only:
-    'Google sign-in is available for student wallets. Vendors and staff should use their normal credentials.',
+    'Google sign-in is available for students. Vendors and staff should use their normal credentials.',
   google_conflict:
     'This Google account is already linked to another Kupon identity. Contact your university admin.',
   google_suspended: 'Your university account is suspended. Contact your university admin.',
@@ -400,7 +400,7 @@ export function LoginForm({
         code: otp,
         universityId,
       });
-      finishLogin(data, 'Opening your wallet.');
+      finishLogin(data, 'Opening your Kupon account.');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'That code could not be verified. Try again.';
@@ -560,7 +560,7 @@ export function LoginForm({
                 error={Boolean(studentError) && otpPhase === 'phone'}
               />
               <p id="student-phone-help" className="text-xs text-slate-500">
-                The number registered with your Kupon student wallet.
+                The number registered with your Kupon student account.
               </p>
             </div>
 
@@ -665,7 +665,7 @@ export function LoginForm({
                     Student sign-in is Google-only for now.
                   </p>
                   <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
-                    OTP is temporarily disabled. Existing wallets need their Google email linked by
+                    OTP is temporarily disabled. Existing student accounts need their Google email linked by
                     an admin; new students create a wallet automatically.
                   </p>
                 </div>
@@ -697,7 +697,7 @@ export function LoginForm({
               Continue with Google
             </Button>
             <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
-              Google is the student sign-in method now. Existing wallets sign in if their Google
+              Google is the student sign-in method now. Existing students sign in if their Google
               email is linked; new students create a wallet in 30 seconds.
             </p>
           </div>

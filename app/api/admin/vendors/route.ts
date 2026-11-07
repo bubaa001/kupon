@@ -52,6 +52,7 @@ export async function GET(request: Request) {
           ...scopeWhere,
           type: 'PAYMENT',
           status: 'SETTLED',
+          isTest: false,
           createdAt: { gte: todayStart },
           vendorId: { not: null },
         },

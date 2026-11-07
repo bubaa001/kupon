@@ -11,7 +11,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// role: STUDENT | VENDOR | ADMIN | SUPER_ADMIN
+// role: STUDENT | VENDOR | ADMIN | SUPER_ADMIN | FINANCE
 model University {
   id               String   @id @default(cuid())
   name             String
@@ -36,6 +36,8 @@ model University {
   saasInvoices    SaasInvoice[]
   auditLogs       AuditLog[]
   otpCodes        OtpCode[]
+  creditRequests  CreditRequest[]
+  supportTickets  SupportTicket[]
 
   @@index([status])
 }
@@ -46,7 +48,7 @@ model User {
   email        String?   @unique // university/Google email, linked for OAuth sign-in
   googleId     String?   @unique // Google `sub` once the account is linked
   name         String
-  role         String    @default("STUDENT") // STUDENT | VENDOR | ADMIN | SUPER_ADMIN
+  role         String    @default("STUDENT") // STUDENT | VENDOR | ADMIN | SUPER_ADMIN | FINANCE
   universityId String?
   passwordHash String?
   otp          String?
@@ -55,12 +57,15 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  university      University?     @relation(fields: [universityId], references: [id])
-  student         StudentProfile?
-  vendor          Vendor?
-  auditLogs       AuditLog[]      @relation("ActorAuditLogs")
-  reviewedRefunds RefundRequest[] @relation("RefundReviewer")
-  verifiedOrders  Order[]         @relation("OrderVerifier")
+  university             University?     @relation(fields: [universityId], references: [id])
+  student                StudentProfile?
+  vendor                 Vendor?
+  auditLogs              AuditLog[]      @relation("ActorAuditLogs")
+  reviewedRefunds        RefundRequest[] @relation("RefundReviewer")
+  verifiedOrders         Order[]         @relation("OrderVerifier")
+  paymentEvents          PaymentEvent[]
+  reviewedCreditRequests CreditRequest[] @relation("CreditRequestReviewer")
+  reviewedSupportTickets SupportTicket[] @relation("SupportTicketReviewer")
 
   @@index([universityId, role])
 }
@@ -77,13 +82,16 @@ model StudentProfile {
   walletBalance Int      @default(0)
   createdAt     DateTime @default(now())
 
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  university     University      @relation(fields: [universityId], references: [id])
-  wallet         Wallet?
-  transactions   Transaction[]
-  refundRequests RefundRequest[]
-  paymentTokens  PaymentToken[]
-  orders         Order[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university       University        @relation(fields: [universityId], references: [id])
+  wallet           Wallet?
+  transactions     Transaction[]
+  refundRequests   RefundRequest[]
+  cafeteriaCredits CafeteriaCredit[]
+  creditRequests   CreditRequest[]
+  supportTickets   SupportTicket[]
+  paymentTokens    PaymentToken[]
+  orders           Order[]
 
   @@unique([universityId, studentId])
   @@index([universityId])
@@ -104,12 +112,15 @@ model Vendor {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  university   University    @relation(fields: [universityId], references: [id])
-  menuItems    MenuItem[]
-  transactions Transaction[]
-  settlements  Settlement[]
-  orders       Order[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university       University        @relation(fields: [universityId], references: [id])
+  menuItems        MenuItem[]
+  transactions     Transaction[]
+  settlements      Settlement[]
+  orders           Order[]
+  cafeteriaCredits CafeteriaCredit[]
+  creditRequests   CreditRequest[]
+  supportTickets   SupportTicket[]
 
   @@index([universityId, status])
 }
@@ -138,6 +149,7 @@ model Transaction {
   vendorSettlement  Int       @default(0)
   type              String // TOPUP | PAYMENT | REFUND | WITHDRAWAL | ADJUSTMENT_CREDIT | ADJUSTMENT_DEBIT
   status            String    @default("PENDING") // PENDING | SETTLED | FAILED
+  isTest            Boolean   @default(false)
   network           String? // M-Pesa | Tigo Pesa | Airtel Money | Halotel
   phone             String?
   routeCode         String? // university.paymentRouteCode — never shared across tenants
@@ -153,6 +165,7 @@ model Transaction {
   paymentToken   PaymentToken?
   order          Order?
   refundRequests RefundRequest[] @relation("RefundOriginalTransaction")
+  paymentEvents  PaymentEvent[]
 
   @@index([universityId, createdAt])
   @@index([studentId, createdAt])
@@ -195,6 +208,8 @@ model Order {
   vendorId      String
   status        String    @default("PENDING")
   total         Int
+  creditApplied Int       @default(0)
+  testOnly      Boolean   @default(false)
   itemCount     Int
   couponCode    String    @unique
   note          String?
@@ -204,13 +219,16 @@ model Order {
   expiresAt     DateTime
   createdAt     DateTime  @default(now())
 
-  university     University      @relation(fields: [universityId], references: [id])
-  student        StudentProfile  @relation(fields: [studentId], references: [id])
-  vendor         Vendor          @relation(fields: [vendorId], references: [id])
-  transaction    Transaction?    @relation(fields: [transactionId], references: [id])
-  verifiedBy     User?           @relation("OrderVerifier", fields: [verifiedById], references: [id])
-  items          OrderItem[]
-  refundRequests RefundRequest[] @relation("OrderRefundRequests")
+  university      University       @relation(fields: [universityId], references: [id])
+  student         StudentProfile   @relation(fields: [studentId], references: [id])
+  vendor          Vendor           @relation(fields: [vendorId], references: [id])
+  transaction     Transaction?     @relation(fields: [transactionId], references: [id])
+  verifiedBy      User?            @relation("OrderVerifier", fields: [verifiedById], references: [id])
+  items           OrderItem[]
+  refundRequests  RefundRequest[]  @relation("OrderRefundRequests")
+  creditRequests  CreditRequest[]
+  creditMovements CreditMovement[]
+  supportTickets  SupportTicket[]
 
   @@index([vendorId, status, createdAt])
   @@index([studentId, createdAt])
@@ -231,6 +249,118 @@ model OrderItem {
   menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+}
+
+model PaymentEvent {
+  id            String   @id @default(cuid())
+  transactionId String
+  sequence      Int
+  stage         String // INITIATED | RECEIVED | CONFIRMED | FAILED | EXPIRED
+  source        String   @default("KUPO_TEST_API")
+  actorId       String?
+  note          String?
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  actor       User?       @relation(fields: [actorId], references: [id])
+
+  @@unique([transactionId, sequence])
+  @@index([transactionId, createdAt])
+}
+
+model CafeteriaCredit {
+  id        String   @id @default(cuid())
+  studentId String
+  vendorId  String
+  isTest    Boolean  @default(false)
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student   StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  vendor    Vendor           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  movements CreditMovement[]
+
+  @@unique([studentId, vendorId, isTest])
+  @@index([vendorId, balance])
+}
+
+model CreditRequest {
+  id               String    @id @default(cuid())
+  reference        String    @unique
+  orderId          String    @unique
+  studentId        String
+  vendorId         String
+  universityId     String
+  kind             String // STUDENT_UNFULFILLED | VENDOR_CLOSING
+  status           String // PENDING_VENDOR | PENDING_FINANCE | APPROVED | REJECTED
+  amount           Int
+  reason           String
+  vendorNote       String?
+  reviewedById     String?
+  vendorReviewedAt DateTime?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  order         Order           @relation(fields: [orderId], references: [id])
+  student       StudentProfile  @relation(fields: [studentId], references: [id])
+  vendor        Vendor          @relation(fields: [vendorId], references: [id])
+  university    University      @relation(fields: [universityId], references: [id])
+  reviewer      User?           @relation("CreditRequestReviewer", fields: [reviewedById], references: [id])
+  movement      CreditMovement?
+  supportTicket SupportTicket?
+
+  @@index([universityId, status, createdAt])
+  @@index([vendorId, status, createdAt])
+  @@index([studentId, createdAt])
+}
+
+model CreditMovement {
+  id              String   @id @default(cuid())
+  reference       String   @unique
+  creditId        String
+  creditRequestId String?  @unique
+  orderId         String?
+  kind            String // ISSUE | SPEND | RESTORE
+  amount          Int
+  balanceAfter    Int
+  createdById     String?
+  createdAt       DateTime @default(now())
+
+  credit  CafeteriaCredit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+  request CreditRequest?  @relation(fields: [creditRequestId], references: [id])
+  order   Order?          @relation(fields: [orderId], references: [id])
+
+  @@index([creditId, createdAt])
+  @@index([orderId, kind])
+}
+
+model SupportTicket {
+  id               String    @id @default(cuid())
+  reference        String    @unique
+  creditRequestId  String    @unique
+  orderId          String
+  studentId        String
+  vendorId         String
+  universityId     String
+  feeAmount        Int       @default(1500)
+  feeTransactionId String?   @unique
+  status           String    @default("OPEN") // OPEN | APPROVED | REJECTED
+  reason           String
+  adminNote        String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  creditRequest CreditRequest  @relation(fields: [creditRequestId], references: [id])
+  order         Order          @relation(fields: [orderId], references: [id])
+  student       StudentProfile @relation(fields: [studentId], references: [id])
+  vendor        Vendor         @relation(fields: [vendorId], references: [id])
+  university    University     @relation(fields: [universityId], references: [id])
+  reviewer      User?          @relation("SupportTicketReviewer", fields: [reviewedById], references: [id])
+
+  @@index([universityId, status, createdAt])
+  @@index([vendorId, createdAt])
 }
 
 // A student money request. Two distinct semantics share this audited queue:

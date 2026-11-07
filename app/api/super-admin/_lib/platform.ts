@@ -76,7 +76,7 @@ export async function fetchTxSlices(
   where: Prisma.TransactionWhereInput,
 ): Promise<TimedTxSlice[]> {
   const rows = await prisma.transaction.findMany({
-    where,
+    where: { ...where, isTest: false },
     select: {
       universityId: true,
       amount: true,

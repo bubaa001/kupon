@@ -9,7 +9,8 @@ export type OrderStatus =
   | 'PAYMENT_FAILED'
   | 'PENDING'
   | 'VERIFIED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'EXPIRED';
 
 export type OrderItemView = {
   id: string;
@@ -46,6 +47,9 @@ export type OrderView = {
   createdAt: string;
   verifiedAt: string | null;
   expiresAt: string;
+  paymentTest: boolean;
+  paymentStage: string | null;
+  creditApplied: number;
   vendor: OrderVendorView;
   student: OrderStudentView;
   items: OrderItemView[];
@@ -59,7 +63,7 @@ export type VendorMenuData = {
   student: {
     name: string;
     studentId: string;
-    walletBalance: number;
+    cafeteriaCreditBalance: number;
   };
   items: Array<{
     id: string;
@@ -138,8 +142,7 @@ export type CancelOrderResult = {
 
 export type PlaceOrderInput = {
   vendorId: string;
-  phone: string;
-  network: string;
+  useCredit?: boolean;
   items: Array<{ menuItemId: string; quantity: number }>;
   note?: string;
 };
