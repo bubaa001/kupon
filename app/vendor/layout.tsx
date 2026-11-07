@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: '%s • Vendor • Kupon',
   },
   description:
-    'Run your campus till on Kupon: scan student payment codes, charge wallets instantly and track your settlement balance.',
+    'Run your campus cafeteria on Kupon: manage orders, verify meal coupons and review sales.',
 };
 
 /**

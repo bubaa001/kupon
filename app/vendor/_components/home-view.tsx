@@ -215,7 +215,7 @@ export function VendorHome() {
             <section className="card-surface min-w-0 overflow-hidden p-5">
               <SectionHeading
                 title="Recent sales"
-                description="Latest wallet payments"
+                description="Latest order payments"
                 actionLabel={data.recentSales.length > 0 ? 'View all' : undefined}
                 actionHref={data.recentSales.length > 0 ? '/vendor/sales' : undefined}
               />
@@ -226,7 +226,7 @@ export function VendorHome() {
                     <EmptyState
                       icon={ClipboardCheck}
                       title="No orders yet"
-                      description="Students scan your counter QR to order and pay. Payments appear here as soon as the wallet is charged."
+                      description="Students scan your counter QR to place an order. It appears here after its Kupon test payment is confirmed."
                       compact
                       action={
                         <Button asChild size="sm">

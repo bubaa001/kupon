@@ -63,7 +63,7 @@ export function SalesView() {
       <PageHeader
         eyebrow="Sales"
         title="Sales report"
-        description="Every wallet payment that passed through your till — settled, pending and failed."
+        description="Order payments recorded in Kupon — settled, pending and failed."
         actions={
           <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />

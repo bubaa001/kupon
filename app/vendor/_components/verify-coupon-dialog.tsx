@@ -160,7 +160,7 @@ function VerifiedCelebration({ order, message }: { order: OrderView; message: st
 
         <p className="mt-3 flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-          Single-use coupon — the wallet was already charged when the order was placed.
+          Single-use coupon — the order payment is recorded before the coupon is issued.
         </p>
       </div>
     </div>

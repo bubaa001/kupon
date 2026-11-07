@@ -222,7 +222,7 @@ export function OrderDeskView() {
       <PageHeader
         eyebrow="Order desk"
         title="Verify student coupons"
-        description="Students scan your counter QR, pay from their wallet, then show a meal coupon. Verify it here before handing over the food."
+        description="Students scan your counter QR, complete Kupon test checkout, then show their meal coupon. Verify it here before handing over the food."
         actions={
           <>
             <Button
