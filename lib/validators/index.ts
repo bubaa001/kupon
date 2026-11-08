@@ -160,7 +160,7 @@ export const vendorSchema = z.object({
   code: z
     .string()
     .trim()
-    .regex(/^V-[A-Z]{2,8}-\d{3}$/i, 'Use the format V-UDSM-004')
+    .regex(/^V-[A-Z]{2,10}-\d{3}$/i, 'Use the format V-CAMPUS-004')
     .transform((value) => value.toUpperCase()),
   pin: z.string().regex(/^\d{4}$/),
   ownerName: z.string().trim().min(2).max(80),

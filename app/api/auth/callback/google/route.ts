@@ -13,9 +13,9 @@ import { externalUrl } from '@/lib/request-origin';
 import {
   GOOGLE_SIGNUP_COOKIE,
   GOOGLE_SIGNUP_MAX_AGE,
-  GOOGLE_VENDOR_COOKIE,
+  GOOGLE_VENDOR_ACTIVATION_COOKIE,
+  signGoogleVendorActivationTicket,
   signGoogleSignupTicket,
-  signGoogleVendorTicket,
 } from '@/lib/google-signup';
 import type { GoogleStatePayload } from '@/lib/google-auth';
 
@@ -142,6 +142,43 @@ export async function GET(request: NextRequest) {
       if (state.role === 'staff') {
         return clearState(loginError(request, 'google_staff_only', 'staff'));
       }
+      if (state.role === 'vendor') {
+        const application = await prisma.vendorApplication.findFirst({
+          where: {
+            email: profile.email,
+            status: 'APPROVED',
+            userId: null,
+          },
+          select: {
+            id: true,
+            university: { select: { status: true } },
+          },
+        });
+        if (!application || application.university?.status !== 'ACTIVE') {
+          return clearState(loginError(request, 'google_vendor_not_approved', 'vendor'));
+        }
+
+        const ticket = await signGoogleVendorActivationTicket({
+          sub: profile.sub,
+          email: profile.email,
+          name: profile.name,
+          applicationId: application.id,
+        });
+        const activationResponse = NextResponse.redirect(
+          externalUrl(request, '/vendor/activate'),
+        );
+        activationResponse.cookies.set({
+          name: GOOGLE_VENDOR_ACTIVATION_COOKIE,
+          value: ticket,
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          path: '/',
+          maxAge: GOOGLE_SIGNUP_MAX_AGE,
+        });
+        return clearState(activationResponse);
+      }
+
       const university = await prisma.university.findUnique({
         where: { id: state.universityId },
         select: { id: true, status: true },
@@ -157,15 +194,10 @@ export async function GET(request: NextRequest) {
         universityId: university.id,
         emailVerified: true as const,
       };
-      const isVendor = state.role === 'vendor';
-      const signed = isVendor
-        ? await signGoogleVendorTicket(ticket)
-        : await signGoogleSignupTicket(ticket);
-      const signupResponse = NextResponse.redirect(
-        externalUrl(request, isVendor ? '/vendor-apply' : '/signup/google'),
-      );
+      const signed = await signGoogleSignupTicket(ticket);
+      const signupResponse = NextResponse.redirect(externalUrl(request, '/signup/google'));
       signupResponse.cookies.set({
-        name: isVendor ? GOOGLE_VENDOR_COOKIE : GOOGLE_SIGNUP_COOKIE,
+        name: GOOGLE_SIGNUP_COOKIE,
         value: signed,
         httpOnly: true,
         sameSite: 'lax',

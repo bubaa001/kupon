@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Check, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -25,12 +26,37 @@ type VendorApplication = {
   university: { name: string; code: string; city: string };
 };
 
-type ApplicationResponse = { applications: VendorApplication[] };
+type VendorRequest = {
+  id: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  applicantRole: 'OWNER' | 'AUTHORIZED_REPRESENTATIVE';
+  authorizationDocumentUrl: string | null;
+  businessName: string;
+  universityName: string;
+  city: string;
+  description: string;
+  businessRegistrationNumber: string;
+  physicalAddress: string;
+  registrationDocumentUrl: string;
+  createdAt: string;
+};
+
+type UniversityOption = { id: string; name: string; code: string; city: string };
+type ApplicationResponse = {
+  applications: VendorApplication[];
+  requests: VendorRequest[];
+  universities: UniversityOption[];
+};
 
 export function VendorApplicationsView() {
   const [applications, setApplications] = useState<VendorApplication[]>([]);
+  const [requests, setRequests] = useState<VendorRequest[]>([]);
+  const [universities, setUniversities] = useState<UniversityOption[]>([]);
   const [verifiedIds, setVerifiedIds] = useState<Set<string>>(() => new Set());
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [assignedUniversities, setAssignedUniversities] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +67,8 @@ export function VendorApplicationsView() {
     try {
       const data = await apiFetch<ApplicationResponse>('/api/super-admin/vendor-applications');
       setApplications(data.applications);
+      setRequests(data.requests);
+      setUniversities(data.universities);
       setVerifiedIds(new Set());
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Could not load applications.';
@@ -83,12 +111,41 @@ export function VendorApplicationsView() {
     }
   }
 
+  async function decideRequest(application: VendorRequest, decision: 'APPROVE' | 'REJECT') {
+    const note = notes[application.id]?.trim();
+    setBusy(application.id);
+    try {
+      const result = await patchJson<{ message: string }>(
+        `/api/super-admin/vendor-requests/${encodeURIComponent(application.id)}`,
+        {
+          decision,
+          universityId: assignedUniversities[application.id] || undefined,
+          physicalSiteVerified: verifiedIds.has(application.id),
+          note: note || undefined,
+        },
+      );
+      toast.success(result.message);
+      setNotes((current) => {
+        const next = { ...current };
+        delete next[application.id];
+        return next;
+      });
+      await load();
+    } catch (caught) {
+      toast.error(
+        caught instanceof ApiClientError ? caught.message : 'Could not review this application.',
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Platform operations"
         title="Cafeteria applications"
-        description="Review business documents and confirm each cafeteria physically exists before approval."
+        description="The Platform Admin provisions institutions, reviews business documents, and verifies each cafeteria before approval."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -98,10 +155,188 @@ export function VendorApplicationsView() {
       />
 
       {error ? <Alert variant="danger" title="Could not load applications">{error}</Alert> : null}
-      {loading && applications.length === 0 ? (
+      {loading && applications.length === 0 && requests.length === 0 ? (
         <Card className="p-5 text-sm text-slate-500">Loading applications…</Card>
-      ) : applications.length ? (
-        <section className="space-y-3">
+      ) : (
+        <div className="space-y-6">
+          {requests.length ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-slate-800">
+                New applications · apply first, Google after approval
+              </h2>
+              {requests.map((application) => {
+                const documentsComplete = Boolean(
+                  application.businessRegistrationNumber &&
+                    application.physicalAddress &&
+                    application.registrationDocumentUrl.startsWith('https://') &&
+                    (application.applicantRole === 'OWNER' ||
+                      application.authorizationDocumentUrl?.startsWith('https://')),
+                );
+                return (
+                  <Card key={application.id} className="space-y-4 p-4 sm:p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="warning">Needs review</Badge>
+                      <Badge variant="neutral">
+                        Requested: {application.universityName} · {application.city}
+                      </Badge>
+                      <span className="text-[11px] text-slate-400">
+                        Submitted {formatDateTime(application.createdAt)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">
+                        {application.businessName}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-600">{application.description}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Applicant: {application.ownerName} ·{' '}
+                        {application.applicantRole === 'OWNER' ? 'Owner' : 'Authorised representative'} ·{' '}
+                        {application.phone} · {application.email}
+                      </p>
+                    </div>
+                    {application.applicantRole === 'AUTHORIZED_REPRESENTATIVE' ? (
+                      application.authorizationDocumentUrl?.startsWith('https://') ? (
+                        <a
+                          href={application.authorizationDocumentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex text-xs font-semibold text-primary-700 underline-offset-2 hover:underline"
+                        >
+                          Open proof of authority
+                        </a>
+                      ) : (
+                        <Alert variant="warning">
+                          Proof that the applicant is authorised to represent this business is missing.
+                        </Alert>
+                      )
+                    ) : null}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                          Business registration
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-slate-800">
+                          {application.businessRegistrationNumber || 'Missing'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                          Physical cafeteria location
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-slate-800">
+                          {application.physicalAddress || 'Missing'}
+                        </p>
+                      </div>
+                    </div>
+                    {application.registrationDocumentUrl.startsWith('https://') ? (
+                      <a
+                        href={application.registrationDocumentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex text-xs font-semibold text-primary-700 underline-offset-2 hover:underline"
+                      >
+                        Open registration document
+                      </a>
+                    ) : (
+                      <Alert variant="warning">
+                        This application has no secure registration document link.
+                      </Alert>
+                    )}
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor={`campus-${application.id}`}
+                        className="text-xs font-semibold text-slate-700"
+                      >
+                        Kupon campus
+                      </label>
+                      <select
+                        id={`campus-${application.id}`}
+                        value={assignedUniversities[application.id] ?? ''}
+                        onChange={(event) =>
+                          setAssignedUniversities((current) => ({
+                            ...current,
+                            [application.id]: event.target.value,
+                          }))
+                        }
+                        className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800"
+                      >
+                        <option value="">Select the verified campus</option>
+                        {universities.map((university) => (
+                          <option key={university.id} value={university.id}>
+                            {university.name} · {university.city}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-amber-700">
+                        The Kupon Platform Admin creates institutions. If this campus is not
+                        listed, add it in{' '}
+                        <Link
+                          href="/super-admin/tenants"
+                          className="font-semibold underline underline-offset-2"
+                        >
+                          university management
+                        </Link>{' '}
+                        before approving the application.
+                      </p>
+                    </div>
+                    <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={verifiedIds.has(application.id)}
+                        onChange={(event) =>
+                          setVerifiedIds((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) next.add(application.id);
+                            else next.delete(application.id);
+                            return next;
+                          })
+                        }
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600"
+                      />
+                      I verified this cafeteria physically exists at the submitted location.
+                    </label>
+                    <Textarea
+                      value={notes[application.id] ?? ''}
+                      onChange={(event) =>
+                        setNotes((current) => ({ ...current, [application.id]: event.target.value }))
+                      }
+                      placeholder="Review note or corrections for the applicant (required to reject)"
+                      maxLength={500}
+                      aria-label={`Review note for ${application.businessName}`}
+                    />
+                    <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={busy === application.id || (notes[application.id]?.trim().length ?? 0) < 5}
+                        onClick={() => void decideRequest(application, 'REJECT')}
+                      >
+                        <X className="h-4 w-4" />
+                        Return for changes
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={
+                          busy === application.id ||
+                          !assignedUniversities[application.id] ||
+                          !verifiedIds.has(application.id) ||
+                          !documentsComplete
+                        }
+                        onClick={() => void decideRequest(application, 'APPROVE')}
+                      >
+                        <Check className="h-4 w-4" />
+                        Approve and enable Google sign-in
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </section>
+          ) : null}
+
+          {applications.length ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-slate-800">Existing vendor accounts</h2>
           {applications.map((application) => {
             const documentsComplete = Boolean(
               application.businessRegistrationNumber &&
@@ -220,11 +455,14 @@ export function VendorApplicationsView() {
               </Card>
             );
           })}
-        </section>
-      ) : (
+            </section>
+          ) : null}
+          {!requests.length && !applications.length ? (
         <Card className="p-5 text-sm text-slate-500">
           {loading ? 'Refreshing…' : 'No cafeteria applications need review.'}
         </Card>
+          ) : null}
+        </div>
       )}
     </div>
   );

@@ -157,8 +157,8 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="h-12 w-full rounded-full px-6 sm:w-auto">
-              <Link href="/vendor/login">
-                Vendor sign in or apply
+              <Link href="/vendor-apply">
+                Apply as a cafeteria
                 <ArrowRight aria-hidden className="h-4 w-4" />
               </Link>
             </Button>
@@ -306,10 +306,10 @@ function CafeteriaSection() {
               Clear for the person buying. Clear for the team serving.
             </h2>
             <Link
-              href="/vendor/login"
+              href="/vendor-apply"
               className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary-800"
             >
-              Sign in or apply
+              Apply as a cafeteria
               <ArrowUpRight
                 aria-hidden
                 className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
@@ -412,8 +412,8 @@ function FinalCta() {
             size="lg"
             className="mt-6 h-12 w-full rounded-full px-6 sm:mt-0 sm:w-auto"
           >
-            <Link href="/vendor/login">
-              Vendor sign in or apply
+            <Link href="/vendor-apply">
+              Apply as a cafeteria
               <ArrowRight aria-hidden className="h-4 w-4" />
             </Link>
           </Button>
@@ -432,10 +432,11 @@ function AccountAccessSection() {
       action: 'Student sign in',
     },
     {
-      href: '/vendor/login',
+      href: '/vendor-apply',
       title: 'Cafeteria owner',
-      description: 'Sign in with your password or Google, or submit a cafeteria request.',
-      action: 'Vendor sign in or apply',
+      description: 'Submit your cafeteria for review. Google sign-in starts after approval.',
+      action: 'Apply as a cafeteria',
+      signInHref: '/vendor/login',
     },
     {
       href: '/staff/login',
@@ -475,6 +476,14 @@ function AccountAccessSection() {
                   {option.action}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
+                {'signInHref' in option ? (
+                  <Link
+                    href={option.signInHref ?? '/vendor/login'}
+                    className="mt-2 text-xs font-medium text-slate-500 hover:text-primary-800"
+                  >
+                    Already approved? Sign in
+                  </Link>
+                ) : null}
               </article>
             ))}
           </div>

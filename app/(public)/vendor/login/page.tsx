@@ -9,7 +9,7 @@ import { VendorAccessForm } from './vendor-access-form';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Vendor sign in',
-  description: 'Sign in to Kupon or apply to register a campus cafeteria.',
+  description: 'Sign in after approval or apply to register a campus cafeteria.',
 };
 
 export default async function VendorLoginPage() {
@@ -38,8 +38,8 @@ export default async function VendorLoginPage() {
             Vendor sign in
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            Use your phone and password, or continue with Google. New owners can apply with Google;
-            your request must be approved before you can open the cafeteria dashboard.
+            Apply first and wait for platform review. Once approved, use Google to activate your
+            account. Existing owners can sign in with Google or phone and password.
           </p>
           <div className="mt-6">
             <VendorAccessForm />

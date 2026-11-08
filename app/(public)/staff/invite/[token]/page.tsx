@@ -6,6 +6,7 @@ import { AcceptInviteForm } from './accept-invite-form';
 
 export const metadata: Metadata = {
   title: 'Accept team invitation',
+  description: 'Set up Kupon access using your cafeteria team invitation.',
   robots: { index: false, follow: false },
 };
 

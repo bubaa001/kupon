@@ -282,7 +282,6 @@ export function LoginForm({
       setUniversityId(
         (current) =>
           current ||
-          data.universities.find((university) => university.code === 'UDSM')?.id ||
           data.universities[0]?.id ||
           '',
       );
@@ -438,7 +437,7 @@ export function LoginForm({
   async function handleVendorSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (vendorCode.trim().length < 3) {
-      setVendorError('Enter your vendor code, for example V-UDSM-001.');
+      setVendorError('Enter your Kupon vendor code, for example V-CAMPUS-001.');
       return;
     }
     if (!/^\d{4}$/.test(vendorPin)) {
@@ -533,7 +532,8 @@ export function LoginForm({
                 </div>
               ) : universities.length === 0 ? (
                 <Alert variant="warning" title="No active universities">
-                  The demo dataset is empty. Ask the team lead to run the seed script.
+                  Kupon has no active university yet. The platform administrator must set up a
+                  campus before student sign-in is available.
                 </Alert>
               ) : (
                 <Select
@@ -725,7 +725,7 @@ export function LoginForm({
               <Input
                 id="vendor-code"
                 name="vendorCode"
-                placeholder="V-UDSM-001"
+                placeholder="V-CAMPUS-001"
                 autoComplete="username"
                 autoCapitalize="characters"
                 spellCheck={false}
@@ -868,7 +868,7 @@ export function LoginForm({
                 error={Boolean(staffError)}
               />
               <p className="text-xs text-slate-500">
-                The number issued by your bursar or by Bubaa Comp.
+                Use the phone number linked to your Kupon staff invitation.
               </p>
             </div>
 

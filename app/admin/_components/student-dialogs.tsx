@@ -293,7 +293,7 @@ function GoogleSignInCard({
           autoComplete="off"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="student@gmail.com or student@udsm.ac.tz"
+          placeholder="student@example.com"
           aria-label="Student Google email"
           error={Boolean(error)}
         />

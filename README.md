@@ -26,7 +26,7 @@ Captured from the running app with real seeded data at 375px and desktop widths
   </tr>
   <tr>
     <td><img src="screenshots/25-google-signup-mobile.png" alt="Google-first student signup without SMS OTP" /></td>
-    <td><img src="screenshots/26-vendor-apply-mobile.png" alt="Google-first vendor application for admin approval" /></td>
+    <td><img src="screenshots/26-vendor-apply-mobile.png" alt="Vendor submits an application before Google sign-in" /></td>
   </tr>
   <tr>
     <td><img src="screenshots/23-vendor-add-dish-mobile.png" alt="Vendor add-dish flow with live student preview" /></td>
@@ -77,7 +77,7 @@ Captured from the running app with real seeded data at 375px and desktop widths
 
 ### Vendor (mobile-first POS)
 
-- Vendor phone/password or Google sign-in. New owners can apply with Google, create a password, and wait for platform-admin document and site review before the terminal goes live.
+- New owners submit a cafeteria application before signing in. The platform admin reviews the business, campus, and site; after approval, the owner verifies with Google and sets a password. Existing owners can use either Google or phone/password.
 - A printable, camera-friendly **counter QR** (`KPN:V:<vendor code>`) for students to scan. It opens the vendor's live approved menu and cannot move money on its own.
 - **Order desk:** confirmed test requests, grouped by food and quantity, with individual or bulk acceptance. Auto-accepted items skip manual review; coupons stay hidden until accepted. Staff can report unavailable food for platform-admin review.
 - **Coupon verification:** scan the student's coupon QR or enter the 6-digit code shown on their phone. Single-use conditional status transition plus a celebratory verified screen; the student coupon updates live.
@@ -205,7 +205,7 @@ Kupon does not ship shared platform-owner credentials. Configure `SUPER_ADMIN_SE
 
 Generate a setup token with `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"` and add it to the local `.env` and deployment environment. Do not commit the value.
 
-Students use Google at `/login`. Cafeteria owners use `/vendor/login` to sign in with phone/password or Google, or begin a Google-verified application. Staff use `/staff/login`; their cafeteria owner or a platform admin generates a one-time invitation at `/vendor/team` or `/admin/team`.
+Students use Google at `/login`. Cafeteria owners apply at `/vendor-apply` without choosing a preconfigured campus or signing in first. Applicants provide business registration and location details; an authorised representative must also provide proof they can act for the owner. The Kupon Platform Admin creates institutions in **Platform → University management** (`/super-admin/tenants`), then reviews the request, verifies the physical cafeteria and assigns it to that institution. Applicants only name the institution; they cannot create or approve it. After approval, the owner continues with Google using the email on the application and sets a password. Existing owners use `/vendor/login`. Staff use `/staff/login`; their cafeteria owner or a platform admin generates a one-time invitation at `/vendor/team` or `/admin/team`.
 
 The demo seed is only for disposable development databases. It does not create a platform owner. Never run it against production data.
 
@@ -229,14 +229,13 @@ Security model:
 
 > Open Gmail signup is intentionally enabled for this MVP. For a production campus rollout, restrict signup to the university's Google Workspace domain (or match student numbers against the registry).
 
-**Vendor — `/vendor/login`**
+**Vendor — `/vendor-apply`, then `/vendor/login`**
 
-1. Select the campus and continue with Google, or use phone/password for an existing vendor account.
-2. If that Google account is already an approved vendor, it goes straight to the order desk.
-3. If the Google account is brand new, `/vendor-apply` asks for business name, owner name, business phone, a password, registration details, physical cafeteria location and a secure registration-document link.
-4. Submitting creates a **PENDING vendor** and a vendor session, then redirects to `/vendor-pending`.
-5. A platform admin reviews the documents and confirms the cafeteria physically exists in **Platform → Vendor review**. The vendor can then refresh `/vendor-pending` and enter `/vendor`.
-6. If changes are requested, the vendor sees the review note and can update and resubmit the application from `/vendor-pending`. Pending vendors cannot use operational APIs.
+1. Apply first at `/vendor-apply`. Enter the campus name yourself; no preset campus or account is required. Owners submit registration and location details; managers/representatives also submit proof of authority.
+2. The platform admin creates the campus under **Platform → University management** if needed, reviews the documents, and verifies the physical cafeteria in **Platform → Vendor review**. Only the platform admin assigns an application to an active Kupon campus.
+3. After approval, open `/vendor/login` and continue with Google using the same email entered on the application.
+4. Google verifies the email, then the owner creates a password. Kupon creates the vendor account only after this approved Google verification and signs the owner in.
+5. Existing vendor owners can sign in with Google or phone/password. Pending or rejected requests cannot use operational APIs.
 
 **Staff — `/staff/login`** accepts phone/password or Google sign-in. Google only works for an existing staff/Finance/admin record whose email matches the verified Google email. Invitations are single-use, expire after seven days, and bind the account to one cafeteria.
 
@@ -271,8 +270,8 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 - **Google auth on the hosted app:** open the stable Vercel domain from your phone. Set `GOOGLE_REDIRECT_URI` to `https://<your-domain>/api/auth/callback/google` in Vercel and add that exact URI to the OAuth client’s authorized redirect URIs in Google Cloud Console. A local tunnel is not needed for the hosted app.
 - **Existing account not linked to Google:** the callback does not attach Google automatically. Link it from **Admin → Students → student → Google sign-in fallback**, or run `pnpm link:google <phone> <email>`. New students do not need this step — they get the signup form.
 - **`google_signup_expired`:** the 15-minute signup ticket expired. Start **Continue with Google** again.
-- **`google_vendor_expired`:** the 15-minute vendor application ticket expired. Start again from `/vendor/login`.
-- **`google_vendor_missing`:** that Google account has no vendor record yet — submit a vendor application from `/vendor/login`.
+- **`google_vendor_not_approved`:** the Google email has no approved vendor application. Apply at `/vendor-apply` and return after platform review.
+- **`google_vendor_activation_expired`:** Google verification expired during account activation. Continue with Google again.
 - **Phone or student number already registered:** ask an admin to link the Google email to the existing student account. Signup never merges identities.
 
 ---
@@ -361,7 +360,7 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 | Audience | Entrance | Notes |
 | --- | --- | --- |
 | Students | `/login` (Student) | Google sign-in/signup; OTP UI disabled behind a flag |
-| Vendors | `/vendor/login` | Phone/password or Google; Google can start an application |
+| Vendors | `/vendor-apply`, then `/vendor/login` | Apply without sign-in; after platform approval, verify with Google and set a password |
 | Cafeteria staff | `/staff/login` | Phone/password or Google matching the invited email |
 | Platform operators | `/staff/login` | First owner is created at `/first-owner`; Google can be linked later |
 

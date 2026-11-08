@@ -164,7 +164,7 @@ export function OnboardTenantDialog({
                 id="tenant-code"
                 value={form.code}
                 onChange={(event) => update('code', event.target.value.toUpperCase())}
-                placeholder="UDSM"
+                placeholder="CAMPUS"
                 maxLength={10}
                 className="uppercase"
                 error={Boolean(errors.code)}

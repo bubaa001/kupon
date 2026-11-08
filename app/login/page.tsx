@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft, Check, Smartphone } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { getAuthUser, roleHome } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { LoginForm, type LoginRole } from './login-form';
 
 export const metadata: Metadata = {
@@ -32,28 +31,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (requestedRole === 'staff') redirect('/staff/login');
   if (requestedRole === 'vendor') redirect('/vendor/login');
   const initialRole: LoginRole = 'student';
-
-  // Live demo tenant snapshot, not hardcoded marketing figures. The login page
-  // stays server-rendered/dynamic, so these counts reflect the current seed.
-  let pilot: { students: number; vendors: number; dishes: number } | null = null;
-  try {
-    const udsm = await prisma.university.findUnique({
-      where: { code: 'UDSM' },
-      select: {
-        _count: { select: { studentProfiles: true, vendors: true, menuItems: true } },
-      },
-    });
-    if (udsm) {
-      pilot = {
-        students: udsm._count.studentProfiles,
-        vendors: udsm._count.vendors,
-        dishes: udsm._count.menuItems,
-      };
-    }
-  } catch {
-    // The seed may not exist yet on a fresh deployment; the login form still works.
-    pilot = null;
-  }
 
   return (
     <main className="min-h-dvh bg-canvas">
@@ -98,40 +75,26 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
 
           <div className="relative mt-12 max-w-md rounded-xl border border-white/10 bg-white/[0.05] p-4">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">UDSM pilot snapshot</span>
-              <span className="inline-flex items-center gap-1.5 font-semibold text-primary-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary-400" aria-hidden />
-                Live seed
-              </span>
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <Smartphone className="h-4 w-4 text-primary-300" aria-hidden />
+              A clearer flow from menu to meal
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Students</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {pilot ? pilot.students : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Vendors</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {pilot ? pilot.vendors : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Dishes</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">
-                  {pilot ? pilot.dishes : '—'}
-                </p>
-              </div>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[
+                ['Choose', 'Browse what is available today.'],
+                ['Pay', 'Payment status is recorded.'],
+                ['Collect', 'Show the verified meal coupon.'],
+              ].map(([title, description]) => (
+                <div key={title} className="rounded-lg bg-white/[0.04] p-2.5">
+                  <p className="text-xs font-semibold text-primary-200">{title}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-400">{description}</p>
+                </div>
+              ))}
             </div>
-            <p className="mt-3 border-t border-white/10 pt-2 text-[10px] text-slate-500">
-              Counts come from the current seeded UDSM tenant. No real money moves here.
-            </p>
           </div>
 
           <p className="relative mt-10 text-xs text-slate-500">
-            Kupon test environment · UDSM and MUST pilots
+            Kupon test environment · payment events are simulated
           </p>
         </aside>
 
@@ -165,6 +128,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </div>
 
               <LoginForm initialRole={initialRole} audience="student" />
+              <p className="mt-5 text-center text-sm text-slate-500">
+                Run a cafeteria?{' '}
+                <Link
+                  href="/vendor/login"
+                  className="font-semibold text-primary-700 hover:underline"
+                >
+                  Sign in or apply as a vendor
+                </Link>
+              </p>
             </div>
 
             <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-400">

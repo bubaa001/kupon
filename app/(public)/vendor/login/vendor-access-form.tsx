@@ -2,17 +2,16 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
-import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
+import { ApiClientError, postJson } from '@/lib/client-api';
 import { normalizePhone } from '@/lib/utils';
 
-type University = { id: string; name: string; code: string };
 type LoginResult = { user: { name: string }; redirectTo: string };
 
 function GoogleGlyph() {
@@ -28,8 +27,6 @@ function GoogleGlyph() {
 
 export function VendorAccessForm() {
   const router = useRouter();
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [universityId, setUniversityId] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,31 +35,19 @@ export function VendorAccessForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
-    void apiFetch<{ universities: University[] }>('/api/universities')
-      .then(({ universities: rows }) => {
-        if (!active) return;
-        setUniversities(rows);
-        setUniversityId(rows.find((row) => row.code === 'UDSM')?.id ?? rows[0]?.id ?? '');
-      })
-      .catch((reason) => {
-        if (active) {
-          setError(reason instanceof Error ? reason.message : 'Could not load the campus list.');
-        }
-      });
-
     const params = new URLSearchParams(window.location.search);
     if (params.get('error')) {
       setError(
         params.get('error') === 'google_vendor_suspended'
           ? 'This cafeteria account is suspended. Contact Kupon support.'
-          : 'Google sign-in could not be completed. Check your account and try again.',
+          : params.get('error') === 'google_vendor_not_approved'
+            ? 'No approved application matches this Google account. If you have applied, wait for review; otherwise submit an application first.'
+            : params.get('error') === 'google_vendor_activation_expired'
+              ? 'Your Google verification expired. Continue with Google again.'
+            : 'Google sign-in could not be completed. Check your account and try again.',
       );
       window.history.replaceState({}, '', '/vendor/login');
     }
-    return () => {
-      active = false;
-    };
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -86,13 +71,8 @@ export function VendorAccessForm() {
   }
 
   function googleSignIn() {
-    if (!universityId) {
-      setError('Choose the university where your cafeteria operates.');
-      return;
-    }
     setGoogleLoading(true);
-    const params = new URLSearchParams({ universityId, role: 'vendor' });
-    window.location.assign(`/api/auth/google/start?${params.toString()}`);
+    window.location.assign('/api/auth/google/start?role=vendor');
   }
 
   return (
@@ -149,35 +129,22 @@ export function VendorAccessForm() {
       </div>
 
       <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="vendor-university">University</Label>
-          <Select
-            id="vendor-university"
-            value={universityId}
-            onChange={(event) => setUniversityId(event.target.value)}
-            disabled={universities.length === 0}
-          >
-            <option value="">Select your campus</option>
-            {universities.map((university) => (
-              <option key={university.id} value={university.id}>
-                {university.name} ({university.code})
-              </option>
-            ))}
-          </Select>
-        </div>
         <Button
           type="button"
           variant="outline"
           className="w-full bg-white"
           onClick={googleSignIn}
           loading={googleLoading}
-          disabled={googleLoading || universities.length === 0}
+          disabled={googleLoading}
         >
           <GoogleGlyph />
-          Continue with Google or apply
+          Continue with Google
         </Button>
-        <p className="text-center text-[11px] leading-relaxed text-slate-500">
-          Google signs in to an existing account or starts a cafeteria application for review.
+        <p className="text-center text-sm text-slate-500">
+          Not approved yet?{' '}
+          <Link href="/vendor-apply" className="font-semibold text-primary-700 hover:underline">
+            Apply as a cafeteria
+          </Link>
         </p>
       </div>
     </div>

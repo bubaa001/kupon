@@ -20,16 +20,19 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/verify-otp` | public | `{ phone, code, universityId }` → sets cookie |
 | POST | `/api/auth/vendor-login` | public | `{ code, pin }` → sets cookie |
 | POST | `/api/auth/vendor-password-login` | public | `{ phone, password }` → vendor session cookie |
+| POST | `/api/vendor/applications` | public, rate-limited | `{ ownerName, email, phone, applicantRole, authorizationDocumentUrl?, businessName, universityName, city, description, businessRegistrationNumber, physicalAddress, registrationDocumentUrl, confirm:true }` → pending application; representatives must include proof of authority; no account or Google sign-in is required yet |
+| POST | `/api/auth/vendor-activate` | Google-approved-application ticket | `{ password }` → creates the approved vendor account and session |
 | POST | `/api/auth/staff-login` | public | `{ phone, password }` → sets cookie |
 | POST | `/api/auth/bootstrap-super-admin` | public, one-time | Requires configured `SUPER_ADMIN_SETUP_TOKEN`; creates the first super-admin and signs it in |
 | GET | `/api/auth/staff-invites/:token` | public, token-bound | Returns non-secret invitation details if the invite is active |
 | POST | `/api/auth/staff-invites/:token` | public, token-bound | `{ password }` → atomically accepts a single-use invite and creates a scoped account |
 | GET | `/api/auth/me` | any | `{ user }` |
 | POST | `/api/auth/logout` | any | clears cookie |
-| GET | `/api/auth/google/start?universityId=&role=student\|vendor\|staff` | public | Redirects to Google OAuth; sets 10-minute `kupon_google_state` cookie. Staff Google sign-in only resolves an existing account |
-| GET | `/api/auth/callback/google` | public | Verifies state + code. Students can sign up; vendors can apply; non-students can only sign in to a matching existing account |
+| GET | `/api/auth/google/start?universityId=&role=student\|vendor\|staff` | public | Redirects to Google OAuth; only student sign-in requires a selected campus. Vendor sign-in activates an approved application |
+| GET | `/api/auth/callback/google` | public | Verifies state + code. Students can sign up; vendors must have an approved application matching their verified Google email; staff must match an existing account |
 | POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates student profile + session cookie |
-| POST | `/api/auth/google/vendor-apply` | Google vendor ticket cookie | `{ ownerName, businessName, phone, password, description, businessRegistrationNumber, physicalAddress, registrationDocumentUrl, confirm:true }` → creates PENDING vendor + session cookie, redirects `/vendor-pending` |
+| GET | `/api/super-admin/vendor-applications` | SUPER_ADMIN | `{ applications, requests, universities }` → pending legacy vendor accounts, new pre-auth applications, and available campuses |
+| PATCH | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | `{ decision, universityId?, physicalSiteVerified?, note? }` → approves/rejects application; approval assigns the campus and enables Google activation. Platform admins provision new institutions under `/super-admin/tenants` before assigning them. |
 
 ## Student (role STUDENT)
 
@@ -113,7 +116,7 @@ Base path `/api/admin`. ADMIN is locked to their own university. SUPER_ADMIN may
 | GET | `/transactions` | `q,status,type,range,page,pageSize` | `{ rows, total, page, pageSize, summary:{ gross, fees, net, count } }` |
 | GET | `/transactions/export` | same filters + `format=csv` | CSV attachment |
 | GET | `/vendors` | `q,status` | `{ vendors:[{..., salesToday, transactionsToday, pendingBalance}], summary }` — status can be `PENDING`, `ACTIVE`, `SUSPENDED` |
-| POST | `/vendors` | — | Retired (`403`); vendor owners apply with Google and platform admins review applications |
+| POST | `/vendors` | — | Retired (`403`); new applicants use the public `/api/vendor/applications` flow |
 | PATCH | `/vendors/[id]` | `{ status: 'ACTIVE'\|'SUSPENDED' }` | `{ vendor }` — suspend/reactivate an already-approved cafeteria; pending applications cannot be approved here |
 | GET | `/team` | — | `{ vendors, accounts }` — active cafeterias and scoped STAFF/FINANCE accounts for this university |
 | POST | `/team` | `{ name, phone, password, role:'STAFF'\|'FINANCE', vendorId }` | Creates a scoped account for an active cafeteria in the admin's university; bcrypt password and audit log |
@@ -177,7 +180,7 @@ it does not initiate or collect payment.
 | POST | `/api/vendor/orders/scan/verify` | VENDOR, STAFF | `{ token? , code? }` (one required) | Scan-first coupon verification; `KPN:C:<code>` or legacy signed token, scoped to the account's cafeteria |
 | POST | `/api/vendor/charge` | VENDOR | — | Disabled (`WALLET_DISABLED`). Use order coupon verification, not student-wallet charges. |
 
-**QR payloads.** New QR codes are short pointers, not signed JWTs: vendor `KPN:V:V-UDSM-001`, coupon `KPN:C:123456`. They render at 224 px (vendor compact 196 px), level Q, with a 4-module quiet zone. Legacy signed QR tokens remain accepted by the scan endpoints. The server still enforces vendor, tenant, expiry and single-use status.
+**QR payloads.** New QR codes are short pointers, not signed JWTs: vendor `KPN:V:V-CAMPUS-001`, coupon `KPN:C:123456`. They render at 224 px (vendor compact 196 px), level Q, with a 4-module quiet zone. Legacy signed QR tokens remain accepted by the scan endpoints. The server still enforces vendor, tenant, expiry and single-use status.
 
 `OrderView` includes `id, reference, status: PAYMENT_PENDING|PAYMENT_FAILED|AWAITING_ACCEPTANCE|PENDING|VERIFIED|CANCELLED|EXPIRED,
 total, itemCount, couponCode, couponToken, paymentTest, paymentStage, amountPaid, apiFee, kuponFee,

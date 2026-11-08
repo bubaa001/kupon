@@ -23,22 +23,23 @@ model University {
   status           String   @default("ACTIVE") // ACTIVE | SUSPENDED
   createdAt        DateTime @default(now())
 
-  users           User[]
-  studentProfiles StudentProfile[]
-  vendors         Vendor[]
-  menuItems       MenuItem[]
-  transactions    Transaction[]
-  refundRequests  RefundRequest[]
-  ledgerEntries   LedgerEntry[]
-  paymentTokens   PaymentToken[]
-  orders          Order[]
-  settlements     Settlement[]
-  saasInvoices    SaasInvoice[]
-  auditLogs       AuditLog[]
-  otpCodes        OtpCode[]
-  creditRequests  CreditRequest[]
-  supportTickets  SupportTicket[]
-  teamInvites     TeamInvite[]
+  users              User[]
+  studentProfiles    StudentProfile[]
+  vendors            Vendor[]
+  vendorApplications VendorApplication[]
+  menuItems          MenuItem[]
+  transactions       Transaction[]
+  refundRequests     RefundRequest[]
+  ledgerEntries      LedgerEntry[]
+  paymentTokens      PaymentToken[]
+  orders             Order[]
+  settlements        Settlement[]
+  saasInvoices       SaasInvoice[]
+  auditLogs          AuditLog[]
+  otpCodes           OtpCode[]
+  creditRequests     CreditRequest[]
+  supportTickets     SupportTicket[]
+  teamInvites        TeamInvite[]
 
   @@index([status])
 }
@@ -59,17 +60,18 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  university             University?     @relation(fields: [universityId], references: [id])
-  managedVendor          Vendor?         @relation("VendorTeamMembers", fields: [managedVendorId], references: [id], onDelete: Cascade)
+  university             University?        @relation(fields: [universityId], references: [id])
+  managedVendor          Vendor?            @relation("VendorTeamMembers", fields: [managedVendorId], references: [id], onDelete: Cascade)
   student                StudentProfile?
   vendor                 Vendor?
-  auditLogs              AuditLog[]      @relation("ActorAuditLogs")
-  reviewedRefunds        RefundRequest[] @relation("RefundReviewer")
-  verifiedOrders         Order[]         @relation("OrderVerifier")
+  auditLogs              AuditLog[]         @relation("ActorAuditLogs")
+  reviewedRefunds        RefundRequest[]    @relation("RefundReviewer")
+  verifiedOrders         Order[]            @relation("OrderVerifier")
   paymentEvents          PaymentEvent[]
-  reviewedCreditRequests CreditRequest[] @relation("CreditRequestReviewer")
-  reviewedSupportTickets SupportTicket[] @relation("SupportTicketReviewer")
-  createdTeamInvites     TeamInvite[]    @relation("TeamInviteCreator")
+  reviewedCreditRequests CreditRequest[]    @relation("CreditRequestReviewer")
+  reviewedSupportTickets SupportTicket[]    @relation("SupportTicketReviewer")
+  createdTeamInvites     TeamInvite[]       @relation("TeamInviteCreator")
+  vendorApplication      VendorApplication?
 
   @@index([universityId, role])
   @@index([managedVendorId, role])
@@ -136,6 +138,35 @@ model Vendor {
   teamInvites      TeamInvite[]
 
   @@index([universityId, status])
+}
+
+model VendorApplication {
+  id                         String    @id @default(cuid())
+  ownerName                  String
+  email                      String
+  phone                      String
+  applicantRole              String    @default("OWNER")
+  authorizationDocumentUrl   String?
+  businessName               String
+  universityName             String
+  city                       String
+  description                String
+  businessRegistrationNumber String
+  physicalAddress            String
+  registrationDocumentUrl    String
+  status                     String    @default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED
+  reviewNote                 String?
+  reviewedAt                 DateTime?
+  universityId               String?
+  userId                     String?   @unique
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([email, status])
 }
 
 model TeamInvite {

@@ -9,7 +9,7 @@ import { LoginForm } from '@/app/login/login-form';
 
 export const metadata: Metadata = {
   title: 'Staff access',
-  description: 'Secure sign-in for cafeteria staff, Finance and platform administrators.',
+  description: 'Secure sign-in for cafeteria staff and platform administrators.',
   robots: { index: false, follow: false },
 };
 

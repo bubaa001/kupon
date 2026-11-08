@@ -8,7 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { getAuthUser, roleHome } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { SignOutButton } from './sign-out-button';
-import { VendorApplyForm } from '../vendor-apply/vendor-apply-form';
+import { ResubmitForm } from './resubmit-form';
 
 export const metadata: Metadata = {
   title: 'Vendor approval pending',
@@ -155,22 +155,12 @@ export default async function VendorPendingPage() {
                   <Alert variant="warning" title="The platform admin requested changes">
                     {vendor.applicationReviewNote}
                   </Alert>
-                  <VendorApplyForm
-                    email={account?.email ?? ''}
-                    name={account?.name ?? ''}
-                    university={{
-                      name: vendor.university.name,
-                      code: vendor.university.code,
-                      city: vendor.university.city,
-                    }}
-                    initialApplication={{
-                      businessName: vendor.name,
-                      phone: account?.phone ?? '',
-                      description: vendor.description,
-                      businessRegistrationNumber: vendor.businessRegistrationNumber,
-                      physicalAddress: vendor.physicalAddress,
-                      registrationDocumentUrl: vendor.registrationDocumentUrl,
-                    }}
+                  <ResubmitForm
+                    businessName={vendor.name}
+                    description={vendor.description}
+                    businessRegistrationNumber={vendor.businessRegistrationNumber}
+                    physicalAddress={vendor.physicalAddress}
+                    registrationDocumentUrl={vendor.registrationDocumentUrl}
                   />
                 </>
               ) : (

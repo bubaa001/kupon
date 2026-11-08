@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   if (!config) return loginError(request, 'google_not_configured', role);
 
   const requestedUniversityId = requestUrl.searchParams.get('universityId') ?? '';
-  if (role !== 'staff' && !requestedUniversityId) {
+  if (role === 'student' && !requestedUniversityId) {
     return loginError(request, 'google_university', role);
   }
 

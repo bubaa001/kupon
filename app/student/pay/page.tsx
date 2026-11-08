@@ -297,7 +297,7 @@ export default function PayPage() {
     event.preventDefault();
     const code = codeInput.trim().toUpperCase();
     if (code.length < 3) {
-      setScanError('Weka vendor code, mfano V-UDSM-001.');
+      setScanError('Weka vendor code, mfano V-CAMPUS-001.');
       return;
     }
     void scanVendor({ code });
@@ -605,7 +605,7 @@ export default function PayPage() {
               <Input
                 value={codeInput}
                 onChange={(event) => setCodeInput(event.target.value.toUpperCase().slice(0, 30))}
-                placeholder="V-UDSM-001"
+                placeholder="V-CAMPUS-001"
                 className="font-mono uppercase"
                 aria-label="Vendor code"
                 autoComplete="off"
