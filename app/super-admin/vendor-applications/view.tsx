@@ -22,6 +22,8 @@ type VendorApplication = {
   physicalAddress: string;
   registrationDocumentUrl: string;
   createdAt: string;
+  applicationReviewedAt: string | null;
+  applicationReviewNote: string | null;
   user: { name: string; email: string | null; phone: string };
   university: { name: string; code: string; city: string };
 };
@@ -37,18 +39,24 @@ type VendorRequest = {
   institutionPhone: string;
   tinDocumentKey: string | null;
   createdAt: string;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 };
 
 type UniversityOption = { id: string; name: string; code: string; city: string };
 type ApplicationResponse = {
   applications: VendorApplication[];
   requests: VendorRequest[];
+  rejectedApplications: VendorApplication[];
+  rejectedRequests: VendorRequest[];
   universities: UniversityOption[];
 };
 
 export function VendorApplicationsView() {
   const [applications, setApplications] = useState<VendorApplication[]>([]);
   const [requests, setRequests] = useState<VendorRequest[]>([]);
+  const [rejectedApplications, setRejectedApplications] = useState<VendorApplication[]>([]);
+  const [rejectedRequests, setRejectedRequests] = useState<VendorRequest[]>([]);
   const [universities, setUniversities] = useState<UniversityOption[]>([]);
   const [verifiedIds, setVerifiedIds] = useState<Set<string>>(() => new Set());
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -64,6 +72,8 @@ export function VendorApplicationsView() {
       const data = await apiFetch<ApplicationResponse>('/api/super-admin/vendor-applications');
       setApplications(data.applications);
       setRequests(data.requests);
+      setRejectedApplications(data.rejectedApplications);
+      setRejectedRequests(data.rejectedRequests);
       setUniversities(data.universities);
       setVerifiedIds(new Set());
     } catch (caught) {
@@ -151,7 +161,11 @@ export function VendorApplicationsView() {
       />
 
       {error ? <Alert variant="danger" title="Could not load applications">{error}</Alert> : null}
-      {loading && applications.length === 0 && requests.length === 0 ? (
+      {loading &&
+      applications.length === 0 &&
+      requests.length === 0 &&
+      rejectedApplications.length === 0 &&
+      rejectedRequests.length === 0 ? (
         <Card className="p-5 text-sm text-slate-500">Loading applications…</Card>
       ) : (
         <div className="space-y-6">
@@ -419,10 +433,94 @@ export function VendorApplicationsView() {
             </section>
           ) : null}
           {!requests.length && !applications.length ? (
-        <Card className="p-5 text-sm text-slate-500">
-          {loading ? 'Refreshing…' : 'No cafeteria applications need review.'}
-        </Card>
+            <Card className="p-5 text-sm text-slate-500">
+              {loading ? 'Refreshing…' : 'No cafeteria applications need review.'}
+            </Card>
           ) : null}
+
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">
+                Rejected applications ({rejectedRequests.length + rejectedApplications.length})
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Review notes are saved here. Kupon does not automatically email rejected applicants.
+              </p>
+            </div>
+            {!rejectedRequests.length && !rejectedApplications.length ? (
+              <Card className="p-4 text-sm text-slate-500">No rejected applications.</Card>
+            ) : null}
+            {rejectedRequests.map((application) => {
+              const subject = `Kupon application review: ${application.businessName}`;
+              const body = `Hello ${application.ownerName},\n\nRegarding your Kupon application for ${application.businessName}:\n\n${application.reviewNote ?? 'Please contact Kupon for details.'}\n\nYou may submit a new application after addressing the feedback.`;
+              return (
+                <Card key={application.id} className="space-y-3 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="danger">Rejected</Badge>
+                    <Badge variant="neutral">Institution: {application.universityName}</Badge>
+                    <span className="text-[11px] text-slate-400">
+                      Reviewed {application.reviewedAt ? formatDateTime(application.reviewedAt) : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      {application.businessName}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Owner: {application.ownerName} · {application.phone}
+                    </p>
+                    <a
+                      href={`mailto:${application.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
+                      className="mt-1 inline-flex text-sm font-medium text-primary-700 underline-offset-2 hover:underline"
+                    >
+                      {application.email}
+                    </a>
+                  </div>
+                  <Alert variant="warning" title="Feedback saved (not emailed)">
+                    {application.reviewNote || 'No review note was saved.'}
+                  </Alert>
+                </Card>
+              );
+            })}
+            {rejectedApplications.map((application) => {
+              const subject = `Kupon application review: ${application.name}`;
+              const body = `Hello ${application.user.name},\n\nRegarding your Kupon application for ${application.name}:\n\n${application.applicationReviewNote ?? 'Please contact Kupon for details.'}`;
+              return (
+                <Card key={application.id} className="space-y-3 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs font-semibold">{application.code}</span>
+                    <Badge variant="danger">Changes requested</Badge>
+                    <Badge variant="neutral">
+                      {application.university.name} · {application.university.city}
+                    </Badge>
+                    <span className="text-[11px] text-slate-400">
+                      Reviewed{' '}
+                      {application.applicationReviewedAt
+                        ? formatDateTime(application.applicationReviewedAt)
+                        : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">{application.name}</h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Owner: {application.user.name} · {application.user.phone}
+                    </p>
+                    {application.user.email ? (
+                      <a
+                        href={`mailto:${application.user.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
+                        className="mt-1 inline-flex text-sm font-medium text-primary-700 underline-offset-2 hover:underline"
+                      >
+                        {application.user.email}
+                      </a>
+                    ) : null}
+                  </div>
+                  <Alert variant="warning" title="Feedback saved (not emailed)">
+                    {application.applicationReviewNote || 'No review note was saved.'}
+                  </Alert>
+                </Card>
+              );
+            })}
+          </section>
         </div>
       )}
     </div>

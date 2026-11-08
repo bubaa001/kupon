@@ -31,7 +31,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | GET | `/api/auth/google/start?universityId=&role=student\|vendor\|staff` | public | Redirects to Google OAuth; only student sign-in requires a selected campus. Vendor sign-in activates an approved application |
 | GET | `/api/auth/callback/google` | public | Verifies state + code. Students can sign up; vendors must have an approved application matching their verified Google email; staff must match an existing account |
 | POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates student profile + session cookie |
-| GET | `/api/super-admin/vendor-applications` | SUPER_ADMIN | `{ applications, requests, universities }` → pending legacy vendor accounts, new pre-auth applications, and available campuses |
+| GET | `/api/super-admin/vendor-applications` | SUPER_ADMIN | `{ applications, requests, rejectedApplications, rejectedRequests, universities }` → pending and rejected vendor applications plus available campuses; rejection notes are stored for review and are not emailed automatically |
 | PATCH | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | `{ decision, universityId?, physicalSiteVerified?, note? }` → approves/rejects application; approval assigns the campus and enables Google activation. Platform admins provision new institutions under `/super-admin/tenants` before assigning them. |
 | GET | `/api/super-admin/vendor-requests/:id/tin-document` | SUPER_ADMIN | Downloads the applicant's private TIN/TRA document; never served from the public food-image route |
 

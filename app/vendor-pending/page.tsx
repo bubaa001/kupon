@@ -152,7 +152,7 @@ export default async function VendorPendingPage() {
 
               {needsChanges ? (
                 <>
-                  <Alert variant="warning" title="The platform admin requested changes">
+                  <Alert variant="warning" title="Review feedback (not emailed)">
                     {vendor.applicationReviewNote}
                   </Alert>
                   <ResubmitForm

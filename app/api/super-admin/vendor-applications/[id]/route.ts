@@ -92,7 +92,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       message:
         body.decision === 'APPROVE'
           ? 'Vendor approved after document and physical-site review.'
-          : 'Application returned to the vendor for correction.',
+          : 'Application rejected. Feedback is available on the vendor review page; no email is sent.',
     });
   } catch (error) {
     return fail(error);

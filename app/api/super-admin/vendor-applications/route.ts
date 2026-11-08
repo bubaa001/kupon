@@ -8,28 +8,43 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     await requireApiUser(['SUPER_ADMIN']);
-    const [applications, requests, universities] = await Promise.all([
-      prisma.vendor.findMany({
-        where: { status: 'PENDING', applicationRejectedAt: null },
-        include: {
-          user: { select: { name: true, email: true, phone: true } },
-          university: { select: { id: true, name: true, code: true, city: true } },
-        },
-        orderBy: { createdAt: 'asc' },
-        take: 100,
-      }),
-      prisma.vendorApplication.findMany({
-        where: { status: 'PENDING' },
-        orderBy: { createdAt: 'asc' },
-        take: 100,
-      }),
-      prisma.university.findMany({
-        where: { status: 'ACTIVE' },
-        select: { id: true, name: true, code: true, city: true },
-        orderBy: { name: 'asc' },
-      }),
-    ]);
-    return ok({ applications, requests, universities });
+    const [applications, requests, rejectedApplications, rejectedRequests, universities] =
+      await Promise.all([
+        prisma.vendor.findMany({
+          where: { status: 'PENDING', applicationRejectedAt: null },
+          include: {
+            user: { select: { name: true, email: true, phone: true } },
+            university: { select: { id: true, name: true, code: true, city: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+          take: 100,
+        }),
+        prisma.vendorApplication.findMany({
+          where: { status: 'PENDING' },
+          orderBy: { createdAt: 'asc' },
+          take: 100,
+        }),
+        prisma.vendor.findMany({
+          where: { status: 'PENDING', applicationRejectedAt: { not: null } },
+          include: {
+            user: { select: { name: true, email: true, phone: true } },
+            university: { select: { id: true, name: true, code: true, city: true } },
+          },
+          orderBy: { applicationReviewedAt: 'desc' },
+          take: 100,
+        }),
+        prisma.vendorApplication.findMany({
+          where: { status: 'REJECTED' },
+          orderBy: { reviewedAt: 'desc' },
+          take: 100,
+        }),
+        prisma.university.findMany({
+          where: { status: 'ACTIVE' },
+          select: { id: true, name: true, code: true, city: true },
+          orderBy: { name: 'asc' },
+        }),
+      ]);
+    return ok({ applications, requests, rejectedApplications, rejectedRequests, universities });
   } catch (error) {
     return fail(error);
   }

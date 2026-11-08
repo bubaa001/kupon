@@ -113,7 +113,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       message:
         body.decision === 'APPROVE'
           ? 'Application approved. The owner can now continue with Google sign-in.'
-          : 'Application declined with feedback recorded.',
+        : 'Application rejected. Feedback is saved in Rejected applications; no email is sent.',
     });
   } catch (error) {
     return fail(error);
