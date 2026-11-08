@@ -71,12 +71,13 @@ export async function GET(request: Request) {
       ]),
     );
 
-    const rows = vendors.map((vendor) =>
-      serializeVendor(
-        vendor,
+    const rows = vendors.map((vendor) => {
+      if (!vendor.user.phone) throw new Error('A vendor account is missing its required phone number.');
+      return serializeVendor(
+        { ...vendor, user: { ...vendor.user, phone: vendor.user.phone } },
         salesByVendor.get(vendor.id) ?? { salesToday: 0, transactionsToday: 0 },
-      ),
-    );
+      );
+    });
 
     return ok({
       university,

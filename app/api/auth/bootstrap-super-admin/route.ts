@@ -15,12 +15,13 @@ export const dynamic = 'force-dynamic';
 
 const setupSchema = z.object({
   setupToken: z.string().min(32).max(512),
-  name: z.string().trim().min(2).max(80),
-  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
-  phone: phoneSchema,
+  username: z.string().trim().min(3).max(32).regex(/^[a-zA-Z0-9._-]+$/).transform((value) => value.toLowerCase()),
+  name: z.string().trim().min(2).max(80).optional(),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()).optional().or(z.literal('')),
+  phone: phoneSchema.optional().or(z.literal('')),
   password: z
     .string()
-    .min(12)
+    .min(8)
     .max(128)
     .regex(/[a-z]/)
     .regex(/[A-Z]/)
@@ -51,9 +52,10 @@ export async function POST(request: Request) {
         }
         return tx.user.create({
           data: {
-            name: body.name,
-            email: body.email,
-            phone: body.phone,
+            name: body.name || 'Kupon Platform Admin',
+            email: body.email || null,
+            phone: body.phone || null,
+            username: body.username,
             passwordHash,
             role: 'SUPER_ADMIN',
           },
@@ -68,13 +70,13 @@ export async function POST(request: Request) {
       role: 'SUPER_ADMIN',
       universityId: null,
       name: user.name,
-      phone: user.phone,
+      phone: user.phone ?? '',
     });
     const response = ok({ user, redirectTo: roleHome('SUPER_ADMIN') }, { status: 201 });
     return setSessionCookie(response, token);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return fail(conflict('That email or phone number already belongs to an account.'));
+      return fail(conflict('That username, email or phone number already belongs to an account.'));
     }
     return fail(error);
   }

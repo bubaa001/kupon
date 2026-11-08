@@ -45,8 +45,12 @@ export const vendorPasswordLoginSchema = z.object({
 });
 
 export const staffLoginSchema = z.object({
-  phone: phoneSchema,
+  identifier: z.string().trim().min(1).max(254).optional(),
+  phone: phoneSchema.optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+}).refine((value) => Boolean(value.identifier ?? value.phone), {
+  path: ['identifier'],
+  message: 'Enter your username or phone number.',
 });
 
 export const topUpSchema = z.object({

@@ -159,7 +159,7 @@ export async function POST(request: Request) {
 
     const data: TenantMutationResult = {
       university: serializeTenantCore(created.university),
-      admin: { name: created.admin.name, phone: created.admin.phone },
+      admin: { name: created.admin.name, phone: created.admin.phone ?? input.adminPhone },
       invoice,
     };
 

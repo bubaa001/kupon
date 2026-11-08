@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       role,
       universityId: created.user.universityId,
       name: created.user.name,
-      phone: created.user.phone,
+      phone: created.user.phone ?? '',
     });
     const response = ok({
       vendor: created.vendor,

@@ -22,7 +22,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/vendor-password-login` | public | `{ phone, password }` → vendor session cookie |
 | POST | `/api/vendor/applications` | public, rate-limited | multipart form with `{ ownerName, nidaNumber, email, phone, businessName, universityName, institutionPhone, confirm:true, tinDocument }` → pending application; accepts a PDF/JPG/PNG TIN/TRA document up to 5 MB; no external document links or pre-approval Google sign-in |
 | POST | `/api/auth/vendor-activate` | Google-approved-application ticket | `{ password }` → creates the approved vendor account and session |
-| POST | `/api/auth/staff-login` | public | `{ phone, password }` → sets cookie |
+| POST | `/api/auth/staff-login` | public | `{ identifier, password }` (or legacy `{ phone, password }`) → sets cookie; identifier accepts a username or Tanzanian phone number |
 | POST | `/api/auth/bootstrap-super-admin` | public, one-time | Requires configured `SUPER_ADMIN_SETUP_TOKEN`; creates the first super-admin and signs it in |
 | GET | `/api/auth/staff-invites/:token` | public, token-bound | Returns non-secret invitation details if the invite is active |
 | POST | `/api/auth/staff-invites/:token` | public, token-bound | `{ password }` → atomically accepts a single-use invite and creates a scoped account |

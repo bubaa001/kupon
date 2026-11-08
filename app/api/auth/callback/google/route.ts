@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
         role: user.role as Role,
         universityId: user.universityId,
         name: user.name,
-        phone: user.phone,
+        phone: user.phone ?? '',
       });
       const response = NextResponse.redirect(externalUrl(request, roleHome(user.role as Role)));
       setSessionCookie(response, token);
@@ -297,7 +297,7 @@ export async function GET(request: NextRequest) {
         role: 'VENDOR',
         universityId: user.universityId,
         name: user.name,
-        phone: user.phone,
+        phone: user.phone ?? '',
       });
       const response = NextResponse.redirect(
         externalUrl(request, user.vendor.status === 'PENDING' ? '/vendor-pending' : '/vendor'),
@@ -327,7 +327,7 @@ export async function GET(request: NextRequest) {
       role: 'STUDENT',
       universityId: user.universityId,
       name: user.name,
-      phone: user.phone,
+      phone: user.phone ?? '',
     });
 
     const response = NextResponse.redirect(externalUrl(request, '/student'));

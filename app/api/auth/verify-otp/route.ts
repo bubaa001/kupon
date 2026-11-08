@@ -93,14 +93,14 @@ export async function POST(request: Request) {
       role: 'STUDENT',
       universityId: user.universityId,
       name: user.name,
-      phone: user.phone,
+      phone: user.phone ?? '',
     });
 
     const response = ok({
       user: {
         id: user.id,
         name: user.name,
-        phone: user.phone,
+        phone: user.phone ?? '',
         role: 'STUDENT' as const,
         studentId: user.student?.studentId,
         university: user.university,

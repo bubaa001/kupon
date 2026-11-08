@@ -168,7 +168,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     role: user.role as Role,
     universityId: user.universityId,
     name: user.name,
-    phone: user.phone,
+    phone: user.phone ?? '',
     university: user.university
       ? {
           id: user.university.id,

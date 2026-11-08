@@ -201,7 +201,7 @@ pnpm start
 
 ## Demo credentials
 
-Kupon does not ship shared platform-owner credentials. Configure `SUPER_ADMIN_SETUP_TOKEN` with a random value of at least 32 characters, run the app, and open `/first-owner` to create the first platform owner with a private phone, email and password. Setup becomes unavailable after a super-admin account exists. Use the same verified email for Google sign-in later.
+Kupon does not ship shared platform-owner credentials. Configure `SUPER_ADMIN_SETUP_TOKEN` with a random value of at least 32 characters, run the app, and open `/first-owner` to create the first platform owner with a username and password. A phone number and Google email are optional. Setup becomes unavailable after a super-admin account exists. Staff and platform admins can sign in with their username or phone number.
 
 Generate a setup token with `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"` and add it to the local `.env` and deployment environment. Do not commit the value.
 
@@ -239,7 +239,7 @@ Security model:
 
 **Staff — `/staff/login`** accepts phone/password or Google sign-in. Google only works for an existing staff/Finance/admin record whose email matches the verified Google email. Invitations are single-use, expire after seven days, and bind the account to one cafeteria.
 
-**First platform owner:** configure `SUPER_ADMIN_SETUP_TOKEN` in the server environment and visit `/first-owner`. The first owner chooses their own credentials; the password is stored as a bcrypt hash, and the same verified email can be linked through Google later.
+**First platform owner:** configure `SUPER_ADMIN_SETUP_TOKEN` in the server environment and visit `/first-owner`. The first owner chooses a username and password; the password is stored as a bcrypt hash. Staff and platform admins can sign in with a username or phone number.
 
 Configure it in `.env` (see `.env.example`):
 
@@ -362,7 +362,7 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 | Students | `/login` (Student) | Google sign-in/signup; OTP UI disabled behind a flag |
 | Vendors | `/vendor-apply`, then `/vendor/login` | Apply without sign-in; after platform approval, verify with Google and set a password |
 | Cafeteria staff | `/staff/login` | Phone/password or Google matching the invited email |
-| Platform operators | `/staff/login` | First owner is created at `/first-owner`; Google can be linked later |
+| Platform operators | `/staff/login` | First owner is created at `/first-owner`; username/password login (Google sign-in requires a linked email) |
 
 - `/login` renders only Student sign-in. Vendor owners and staff have distinct entry points linked from the landing page.
 - `/login?role=staff` redirects to `/staff/login` for old bookmarks.

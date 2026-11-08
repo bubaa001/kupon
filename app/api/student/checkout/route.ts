@@ -26,7 +26,7 @@ export async function GET() {
         studentId: student.studentId,
         course: student.course,
         year: student.year,
-        phone: user.phone,
+        phone: user.phone ?? '',
         university: {
           name: user.university?.name ?? '',
           code: user.university?.code ?? '',

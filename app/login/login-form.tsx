@@ -267,7 +267,7 @@ export function LoginForm({
   const [vendorError, setVendorError] = useState<string | null>(null);
 
   // Staff state
-  const [staffPhone, setStaffPhone] = useState('');
+  const [staffIdentifier, setStaffIdentifier] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
   const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [staffLoading, setStaffLoading] = useState(false);
@@ -465,8 +465,8 @@ export function LoginForm({
 
   async function handleStaffSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isValidTzPhone(staffPhone)) {
-      setStaffError('Enter the phone number on your staff account, for example +255 745 000 001.');
+    if (!staffIdentifier.trim()) {
+      setStaffError('Enter your username or phone number.');
       return;
     }
     if (staffPassword.length < 6) {
@@ -478,7 +478,7 @@ export function LoginForm({
     setStaffError(null);
     try {
       const data = await postJson<AuthSuccessPayload>('/api/auth/staff-login', {
-        phone: normalizePhone(staffPhone),
+        identifier: staffIdentifier.trim(),
         password: staffPassword,
       });
       finishLogin(data, 'Opening the management dashboard.');
@@ -855,20 +855,20 @@ export function LoginForm({
         <TabsContent value="staff" className="mt-5 focus-visible:outline-none">
           <form onSubmit={handleStaffSubmit} className="space-y-4" noValidate>
             <div className="space-y-2">
-              <Label htmlFor="staff-phone">Phone number</Label>
+              <Label htmlFor="staff-identifier">Username or phone number</Label>
               <Input
-                id="staff-phone"
-                name="phone"
-                type="tel"
-                inputMode="tel"
+                id="staff-identifier"
+                name="identifier"
+                type="text"
+                autoCapitalize="none"
                 autoComplete="username"
-                placeholder="+255 745 000 001"
-                value={staffPhone}
-                onChange={(event) => setStaffPhone(event.target.value)}
+                placeholder="Your username or +255 745 000 001"
+                value={staffIdentifier}
+                onChange={(event) => setStaffIdentifier(event.target.value)}
                 error={Boolean(staffError)}
               />
               <p className="text-xs text-slate-500">
-                Use the phone number linked to your Kupon staff invitation.
+                Use your Kupon username or the phone number linked to your staff account.
               </p>
             </div>
 

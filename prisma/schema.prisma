@@ -46,7 +46,8 @@ model University {
 
 model User {
   id              String    @id @default(cuid())
-  phone           String    @unique
+  phone           String?   @unique
+  username        String?   @unique
   email           String?   @unique // university/Google email, linked for OAuth sign-in
   googleId        String?   @unique // Google `sub` once the account is linked
   name            String

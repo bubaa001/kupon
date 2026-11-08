@@ -56,7 +56,8 @@ export function initials(name: string): string {
     .join('');
 }
 
-export function maskPhone(phone: string): string {
+export function maskPhone(phone: string | null): string {
+  if (!phone) return 'Not provided';
   if (phone.length < 8) return phone;
   return `${phone.slice(0, 5)} ••• ${phone.slice(-2)}`;
 }

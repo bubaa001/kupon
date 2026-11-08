@@ -70,6 +70,7 @@ export async function GET() {
       ]);
 
     if (!profile) throw notFound('Student profile not found.');
+    if (!profile.user.phone) throw new Error('A student account is missing its required phone number.');
 
     const data: StudentDashboardData = {
       student: {

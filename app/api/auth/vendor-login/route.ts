@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       role: 'VENDOR',
       universityId: vendor.universityId,
       name: vendor.user.name,
-      phone: vendor.user.phone,
+      phone: vendor.user.phone ?? '',
     });
 
     const response = ok({

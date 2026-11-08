@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       role: 'STUDENT',
       universityId: university.id,
       name: created.user.name,
-      phone: created.user.phone,
+      phone: created.user.phone ?? '',
     });
 
     const response = ok({

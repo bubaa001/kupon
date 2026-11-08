@@ -110,7 +110,7 @@ export async function POST(request: Request, { params }: { params: { token: stri
       role,
       universityId: user.universityId,
       name: user.name,
-      phone: user.phone,
+      phone: user.phone ?? '',
     });
     const response = ok({ user, redirectTo: roleHome(role) }, { status: 201 });
     return setSessionCookie(response, token);

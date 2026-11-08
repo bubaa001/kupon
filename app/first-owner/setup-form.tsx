@@ -12,7 +12,8 @@ import { ApiClientError, postJson } from '@/lib/client-api';
 export function SetupForm() {
   const router = useRouter();
   const [setupToken, setSetupToken] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [name, setName] = useState('Kupon Platform Admin');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +27,7 @@ export function SetupForm() {
     try {
       await postJson('/api/auth/bootstrap-super-admin', {
         setupToken,
+        username,
         name,
         email,
         phone,
@@ -59,7 +61,21 @@ export function SetupForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="owner-name">Your name</Label>
+        <Label htmlFor="owner-username">Username</Label>
+        <Input
+          id="owner-username"
+          autoComplete="username"
+          autoCapitalize="none"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          minLength={3}
+          maxLength={32}
+          pattern="[A-Za-z0-9._-]+"
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="owner-name">Account name</Label>
         <Input
           id="owner-name"
           autoComplete="name"
@@ -67,7 +83,6 @@ export function SetupForm() {
           onChange={(event) => setName(event.target.value)}
           minLength={2}
           maxLength={80}
-          required
         />
       </div>
       <div className="space-y-1.5">
@@ -79,10 +94,9 @@ export function SetupForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           maxLength={254}
-          required
         />
         <p className="text-xs text-slate-500">
-          Use the Google account you intend to link later.
+          Optional. Add it only if you intend to use Google sign-in for this account.
         </p>
       </div>
       <div className="space-y-1.5">
@@ -95,7 +109,6 @@ export function SetupForm() {
           placeholder="+255 7xx xxx xxx"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
-          required
         />
       </div>
       <div className="space-y-1.5">
@@ -106,12 +119,12 @@ export function SetupForm() {
           autoComplete="new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          minLength={12}
+          minLength={8}
           maxLength={128}
           required
         />
         <p className="text-xs text-slate-500">
-          Use at least 12 characters with lowercase, uppercase, and a number.
+          Use at least 8 characters with lowercase, uppercase, and a number.
         </p>
       </div>
       <Button className="w-full" type="submit" loading={saving} disabled={saving}>
