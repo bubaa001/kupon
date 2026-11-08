@@ -14,9 +14,8 @@ export default function OfflinePage() {
       </span>
       <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900">You are offline</h1>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-        Kupon needs a connection to protect your wallet. Your balance is safe — reconnect and try
-        again. You can still use the USSD code <strong className="text-slate-700">*150*88#</strong>{' '}
-        on any feature phone.
+        Kupon needs a connection to confirm orders and keep your coupon status up to date. Reconnect
+        and try again.
       </p>
       <Button asChild className="mt-6" size="lg">
         <Link href="/student">Retry</Link>

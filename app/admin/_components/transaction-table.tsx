@@ -62,7 +62,7 @@ export function TransactionTable({
                   <p className="truncate font-mono text-[10px] text-slate-400">{row.vendor.code}</p>
                 </>
               ) : (
-                <span className="text-[11px] text-slate-400">Wallet</span>
+                <span className="text-[11px] text-slate-400">—</span>
               )}
             </TableCell>
             <TableCell className={cn('hidden lg:table-cell', dense && 'py-2.5')}>

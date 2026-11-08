@@ -89,6 +89,8 @@ const GOOGLE_ERRORS: Record<string, string> = {
     'This Google account has no vendor application yet. Submit a vendor request from the Vendor tab.',
   google_vendor_suspended:
     'This vendor account is suspended. Contact your university admin.',
+  google_staff_only:
+    'This Google email is not linked to an invited staff or administrator account.',
 };
 
 function GoogleGlyph({ className }: { className?: string }) {
@@ -230,12 +232,13 @@ export function LoginForm({
   audience = 'public',
 }: {
   initialRole: LoginRole;
-  /** Public landing login only offers student/vendor. Staff have /staff/login. */
-  audience?: 'public' | 'staff';
+  audience?: 'public' | 'student' | 'vendor' | 'staff';
 }) {
   const router = useRouter();
 
-  const [role, setRole] = useState<LoginRole>(audience === 'staff' ? 'staff' : initialRole);
+  const [role, setRole] = useState<LoginRole>(
+    audience === 'staff' ? 'staff' : audience === 'vendor' ? 'vendor' : initialRole,
+  );
 
   // Public university directory for the student picker.
   const [universities, setUniversities] = useState<University[]>([]);
@@ -299,11 +302,21 @@ export function LoginForm({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const errorCode = params.get('error');
-    const errorRole = params.get('role') === 'vendor' ? 'vendor' : 'student';
+    const errorRole =
+      params.get('role') === 'vendor'
+        ? 'vendor'
+        : params.get('role') === 'staff'
+          ? 'staff'
+          : 'student';
     if (errorCode && GOOGLE_ERRORS[errorCode]) {
       if (errorRole === 'vendor') setVendorError(GOOGLE_ERRORS[errorCode]);
+      else if (errorRole === 'staff') setStaffError(GOOGLE_ERRORS[errorCode]);
       else setStudentError(GOOGLE_ERRORS[errorCode]);
-      window.history.replaceState({}, '', `/login?role=${errorRole}`);
+      window.history.replaceState(
+        {},
+        '',
+        errorRole === 'staff' ? '/staff/login' : errorRole === 'vendor' ? '/vendor/login' : '/login',
+      );
     }
   }, []);
 
@@ -322,15 +335,16 @@ export function LoginForm({
     setStudentError(null);
   }
 
-  function startGoogleSignIn(targetRole: 'student' | 'vendor' = 'student') {
-    if (!universityId) {
+  function startGoogleSignIn(targetRole: 'student' | 'vendor' | 'staff' = 'student') {
+    if (targetRole !== 'staff' && !universityId) {
       const message = 'Select your university before continuing with Google.';
       if (targetRole === 'vendor') setVendorError(message);
       else setStudentError(message);
       return;
     }
     setGoogleStarting(true);
-    const params = new URLSearchParams({ universityId, role: targetRole });
+    const params = new URLSearchParams({ role: targetRole });
+    if (universityId) params.set('universityId', universityId);
     window.location.assign(`/api/auth/google/start?${params.toString()}`);
   }
 
@@ -493,7 +507,7 @@ export function LoginForm({
           </TabsList>
         ) : null}
 
-        {audience === 'public' ? (
+        {audience !== 'staff' ? (
           <>
         <TabsContent value="student" className="mt-5 focus-visible:outline-none">
           <form onSubmit={handleStudentSubmit} className="space-y-4" noValidate>
@@ -666,7 +680,7 @@ export function LoginForm({
                   </p>
                   <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
                     OTP is temporarily disabled. Existing student accounts need their Google email linked by
-                    an admin; new students create a wallet automatically.
+                    an admin; new students can create an account with Google.
                   </p>
                 </div>
                 {studentError ? <InlineError>{studentError}</InlineError> : null}
@@ -698,7 +712,7 @@ export function LoginForm({
             </Button>
             <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
               Google is the student sign-in method now. Existing students sign in if their Google
-              email is linked; new students create a wallet in 30 seconds.
+              email is linked; new students can create an account in 30 seconds.
             </p>
           </div>
         </TabsContent>
@@ -896,6 +910,28 @@ export function LoginForm({
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+          <div className="my-5 relative flex items-center gap-3">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              or
+            </span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full bg-white"
+            onClick={() => startGoogleSignIn('staff')}
+            loading={googleStarting}
+            disabled={googleStarting}
+          >
+            {!googleStarting ? <GoogleGlyph className="h-[18px] w-[18px]" /> : null}
+            Continue with Google
+          </Button>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
+            Use the Google email your cafeteria owner or platform admin added to your account.
+          </p>
         </TabsContent>
         ) : null}
       </Tabs>

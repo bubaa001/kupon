@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { FoodThumb } from '@/components/orders/food-thumb';
 import {
   Clock3,
+  Check,
   KeyRound,
+  PackageX,
   ScanLine,
   ShieldCheck,
   UtensilsCrossed,
@@ -25,14 +27,21 @@ export function OrderCard({
   animationDelay = 0,
   onEnterCode,
   onScanQr,
+  onAcceptRequest,
+  onReportUnavailable,
+  busy = false,
 }: {
   order: OrderView;
   isNew?: boolean;
   animationDelay?: number;
   onEnterCode: (order: OrderView) => void;
   onScanQr: (order: OrderView) => void;
+  onAcceptRequest: (order: OrderView) => void;
+  onReportUnavailable: (order: OrderView) => void;
+  busy?: boolean;
 }) {
   const pending = order.status === 'PENDING';
+  const awaitingAcceptance = order.status === 'AWAITING_ACCEPTANCE';
   const verified = order.status === 'VERIFIED';
   const hero = order.items[0];
 
@@ -41,6 +50,7 @@ export function OrderCard({
       className={cn(
         'animate-order-in card-surface min-w-0 overflow-hidden',
         pending && 'border-amber-200/90 bg-amber-50/30',
+        awaitingAcceptance && 'border-sky-200/90 bg-sky-50/30',
         verified && 'border-emerald-200/80 bg-emerald-50/20',
         order.status === 'CANCELLED' && 'opacity-70',
         isNew && 'ring-2 ring-amber-200/80',
@@ -102,6 +112,24 @@ export function OrderCard({
             </p>
           </div>
 
+          {awaitingAcceptance ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button size="sm" onClick={() => onAcceptRequest(order)} disabled={busy}>
+                <Check className="h-3.5 w-3.5" />
+                Accept request
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onReportUnavailable(order)}
+                disabled={busy}
+              >
+                <PackageX className="h-3.5 w-3.5" />
+                Food unavailable
+              </Button>
+            </div>
+          ) : null}
+
           {pending ? (
             <div className="flex flex-wrap justify-end gap-2">
               <Button size="sm" onClick={() => onEnterCode(order)}>
@@ -134,12 +162,26 @@ export function OrderCard({
             code or coupon QR.
           </p>
         ) : null}
+
+        {awaitingAcceptance ? (
+          <p className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-sky-700/90">
+            <Clock3 className="h-3 w-3" />
+            Payment is confirmed. Accept this order before Kupon issues the student&apos;s coupon.
+          </p>
+        ) : null}
       </div>
     </li>
   );
 }
 
 function OrderStatusChip({ status }: { status: OrderStatus }) {
+  if (status === 'AWAITING_ACCEPTANCE') {
+    return (
+      <Badge variant="default" dot>
+        Needs acceptance
+      </Badge>
+    );
+  }
   if (status === 'PENDING') {
     return (
       <span className="animate-status-pulse inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700">

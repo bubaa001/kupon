@@ -16,7 +16,7 @@ type CreditRequestForIssue = {
 export async function issueCafeteriaCredit(input: {
   tx: Prisma.TransactionClient;
   request: CreditRequestForIssue;
-  expectedStatus: 'PENDING_VENDOR' | 'PENDING_FINANCE';
+  expectedStatus: 'PENDING_VENDOR' | 'PENDING_ADMIN';
   actorId: string;
 }) {
   const order = await input.tx.order.findUnique({
@@ -26,6 +26,7 @@ export async function issueCafeteriaCredit(input: {
       vendorId: true,
       universityId: true,
       testOnly: true,
+      status: true,
       transaction: { select: { isTest: true } },
     },
   });
@@ -37,7 +38,19 @@ export async function issueCafeteriaCredit(input: {
   ) {
     throw conflict('The credit request no longer matches its order.');
   }
+  if (order.status !== 'PENDING' && order.status !== 'AWAITING_ACCEPTANCE') {
+    throw conflict('This order is no longer eligible for cafeteria credit.');
+  }
   const isTest = order.testOnly || order.transaction?.isTest === true;
+
+  const cancelled = await input.tx.order.updateMany({
+    where: {
+      id: input.request.orderId,
+      status: { in: ['PENDING', 'AWAITING_ACCEPTANCE'] },
+    },
+    data: { status: 'CANCELLED' },
+  });
+  if (!cancelled.count) throw conflict('This order was just completed or cancelled.');
 
   const claimed = await input.tx.creditRequest.updateMany({
     where: { id: input.request.id, status: input.expectedStatus },
@@ -49,6 +62,15 @@ export async function issueCafeteriaCredit(input: {
     },
   });
   if (!claimed.count) throw conflict('This credit request was already reviewed.');
+
+  const vendorCharged = await input.tx.vendor.updateMany({
+    where: {
+      id: input.request.vendorId,
+      universityId: input.request.universityId,
+    },
+    data: { pendingBalance: { decrement: input.request.amount } },
+  });
+  if (!vendorCharged.count) throw conflict('The cafeteria account no longer exists.');
 
   const account = await input.tx.cafeteriaCredit.upsert({
     where: {

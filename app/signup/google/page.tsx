@@ -13,8 +13,8 @@ import {
 import { GoogleSignupForm } from './signup-form';
 
 export const metadata: Metadata = {
-  title: 'Create your wallet',
-  description: 'Finish your Kupon student wallet with the Google account you just verified.',
+  title: 'Create your student account',
+  description: 'Finish your Kupon student account with the Google account you just verified.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -55,7 +55,7 @@ export default async function GoogleSignupPage() {
                 Google signup · No SMS needed
               </p>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                Create your Kupon wallet
+                Create your Kupon account
               </h1>
               <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
                 Your Google account is verified. Add your campus details once and start ordering

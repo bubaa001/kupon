@@ -32,7 +32,7 @@ export type GoogleProfile = {
 export type GoogleStatePayload = {
   state: string;
   universityId: string;
-  role: 'student' | 'vendor';
+  role: 'student' | 'vendor' | 'staff';
   createdAt: number;
 };
 

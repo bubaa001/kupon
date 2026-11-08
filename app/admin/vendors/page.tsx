@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import {
   BarChart3,
-  Plus,
   RefreshCw,
   SearchX,
   Store,
@@ -25,7 +24,7 @@ import { formatTZS } from '@/lib/utils';
 import type { VendorListData, VendorRow } from '../_components/types';
 import { queryString, useApiData, useDebouncedValue } from '../_components/hooks';
 import { ConfirmDialog } from '../_components/confirm-dialog';
-import { AddVendorDialog, VendorSalesDialog } from '../_components/vendor-dialogs';
+import { VendorSalesDialog } from '../_components/vendor-dialogs';
 import { RangeTabs, SearchField, SectionCard, TableEmpty } from '../_components/ui-bits';
 
 type StatusFilter = 'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED';
@@ -41,7 +40,6 @@ export default function AdminVendorsPage() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState<StatusFilter>('ALL');
-  const [addOpen, setAddOpen] = useState(false);
   const [salesVendor, setSalesVendor] = useState<VendorRow | null>(null);
   const [confirmVendor, setConfirmVendor] = useState<VendorRow | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,7 +54,6 @@ export default function AdminVendorsPage() {
   );
   const { data, error, loading, reload } = useApiData<VendorListData>(url);
 
-  const universityCode = data?.university?.code ?? '';
   const vendors = data?.vendors ?? [];
 
   async function toggleStatus(vendor: VendorRow) {
@@ -67,9 +64,7 @@ export default function AdminVendorsPage() {
       toast.success(
         nextStatus === 'SUSPENDED'
           ? `${vendor.name} is suspended. They can no longer charge students.`
-          : vendor.status === 'PENDING'
-            ? `${vendor.name} is approved and can open the order desk.`
-            : `${vendor.name} is active again.`,
+          : `${vendor.name} is active again.`,
       );
       setConfirmVendor(null);
       reload();
@@ -90,7 +85,7 @@ export default function AdminVendorsPage() {
         description={
           data?.university
             ? `Cafeteria accounts selling to ${data.university.name} students. Suspending a vendor blocks new payments immediately.`
-            : 'Cafeteria accounts selling to your students.'
+            : 'Manage approved cafeterias in your university. New applications and approvals are handled by the platform team.'
         }
         actions={
           <>
@@ -103,15 +98,6 @@ export default function AdminVendorsPage() {
             >
               <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
               <span className="hidden sm:inline">Refresh</span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setAddOpen(true)}
-              disabled={!universityCode}
-            >
-              <Plus className="h-4 w-4" />
-              Add vendor
             </Button>
           </>
         }
@@ -267,7 +253,11 @@ export default function AdminVendorsPage() {
                         <BarChart3 className="h-3.5 w-3.5" />
                         View sales
                       </Button>
-                      {vendor.status === 'ACTIVE' ? (
+                      {vendor.status === 'PENDING' ? (
+                        <span className="self-center text-[10px] font-medium text-amber-700">
+                          Platform review required
+                        </span>
+                      ) : vendor.status === 'ACTIVE' ? (
                         <Button
                           type="button"
                           size="sm"
@@ -278,12 +268,8 @@ export default function AdminVendorsPage() {
                           Suspend
                         </Button>
                       ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => setConfirmVendor(vendor)}
-                        >
-                          {vendor.status === 'PENDING' ? 'Approve' : 'Reactivate'}
+                        <Button type="button" size="sm" onClick={() => setConfirmVendor(vendor)}>
+                          Reactivate
                         </Button>
                       )}
                     </div>
@@ -293,34 +279,17 @@ export default function AdminVendorsPage() {
             ) : (
               <TableEmpty
                 icon={search ? SearchX : Store}
-                title={search || status !== 'ALL' ? 'No vendors match' : 'No vendors yet'}
+                title={search || status !== 'ALL' ? 'No vendors match'                 : 'No cafeteria vendors yet'}
                 description={
                   search || status !== 'ALL'
                     ? 'Clear the search or switch back to all vendors.'
-                    : 'Add the first cafeteria vendor so students can start paying by QR.'
-                }
-                action={
-                  !search && status === 'ALL' && universityCode ? (
-                    <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
-                      <Plus className="h-4 w-4" />
-                      Add vendor
-                    </Button>
-                  ) : undefined
+                    : 'Cafeteria owners apply with Google. The platform team reviews documents and confirms the location before activation.'
                 }
               />
             )}
           </SectionCard>
         </>
       )}
-
-      {addOpen ? (
-        <AddVendorDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          universityCode={universityCode || 'CAMPUS'}
-          onCreated={reload}
-        />
-      ) : null}
 
       <VendorSalesDialog
         vendor={salesVendor}
@@ -335,27 +304,13 @@ export default function AdminVendorsPage() {
         onOpenChange={(open) => {
           if (!open && !busy) setConfirmVendor(null);
         }}
-        title={
-          confirmVendor?.status === 'ACTIVE'
-            ? 'Suspend this vendor?'
-            : confirmVendor?.status === 'PENDING'
-              ? 'Approve this vendor?'
-              : 'Reactivate this vendor?'
-        }
+        title={confirmVendor?.status === 'ACTIVE' ? 'Suspend this vendor?' : 'Reactivate this vendor?'}
         description={
           confirmVendor?.status === 'ACTIVE'
             ? `${confirmVendor.name} will be blocked from charging students immediately. Their pending settlement stays intact and the action is written to the audit log.`
-            : confirmVendor?.status === 'PENDING'
-              ? `${confirmVendor.name} will get an active order desk, can add dishes immediately and appear on the student menu. The approval is written to the audit log.`
-              : `${confirmVendor?.name ?? 'This vendor'} will be able to charge students again. The action is written to the audit log.`
+            : `${confirmVendor?.name ?? 'This vendor'} will be able to accept orders again. The action is written to the audit log.`
         }
-        confirmLabel={
-          confirmVendor?.status === 'ACTIVE'
-            ? 'Suspend vendor'
-            : confirmVendor?.status === 'PENDING'
-              ? 'Approve vendor'
-              : 'Reactivate vendor'
-        }
+        confirmLabel={confirmVendor?.status === 'ACTIVE' ? 'Suspend vendor' : 'Reactivate vendor'}
         variant={confirmVendor?.status === 'ACTIVE' ? 'destructive' : 'default'}
         loading={busy}
         onConfirm={() => {

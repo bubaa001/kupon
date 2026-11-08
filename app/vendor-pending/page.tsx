@@ -4,13 +4,15 @@ import { Clock3, Mail, ShieldCheck, Store } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
 import { getAuthUser, roleHome } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { SignOutButton } from './sign-out-button';
+import { VendorApplyForm } from '../vendor-apply/vendor-apply-form';
 
 export const metadata: Metadata = {
   title: 'Vendor approval pending',
-  description: 'Your Kupon vendor request is waiting for university admin approval.',
+  description: 'Your Kupon vendor request is waiting for platform-admin document and site review.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +32,11 @@ export default async function VendorPendingPage() {
         code: true,
         description: true,
         status: true,
+        businessRegistrationNumber: true,
+        physicalAddress: true,
+        registrationDocumentUrl: true,
+        applicationRejectedAt: true,
+        applicationReviewNote: true,
         createdAt: true,
         university: { select: { name: true, code: true, city: true } },
       },
@@ -40,14 +47,15 @@ export default async function VendorPendingPage() {
     }),
   ]);
   if (!vendor) redirect('/login?role=vendor');
+  const needsChanges = Boolean(vendor.applicationRejectedAt);
 
   return (
     <main className="min-h-screen bg-[#f7faf8]">
       <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-4 py-6 sm:px-8">
         <header className="flex items-center justify-between">
           <Logo />
-          <Badge variant="warning" dot>
-            Pending review
+          <Badge variant={needsChanges ? 'danger' : 'warning'} dot>
+            {needsChanges ? 'Changes requested' : 'Platform review'}
           </Badge>
         </header>
 
@@ -58,13 +66,13 @@ export default async function VendorPendingPage() {
                 <Clock3 className="h-6 w-6" aria-hidden />
               </span>
               <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Your vendor request is in review
+                {needsChanges ? 'Update your cafeteria application' : 'Your vendor request is in review'}
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-500">
-                {vendor.university.name} has received your application for{' '}
+                The platform admin is reviewing your application for{' '}
                 <span className="font-semibold text-slate-800">{vendor.name}</span>. Approval usually
-                takes less than a day. You will be able to open the order desk as soon as an admin
-                approves it.
+                follows document review and confirmation that the cafeteria physically exists at
+                {` ${vendor.university.name}`}. Your order desk opens after platform-admin approval.
               </p>
             </div>
 
@@ -101,6 +109,36 @@ export default async function VendorPendingPage() {
                 </p>
               </div>
 
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Registration number
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate-800">
+                    {vendor.businessRegistrationNumber || 'Not provided'}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Cafeteria location
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate-800">
+                    {vendor.physicalAddress || 'Not provided'}
+                  </p>
+                </div>
+              </div>
+
+              {vendor.registrationDocumentUrl ? (
+                <a
+                  href={vendor.registrationDocumentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold text-primary-700 underline-offset-2 hover:underline"
+                >
+                  Open submitted registration document
+                </a>
+              ) : null}
+
               <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-[11px] text-slate-500 sm:grid-cols-2">
                 <p className="flex items-center gap-2">
                   <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden />
@@ -112,11 +150,35 @@ export default async function VendorPendingPage() {
                 </p>
               </div>
 
-              <p className="text-[11px] leading-relaxed text-slate-500">
-                Need to change something? Ask the {vendor.university.name} admin to review the
-                request or reject it so you can apply again. Your session stays active while the
-                request is pending.
-              </p>
+              {needsChanges ? (
+                <>
+                  <Alert variant="warning" title="The platform admin requested changes">
+                    {vendor.applicationReviewNote}
+                  </Alert>
+                  <VendorApplyForm
+                    email={account?.email ?? ''}
+                    name={account?.name ?? ''}
+                    university={{
+                      name: vendor.university.name,
+                      code: vendor.university.code,
+                      city: vendor.university.city,
+                    }}
+                    initialApplication={{
+                      businessName: vendor.name,
+                      phone: account?.phone ?? '',
+                      description: vendor.description,
+                      businessRegistrationNumber: vendor.businessRegistrationNumber,
+                      physicalAddress: vendor.physicalAddress,
+                      registrationDocumentUrl: vendor.registrationDocumentUrl,
+                    }}
+                  />
+                </>
+              ) : (
+                <p className="text-[11px] leading-relaxed text-slate-500">
+                  Your session stays active while the platform admin reviews your documents and
+                  verifies the cafeteria location.
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 <Button asChild>

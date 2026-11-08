@@ -42,7 +42,12 @@ export const REQUEST_KIND_LABEL: Record<RequestKind, string> = {
 };
 
 /** Minimum cash-out, mirroring `withdrawalRequestSchema`. */
-export const MIN_WITHDRAWAL = 1000;
+export const MIN_WITHDRAWAL = 50_000;
+export const VENDOR_PAYOUT_FEE = 2_000;
+export const API_PAYOUT_FEE = 1_500;
+export const KUPON_PAYOUT_FEE = 500;
+export const STUDENT_PAYMENT_FEE_PERCENT = 2.5;
+export const KUPON_TRANSACTION_FEE_PERCENT = 1;
 /** A withdrawal higher than this needs a bank-style review in a real deployment. */
 export const MAX_WITHDRAWAL = 500_000;
 /** Minimum reason length for either kind of money request (matches validators). */
@@ -123,9 +128,9 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 
 export const DEFAULT_FEES = {
-  platformPercent: 2.5,
-  aggregatorPercent: 1.5,
-  universityShareOfFeePercent: 20,
+  platformPercent: KUPON_TRANSACTION_FEE_PERCENT,
+  aggregatorPercent: STUDENT_PAYMENT_FEE_PERCENT,
+  universityShareOfFeePercent: 0,
 };
 
 export const TOPUP_AMOUNTS = [1000, 2000, 5000, 10000] as const;

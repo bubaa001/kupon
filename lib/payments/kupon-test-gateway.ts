@@ -32,7 +32,7 @@ async function recordReceipt(payment: {
         transactionId: payment.id,
         sequence: payment.sequence + 1,
         stage: 'RECEIVED',
-        source: 'KUPO_TEST_GATEWAY',
+        source: 'KUPON_TEST_GATEWAY',
       },
     });
     await auditLog(
@@ -41,7 +41,7 @@ async function recordReceipt(payment: {
         action: 'TEST_PAYMENT_RECEIVED',
         entity: 'Transaction',
         entityId: payment.id,
-        metadata: { reference: payment.reference, source: 'KUPO_TEST_GATEWAY' },
+        metadata: { reference: payment.reference, source: 'KUPON_TEST_GATEWAY' },
       },
       tx,
     );

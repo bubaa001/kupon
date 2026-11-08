@@ -60,12 +60,13 @@ export async function POST(request: Request) {
       },
     });
     if (!order) throw notFound('Order not found for this cafeteria.');
-    if (order.status !== 'PENDING' || order.expiresAt <= new Date()) {
+    if (
+      !['PENDING', 'AWAITING_ACCEPTANCE'].includes(order.status) ||
+      (order.status === 'PENDING' && order.expiresAt <= new Date())
+    ) {
       throw conflict('Only an active, unredeemed coupon can be submitted for closing-time credit.');
     }
-    const paidByTestPayment =
-      order.transaction?.status === 'SETTLED' &&
-      order.transaction.amount === order.total - order.creditApplied;
+    const paidByTestPayment = order.transaction?.status === 'SETTLED';
     const paidByCafeteriaCredit =
       !order.transaction && order.testOnly && order.creditApplied === order.total;
     if (!paidByTestPayment && !paidByCafeteriaCredit) {
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
           vendorId: vendor.id,
           universityId: order.universityId,
           kind: 'VENDOR_CLOSING',
-          status: 'PENDING_FINANCE',
+          status: 'PENDING_ADMIN',
           amount: order.total,
           reason: body.reason,
         },

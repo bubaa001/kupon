@@ -6,7 +6,7 @@ import { Logo } from '@/components/ui/logo';
 
 export const metadata: Metadata = {
   title: 'Page not found',
-  description: 'This page is not part of Kupon. Head back to the campus wallet home page.',
+  description: 'This page is not part of Kupon. Head back to the order home page.',
 };
 
 const BARS = [14, 24, 10, 28, 18, 22, 8, 26, 12, 20, 16, 28, 10, 24, 14, 22, 8, 26, 16, 20, 12, 28];
@@ -36,7 +36,7 @@ export default function NotFound() {
             This coupon has expired.
           </h1>
           <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-slate-600">
-            The page you asked for is not on Kupon. The wallet and the sign-in desk are still open.
+            The page you asked for is not on Kupon. Your orders and sign-in are still available.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -70,8 +70,8 @@ export default function NotFound() {
                 VOID · NOT FOUND
               </p>
               <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                The address never existed, or the link moved. Nothing was charged, and no wallet
-                balance changed.
+                The address never existed, or the link moved. No payment was made and no order was
+                changed.
               </p>
             </div>
 

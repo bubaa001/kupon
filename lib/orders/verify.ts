@@ -58,6 +58,16 @@ export async function verifyOrderCoupon(input: {
   if (order.status === 'VERIFIED') {
     throw conflict('This coupon has already been verified.');
   }
+  const pendingCredit = await prisma.creditRequest.findFirst({
+    where: {
+      orderId: order.id,
+      status: { in: ['PENDING_VENDOR', 'PENDING_ADMIN', 'PENDING_FINANCE'] },
+    },
+    select: { id: true },
+  });
+  if (pendingCredit) {
+    throw conflict('This order has an open credit case and cannot be redeemed.');
+  }
   if (order.expiresAt <= new Date()) {
     throw conflict('This coupon has expired and can no longer be redeemed.');
   }

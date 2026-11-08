@@ -20,9 +20,18 @@ const applicationSchema = z.object({
   businessName: z.string().trim().min(2, 'Enter the business name').max(80),
   phone: phoneSchema,
   description: z.string().trim().min(10, 'Describe what you sell').max(500),
+  businessRegistrationNumber: z.string().trim().min(3).max(80),
+  physicalAddress: z.string().trim().min(8).max(250),
+  registrationDocumentUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(500)
+    .refine((value) => value.startsWith('https://'), 'Use a secure HTTPS document link.'),
   confirm: z.literal(true, {
     errorMap: () => ({ message: 'Confirm that you are authorised to apply.' }),
   }),
+  password: z.string().min(12).max(128).regex(/[a-z]/).regex(/[A-Z]/).regex(/\d/),
 });
 
 /**
@@ -48,6 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await parseJson(request, applicationSchema);
+    const passwordHash = await bcrypt.hash(body.password, 12);
 
     const university = await prisma.university.findUnique({
       where: { id: ticket.universityId },
@@ -103,6 +113,7 @@ export async function POST(request: NextRequest) {
           name: body.ownerName,
           role: 'VENDOR',
           universityId: university.id,
+          passwordHash,
           lastLoginAt: new Date(),
         },
       });
@@ -115,6 +126,9 @@ export async function POST(request: NextRequest) {
           code,
           pin: unusablePin,
           description: body.description,
+          businessRegistrationNumber: body.businessRegistrationNumber,
+          physicalAddress: body.physicalAddress,
+          registrationDocumentUrl: body.registrationDocumentUrl,
           settlementAccount: 'Pending bank details',
           status: 'PENDING',
           pendingBalance: 0,

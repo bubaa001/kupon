@@ -28,8 +28,9 @@ export default function GlobalError({
         Something went wrong
       </h1>
       <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-        We could not finish loading this page. Your wallet balance is safe — no payment was
-        deducted. Try again, or contact your university admin if it keeps happening.
+        We could not finish loading this page. If you were checking out, review your order status
+        before retrying to avoid duplicate payment attempts. Try again, or contact support if it
+        keeps happening.
       </p>
       {error.digest ? (
         <p className="mt-2 font-mono text-[10px] text-slate-400">Reference: {error.digest}</p>

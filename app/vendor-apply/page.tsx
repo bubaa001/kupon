@@ -40,7 +40,7 @@ export default async function VendorApplyPage() {
         <header className="flex items-center justify-between">
           <Logo />
           <Link
-            href="/login?role=vendor"
+            href="/vendor/login"
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-white hover:text-slate-800"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />

@@ -65,6 +65,7 @@ export function MenuItemDialog({
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [available, setAvailable] = useState(true);
+  const [autoAccept, setAutoAccept] = useState(false);
   const [previewQty, setPreviewQty] = useState(0);
   const [saving, setSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -90,6 +91,7 @@ export function MenuItemDialog({
     setDescription(item?.description ?? '');
     setImageUrl(item?.imageUrl ?? '');
     setAvailable(item?.available ?? true);
+    setAutoAccept(item?.autoAccept ?? false);
     setPreviewQty(0);
     setSaving(false);
     setAttempted(false);
@@ -517,6 +519,24 @@ export function MenuItemDialog({
                   id="menu-available"
                   checked={available}
                   onCheckedChange={setAvailable}
+                  className="mt-0.5"
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-3.5">
+                <div className="min-w-0">
+                  <Label htmlFor="menu-auto-accept" className="cursor-pointer">
+                    Auto-accept this food
+                  </Label>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
+                    Use for meals you can reliably serve. Orders containing manual foods wait for
+                    staff approval before a coupon is issued.
+                  </p>
+                </div>
+                <Switch
+                  id="menu-auto-accept"
+                  checked={autoAccept}
+                  onCheckedChange={setAutoAccept}
                   className="mt-0.5"
                 />
               </div>

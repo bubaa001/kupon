@@ -5,7 +5,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 
-/** Error boundary for the student area — keeps the shell and wallet nav usable. */
+/** Error boundary for the student area — keeps the shell usable after a page error. */
 export default function StudentError({
   error,
   reset,
@@ -20,9 +20,9 @@ export default function StudentError({
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Wallet"
+        eyebrow="Student account"
         title="Kuna hitilafu"
-        description="Hatukuweza kuonyesha ukurasa huu. Salio lako liko salama."
+        description="Hatukuweza kuonyesha ukurasa huu. Maelezo ya oda yako hayajabadilika."
       />
       <Alert variant="danger" title="Imeshindikana kupakia ukurasa">
         {error.message || 'Jaribu tena. Kama tatizo linaendelea, toka na uingie tena.'}

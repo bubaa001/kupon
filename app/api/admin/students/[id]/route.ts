@@ -27,7 +27,6 @@ export async function GET(_request: Request, { params }: { params: { id: string 
           },
         },
         university: { select: { id: true, name: true, code: true, paymentRouteCode: true } },
-        wallet: { select: { balance: true, currency: true, updatedAt: true } },
       },
     });
     if (!student) throw notFound('Student not found in your university.');
@@ -80,17 +79,13 @@ export async function GET(_request: Request, { params }: { params: { id: string 
         googleLinked: Boolean(student.user.googleId),
         course: student.course,
         year: student.year,
-        balance: student.wallet?.balance ?? student.walletBalance,
-        currency: student.wallet?.currency ?? 'TZS',
         joinedAt: student.createdAt.toISOString(),
         lastLoginAt: student.user.lastLoginAt ? student.user.lastLoginAt.toISOString() : null,
         university: student.university,
       },
       stats: {
-        totalTopUps: sumFor('TOPUP', 'SETTLED'),
         totalSpent: sumFor('PAYMENT', 'SETTLED'),
         totalRefunded: sumFor('REFUND', 'SETTLED'),
-        adjustments: sumFor('ADJUSTMENT_CREDIT') - sumFor('ADJUSTMENT_DEBIT'),
         transactionCount: txCount,
         lastActivityAt: lastTransaction ? lastTransaction.createdAt.toISOString() : null,
       },

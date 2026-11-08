@@ -42,8 +42,8 @@ import { LoadError } from './feedback';
 import { CardBlockSkeleton } from './skeletons';
 
 function PayoutStatusBadge({ status }: { status: string }) {
-  if (status === 'PAID') return <Badge variant="success" dot>Paid</Badge>;
-  if (status === 'PENDING') return <Badge variant="warning" dot>Processing</Badge>;
+  if (status === 'SIMULATED' || status === 'PAID') return <Badge variant="success" dot>Test record</Badge>;
+  if (status === 'PENDING') return <Badge variant="warning" dot>Not processed</Badge>;
   if (status === 'FAILED') return <Badge variant="danger" dot>Failed</Badge>;
   return <Badge variant="neutral" dot>{status}</Badge>;
 }
@@ -58,9 +58,11 @@ export function SettlementView() {
   const [justPaid, setJustPaid] = useState<SettlementResult | null>(null);
 
   const pendingBalance = data?.pendingBalance ?? 0;
-  const minimumPayout = data?.minimumPayout ?? 500;
+  const minimumPayout = data?.minimumPayout ?? 50_000;
+  const payoutFee = data?.payoutFee ?? 2_000;
 
   const parsedAmount = Math.floor(Number(amountInput.replace(/[^\d]/g, '')));
+  const netPayout = Math.max(0, parsedAmount - payoutFee);
   const amountValid =
     Number.isFinite(parsedAmount) &&
     parsedAmount >= minimumPayout &&
@@ -83,13 +85,13 @@ export function SettlementView() {
       });
       setDialogOpen(false);
       setJustPaid(result);
-      toast.success('Payout requested', { description: result.message });
+      toast.success('Test settlement recorded', { description: result.message });
       reload();
     } catch (cause) {
       const message =
         cause instanceof Error && cause.message
           ? cause.message
-          : 'We could not request the settlement. Please try again.';
+          : 'Could not record the test settlement. Please try again.';
       setSubmitError(message);
       toast.error(message);
     } finally {
@@ -101,8 +103,8 @@ export function SettlementView() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Settlement"
-        title="Payouts & balance"
-        description="Move the money you have earned into your bank or mobile-money account."
+        title="Test settlements & balance"
+        description="Review simulated earnings and settlements. No bank or mobile-money payout is sent."
         actions={
           <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
@@ -114,7 +116,7 @@ export function SettlementView() {
       {error && !data ? <LoadError message={error} onRetry={reload} /> : null}
 
       {justPaid ? (
-        <Alert variant="success" title={`${formatTZS(justPaid.settlement.amount)} marked as paid`}>
+        <Alert variant="success" title={`Test settlement recorded · ${formatTZS(justPaid.settlement.netAmount)}`}>
           {justPaid.message}
           <span className="mt-1 block font-mono text-[11px]">{justPaid.settlement.reference}</span>
         </Alert>
@@ -144,18 +146,18 @@ export function SettlementView() {
                   {formatTZS(data.pendingBalance)}
                 </p>
                 <p className="mt-1.5 text-xs text-emerald-100/75">
-                  Available to settle right now • net of the 2.5% Kupon fee
+                  Available after Kupon&apos;s 1% transaction share
                 </p>
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-emerald-100">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Instant mock payout for this demo
+                  Test record only · no money sent
                 </div>
               </div>
 
               <div className="w-full space-y-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur sm:w-64">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/70">
-                    Total settled
+                    Total settled (test)
                   </p>
                   <p className="tabular mt-1 text-lg font-semibold text-white">
                     {formatTZS(data.totalSettled)}
@@ -163,21 +165,22 @@ export function SettlementView() {
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/70">
-                    Payout account
+                    Saved payout account
                   </p>
                   <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-white">
                     <Landmark className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{data.settlementAccount}</span>
                   </p>
+                  <p className="mt-1 text-[10px] text-emerald-100/70">Not used by test settlements</p>
                 </div>
                 <Button
                   size="sm"
                   onClick={openDialog}
-                  disabled={data.pendingBalance <= 0}
+                  disabled={data.pendingBalance < minimumPayout}
                   className="w-full bg-white text-emerald-800 shadow-none hover:bg-emerald-50 disabled:bg-white/15 disabled:text-white/50"
                 >
                   <ArrowUpRight className="h-4 w-4" />
-                  Request settlement
+                  Record test settlement
                 </Button>
               </div>
             </div>
@@ -185,30 +188,30 @@ export function SettlementView() {
 
           {data.pendingBalance <= 0 ? (
             <Alert variant="info" title="Nothing to settle yet">
-              Sales land in your pending balance after a student pays. Keep selling, then request a
-              payout here — the demo marks payouts as paid instantly.
+              Test settlements unlock at {formatTZS(minimumPayout)}. A {formatTZS(payoutFee)} fee is split
+              between the API and Kupon.
             </Alert>
           ) : null}
 
           <div className="grid min-w-0 gap-4 lg:grid-cols-3">
             <section className="card-surface min-w-0 overflow-hidden p-5">
-              <SectionHeading title="How payout works" description="Transparent by design" />
+              <SectionHeading title="How test settlement works" description="No real money moves" />
               <ol className="mt-4 min-w-0 space-y-3.5">
                 {[
                   {
                     icon: ScanLine,
                     title: 'Students pay by QR',
-                    body: 'Each settled sale is added to your pending balance after the platform fee.',
+                    body: 'Students see a 2.5% API fee at checkout. Kupon retains 1% of the food subtotal.',
                   },
                   {
                     icon: Banknote,
-                    title: 'Request a payout',
-                    body: 'Send all or part of the balance to your registered payout account.',
+                    title: 'Record a test settlement',
+                    body: `Withdraw at least ${formatTZS(minimumPayout)}. The ${formatTZS(payoutFee)} fee is split ${formatTZS(data.apiFee)} to the API and ${formatTZS(data.kuponFee)} to Kupon.`,
                   },
                   {
                     icon: BadgeCheck,
-                    title: 'Get confirmation',
-                    body: 'A PAID settlement reference is recorded in your history for reconciliation.',
+                    title: 'Review the record',
+                    body: 'The net amount and both fee shares are recorded with a test reference.',
                   },
                 ].map((step, index) => {
                   const Icon = step.icon;
@@ -228,15 +231,15 @@ export function SettlementView() {
                 })}
               </ol>
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-[11px] leading-relaxed text-slate-500">
-                Demo payouts are immediate. In production this step waits for the bank or
-                mobile-money aggregator webhook before the settlement is marked paid.
+                Test settlements are recorded immediately. No bank or mobile-money service is
+                contacted, and no funds are sent.
               </div>
             </section>
 
             <section className="card-surface min-w-0 overflow-hidden p-5 lg:col-span-2">
               <SectionHeading
-                title="Settled payments"
-                description="Most recent sales included in your balance"
+                title="Confirmed test orders"
+                description="Recent orders included in the simulated balance"
                 actionLabel="All sales"
                 actionHref="/vendor/sales"
               />
@@ -246,14 +249,14 @@ export function SettlementView() {
                   emptyState={
                     <EmptyState
                       icon={ScanLine}
-                      title="No settled payments yet"
-                      description="Open the scanner and take your first Kupon payment to start earning."
+                      title="No confirmed orders yet"
+                      description="Confirmed test orders will appear here and update the simulated balance."
                       compact
                       action={
                         <Button asChild size="sm">
                           <Link href="/vendor/scan">
                             <ScanLine />
-                            Scan &amp; charge
+                            Open order desk
                           </Link>
                         </Button>
                       }
@@ -268,7 +271,7 @@ export function SettlementView() {
             <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 p-5">
               <div className="min-w-0">
                 <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                  Payout history
+                  Test settlement history
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {data.payouts.length} {data.payouts.length === 1 ? 'settlement' : 'settlements'}
@@ -286,13 +289,13 @@ export function SettlementView() {
               <div className="p-4">
                 <EmptyState
                   icon={Wallet}
-                  title="No payouts yet"
-                  description="Your first settlement will appear here with its reference, period and payout date."
+                  title="No test settlements yet"
+                  description="Your first simulated settlement will appear here with its reference and record date."
                   compact
                   action={
-                    data.pendingBalance > 0 ? (
+                    data.pendingBalance >= minimumPayout ? (
                       <Button size="sm" onClick={openDialog}>
-                        Request settlement
+                        Record test settlement
                       </Button>
                     ) : undefined
                   }
@@ -311,11 +314,14 @@ export function SettlementView() {
                           {formatDate(payout.periodStart)} – {formatDate(payout.periodEnd)}
                         </p>
                         <p className="mt-1 text-[11px] text-slate-400">
-                          {payout.paidAt ? `Paid ${formatDate(payout.paidAt)}` : 'Awaiting payout'}
+                          {payout.paidAt ? `Recorded ${formatDate(payout.paidAt)}` : 'Not processed'}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
-                        <Money amount={payout.amount} />
+                        <Money amount={payout.netAmount || payout.amount} />
+                        <p className="mt-1 text-[10px] text-slate-400">
+                          Gross {formatTZS(payout.amount)} · fee {formatTZS(payout.feeAmount)}
+                        </p>
                         <div className="mt-1.5">
                           <PayoutStatusBadge status={payout.status} />
                         </div>
@@ -332,7 +338,7 @@ export function SettlementView() {
                         <TableHead>Period</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Paid</TableHead>
+                        <TableHead>Recorded</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -345,7 +351,10 @@ export function SettlementView() {
                             {formatDate(payout.periodStart)} – {formatDate(payout.periodEnd)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Money amount={payout.amount} />
+                            <Money amount={payout.netAmount || payout.amount} />
+                            <p className="mt-1 text-[10px] text-slate-400">
+                              Gross {formatTZS(payout.amount)} · fee {formatTZS(payout.feeAmount)}
+                            </p>
                           </TableCell>
                           <TableCell>
                             <PayoutStatusBadge status={payout.status} />
@@ -374,10 +383,11 @@ export function SettlementView() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request settlement</DialogTitle>
+            <DialogTitle>Record test settlement</DialogTitle>
             <DialogDescription>
-              Move money from your pending balance to {data?.settlementAccount ?? 'your payout account'}.
-              This demo settles instantly.
+              Simulate a withdrawal from your pending balance. The {formatTZS(payoutFee)} fee is
+              recorded as the API and Kupon split; no funds are sent to{' '}
+              {data?.settlementAccount ?? 'a payout account'}.
             </DialogDescription>
           </DialogHeader>
 
@@ -392,7 +402,7 @@ export function SettlementView() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="settlement-amount">Amount to settle (TZS)</Label>
+              <Label htmlFor="settlement-amount">Gross amount to settle (TZS)</Label>
               <Input
                 id="settlement-amount"
                 type="number"
@@ -423,6 +433,12 @@ export function SettlementView() {
                   Enter an amount between {formatTZS(minimumPayout)} and {formatTZS(pendingBalance)}.
                 </p>
               ) : null}
+              {amountValid ? (
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-[11px] text-emerald-900">
+                  Fee {formatTZS(payoutFee)} ({formatTZS(data?.apiFee ?? 1_500)} API +{' '}
+                  {formatTZS(data?.kuponFee ?? 500)} Kupon) · recorded net {formatTZS(netPayout)}
+                </div>
+              ) : null}
             </div>
 
             {submitError ? <Alert variant="danger">{submitError}</Alert> : null}
@@ -436,7 +452,7 @@ export function SettlementView() {
             </DialogClose>
             <Button onClick={submitSettlement} loading={submitting} disabled={!canSubmit}>
               <Banknote className="h-4 w-4" />
-              Send {amountValid ? formatTZS(parsedAmount) : 'payout'}
+              Record {amountValid ? formatTZS(netPayout) : 'test settlement'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -44,6 +44,15 @@ export async function POST(
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      const vendorCharge = await tx.vendor.updateMany({
+        where: {
+          id: creditRequest.vendorId,
+          universityId: creditRequest.universityId,
+        },
+        data: { pendingBalance: { decrement: ESCALATION_FEE } },
+      });
+      if (!vendorCharge.count) throw conflict('The cafeteria account no longer exists.');
+
       const feeTransaction = await tx.transaction.create({
         data: {
           reference: randomReference('FEE'),

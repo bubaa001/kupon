@@ -38,6 +38,7 @@ model University {
   otpCodes        OtpCode[]
   creditRequests  CreditRequest[]
   supportTickets  SupportTicket[]
+  teamInvites     TeamInvite[]
 
   @@index([status])
 }
@@ -68,6 +69,7 @@ model User {
   paymentEvents          PaymentEvent[]
   reviewedCreditRequests CreditRequest[] @relation("CreditRequestReviewer")
   reviewedSupportTickets SupportTicket[] @relation("SupportTicketReviewer")
+  createdTeamInvites     TeamInvite[]    @relation("TeamInviteCreator")
 
   @@index([universityId, role])
   @@index([managedVendorId, role])
@@ -80,8 +82,7 @@ model StudentProfile {
   studentId     String
   course        String   @default("General Studies")
   year          Int      @default(1)
-  // Cached copy of Wallet.balance for fast list rendering. Every writer updates
-  // both inside one Prisma $transaction; Wallet remains the accounting record.
+  // Legacy wallet balance retained for historical records; current checkout uses cafeteria credit.
   walletBalance Int      @default(0)
   createdAt     DateTime @default(now())
 
@@ -101,19 +102,26 @@ model StudentProfile {
 }
 
 model Vendor {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  universityId      String
-  name              String
-  code              String   @unique
-  pin               String // bcrypt hash of the 4-digit POS PIN
-  description       String   @default("Campus cafeteria")
-  settlementAccount String   @default("CRDB Bank •••• 0000")
-  pendingBalance    Int      @default(0)
-  totalSettled      Int      @default(0)
-  status            String   @default("ACTIVE") // PENDING | ACTIVE | SUSPENDED
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                         String    @id @default(cuid())
+  userId                     String    @unique
+  universityId               String
+  name                       String
+  code                       String    @unique
+  pin                        String // bcrypt hash of the 4-digit POS PIN
+  description                String    @default("Campus cafeteria")
+  settlementAccount          String    @default("CRDB Bank •••• 0000")
+  businessRegistrationNumber String    @default("")
+  physicalAddress            String    @default("")
+  registrationDocumentUrl    String    @default("")
+  applicationReviewNote      String?
+  applicationRejectedAt      DateTime?
+  applicationReviewedAt      DateTime?
+  physicalSiteVerified       Boolean   @default(false)
+  pendingBalance             Int       @default(0)
+  totalSettled               Int       @default(0)
+  status                     String    @default("ACTIVE") // PENDING | ACTIVE | SUSPENDED
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamMembers      User[]            @relation("VendorTeamMembers")
@@ -125,11 +133,35 @@ model Vendor {
   cafeteriaCredits CafeteriaCredit[]
   creditRequests   CreditRequest[]
   supportTickets   SupportTicket[]
+  teamInvites      TeamInvite[]
 
   @@index([universityId, status])
 }
 
+model TeamInvite {
+  id           String    @id @default(cuid())
+  tokenHash    String    @unique
+  name         String
+  email        String
+  phone        String
+  role         String
+  universityId String
+  vendorId     String
+  createdById  String
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  vendor     Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  createdBy  User       @relation("TeamInviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([vendorId, acceptedAt, expiresAt])
+  @@index([email])
+}
+
 model Wallet {
+  // Legacy table retained for old records. New student accounts and orders do not use it.
   id        String   @id @default(cuid())
   studentId String   @unique
   balance   Int      @default(0)
@@ -189,6 +221,7 @@ model MenuItem {
   emoji          String   @default("🍲")
   imageUrl       String? // optional local/remote food image shown on the menu + coupon
   available      Boolean  @default(true)
+  autoAccept     Boolean  @default(false)
   approvalStatus String   @default("PENDING") // PENDING | APPROVED | REJECTED
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -205,23 +238,24 @@ model MenuItem {
 // pending credit + journal); the coupon is the redemption proof the vendor
 // verifies at the counter. Status: PENDING | VERIFIED | CANCELLED.
 model Order {
-  id            String    @id @default(cuid())
-  reference     String    @unique
-  universityId  String
-  studentId     String
-  vendorId      String
-  status        String    @default("PENDING")
-  total         Int
-  creditApplied Int       @default(0)
-  testOnly      Boolean   @default(false)
-  itemCount     Int
-  couponCode    String    @unique
-  note          String?
-  transactionId String?   @unique
-  verifiedById  String?
-  verifiedAt    DateTime?
-  expiresAt     DateTime
-  createdAt     DateTime  @default(now())
+  id                 String    @id @default(cuid())
+  reference          String    @unique
+  universityId       String
+  studentId          String
+  vendorId           String
+  status             String    @default("PENDING")
+  total              Int
+  creditApplied      Int       @default(0)
+  requiresAcceptance Boolean   @default(false)
+  testOnly           Boolean   @default(false)
+  itemCount          Int
+  couponCode         String    @unique
+  note               String?
+  transactionId      String?   @unique
+  verifiedById       String?
+  verifiedAt         DateTime?
+  expiresAt          DateTime
+  createdAt          DateTime  @default(now())
 
   university      University       @relation(fields: [universityId], references: [id])
   student         StudentProfile   @relation(fields: [studentId], references: [id])
@@ -297,10 +331,11 @@ model CreditRequest {
   vendorId         String
   universityId     String
   kind             String // STUDENT_UNFULFILLED | VENDOR_CLOSING
-  status           String // PENDING_VENDOR | PENDING_FINANCE | APPROVED | REJECTED
+  status           String // PENDING_VENDOR | PENDING_ADMIN | PENDING_FINANCE | APPROVED | REJECTED
   amount           Int
   reason           String
   vendorNote       String?
+  adminNote        String?
   reviewedById     String?
   vendorReviewedAt DateTime?
   reviewedAt       DateTime?
@@ -490,7 +525,11 @@ model Settlement {
   reference    String    @unique
   vendorId     String
   universityId String
-  amount       Int
+  amount       Int // Gross amount removed from vendor pending balance
+  feeAmount    Int       @default(0)
+  apiFee       Int       @default(0)
+  kuponFee     Int       @default(0)
+  netAmount    Int       @default(0)
   status       String    @default("PENDING") // PENDING | PAID | FAILED
   periodStart  DateTime
   periodEnd    DateTime

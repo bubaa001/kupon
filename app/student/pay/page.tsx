@@ -59,6 +59,10 @@ type PlaceOrderResponse = {
     status: 'PENDING' | 'SETTLED';
     message: string;
     demo: boolean;
+    amountCharged: number;
+    apiFee: number;
+    kuponFee: number;
+    requiresAcceptance: boolean;
   };
 };
 
@@ -190,7 +194,11 @@ export default function PayPage() {
     if (!silent) setPendingLoading(true);
     try {
       const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=ALL');
-      setPendingOrders(data.orders.filter((entry) => entry.status === 'PENDING'));
+      setPendingOrders(
+        data.orders.filter(
+          (entry) => entry.status === 'PENDING' || entry.status === 'AWAITING_ACCEPTANCE',
+        ),
+      );
       setPendingPaymentOrders(data.orders.filter((entry) => entry.status === 'PAYMENT_PENDING'));
       setPendingError(null);
     } catch (err) {
@@ -322,6 +330,8 @@ export default function PayPage() {
     ? Math.min(subtotal, menu?.student.cafeteriaCreditBalance ?? 0)
     : 0;
   const amountDue = subtotal - cafeteriaCreditUsed;
+  const apiFeeEstimate = Math.round((amountDue * 2.5) / 100);
+  const totalChargedEstimate = amountDue + apiFeeEstimate;
   const canPay = itemCount > 0 && !submitting;
   function changeQuantity(menuItemId: string, quantity: number) {
     setCart((previous) => {
@@ -369,12 +379,17 @@ export default function PayPage() {
       setPhase(result.payment.status === 'SETTLED' ? 'coupon' : 'payment');
       if (result.payment.status === 'SETTLED') {
         vibrate([30, 40, 60]);
-        toast.success('Malipo yamethibitishwa. Coupon yako iko tayari.', {
-          description:
-            result.order.creditApplied > 0 && result.order.creditApplied === result.order.total
-              ? `Cafeteria credit imetumika kwa ${formatTZS(result.order.creditApplied)}. Hakuna pesa mpya iliyokusanywa.`
-              : 'Order ya majaribio imethibitishwa. Hakuna pesa halisi iliyohamishwa.',
-        });
+        toast.success(
+          result.payment.requiresAcceptance
+            ? 'Malipo yamethibitishwa. Cafeteria inakagua order yako.'
+            : 'Malipo yamethibitishwa. Coupon yako iko tayari.',
+          {
+            description:
+              result.order.creditApplied > 0 && result.order.creditApplied === result.order.total
+                ? `Cafeteria credit imetumika kwa ${formatTZS(result.order.creditApplied)}.`
+                : result.payment.message,
+          },
+        );
       } else {
         toast.info('Test payment imeanzishwa. Kupon itaendelea kiotomatiki.', {
           description: `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
@@ -396,7 +411,9 @@ export default function PayPage() {
 
   useEffect(() => {
     const waitingForPayment = phase === 'payment' && orderStatus === 'PAYMENT_PENDING';
-    const waitingForVendor = phase === 'coupon' && orderStatus === 'PENDING';
+    const waitingForVendor =
+      phase === 'coupon' &&
+      (orderStatus === 'PENDING' || orderStatus === 'AWAITING_ACCEPTANCE');
     if (!orderId || (!waitingForPayment && !waitingForVendor)) return;
 
     let cancelled = false;
@@ -427,7 +444,10 @@ export default function PayPage() {
             });
             return;
           }
-          if (next.status === 'PENDING' && waitingForPayment) {
+          if (
+            (next.status === 'PENDING' || next.status === 'AWAITING_ACCEPTANCE') &&
+            waitingForPayment
+          ) {
             setPendingPaymentOrders((previous) => previous.filter((entry) => entry.id !== next.id));
             setPendingOrders((previous) => [
               next,
@@ -435,7 +455,19 @@ export default function PayPage() {
             ]);
             setPhase('coupon');
             vibrate([30, 40, 60]);
-            toast.success('Malipo yamethibitishwa. Coupon yako iko tayari.');
+            toast.success(
+              next.status === 'AWAITING_ACCEPTANCE'
+                ? 'Malipo yamethibitishwa. Order inasubiri cafeteria ikubali.'
+                : 'Malipo yamethibitishwa. Coupon yako iko tayari.',
+            );
+            return;
+          }
+          if (next.status === 'PENDING' && orderStatus === 'AWAITING_ACCEPTANCE') {
+            setPendingOrders((previous) => [
+              next,
+              ...previous.filter((entry) => entry.id !== next.id),
+            ]);
+            toast.success('Cafeteria imekubali order. Coupon yako iko tayari.');
             return;
           }
           if (next.status === 'VERIFIED') {
@@ -894,13 +926,17 @@ export default function PayPage() {
         <>
           <PageHeader
             eyebrow={order.paymentTest ? 'TEST COUPON • Order' : 'Coupon • Order'}
-            title="Coupon yako"
-            description="Onyesha coupon hii kwa vendor. Status inasasishwa yenyewe mara vendor anapoi-verify."
+            title={order.status === 'AWAITING_ACCEPTANCE' ? 'Order inasubiri cafeteria' : 'Coupon yako'}
+            description={
+              order.status === 'AWAITING_ACCEPTANCE'
+                ? 'Malipo yamethibitishwa. Cafeteria inakagua upatikanaji; QR ya coupon itaonekana baada ya kukubali.'
+                : 'Onyesha coupon hii kwa vendor. Status inasasishwa yenyewe mara vendor anapoi-verify.'
+            }
           />
           {order.paymentTest ? (
             <Alert variant="warning">
               Test payment automatically confirmed by Kupon&apos;s gateway. No real money was
-              collected.
+              collected. Manual-food requests wait for cafeteria acceptance before a coupon is issued.
             </Alert>
           ) : null}
           <FoodCoupon order={order} onNewOrder={resetToScan} />
@@ -923,6 +959,11 @@ export default function PayPage() {
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
                 Coupon imekamilika. Chukua chakula chako.
+              </>
+            ) : order.status === 'AWAITING_ACCEPTANCE' ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                Inasubiri cafeteria ikubali order…
               </>
             ) : (
               <>
@@ -1007,16 +1048,31 @@ export default function PayPage() {
                 ) : null}
                 <div className="flex justify-between gap-3 border-t border-slate-200 pt-1.5">
                   <span className="text-slate-500">
-                    {amountDue > 0 ? 'Remaining test payment' : 'Due'}
+                    {amountDue > 0 ? 'Mobile-money amount' : 'Due after credit'}
                   </span>
                   <span className="font-semibold tabular text-slate-900">{formatTZS(amountDue)}</span>
                 </div>
+                {amountDue > 0 ? (
+                  <>
+                    <div className="flex justify-between gap-3 text-slate-500">
+                      <span>API fee (2.5%)</span>
+                      <span className="font-semibold tabular">{formatTZS(apiFeeEstimate)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3 border-t border-slate-200 pt-1.5">
+                      <span className="font-semibold text-slate-700">Total to pay</span>
+                      <span className="font-semibold tabular text-slate-900">
+                        {formatTZS(totalChargedEstimate)}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
               </div>
 
               <Alert variant="warning">
-                Kupon test gateway only. It simulates payment receipt and confirmation, then issues
-                the coupon automatically. No mobile-money request is sent and no real money is held
-                or collected.
+                Kupon&apos;s internal gateway simulates payment receipt and confirmation. The
+                student-facing API fee is 2.5%; Kupon retains 1% of the food subtotal. No real
+                money is collected in test mode. Manual foods require cafeteria acceptance before
+                a coupon is issued.
               </Alert>
 
               <div className="space-y-1.5">
@@ -1043,7 +1099,9 @@ export default function PayPage() {
                 </Button>
                 <Button onClick={() => void submitOrder()} loading={submitting} disabled={!canPay}>
                   <Smartphone aria-hidden />
-                  {amountDue > 0 ? `Continue · ${formatTZS(amountDue)} test` : 'Use cafeteria credit'}
+                  {amountDue > 0
+                    ? `Continue · ${formatTZS(totalChargedEstimate)} test`
+                    : 'Use cafeteria credit'}
                 </Button>
               </DialogFooter>
             </>

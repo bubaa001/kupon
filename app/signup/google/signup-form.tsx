@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, CheckCircle2, Mail, ShieldCheck, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,7 @@ export function GoogleSignupForm({
       setFormError(
         error instanceof ApiClientError
           ? error.message
-          : 'Could not create your wallet. Check your details and try again.',
+          : 'Could not create your account. Check your details and try again.',
       );
       setSubmitting(false);
     }
@@ -106,14 +106,14 @@ export function GoogleSignupForm({
         </div>
         <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500">
           <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          You will not receive an SMS code. This Google email becomes your login, and your wallet
-          starts at TZS 0 until you top up.
+          You will not receive an SMS code. This Google email becomes your login. Pay for each order
+          with Kupon at checkout; no student wallet is created.
         </p>
       </div>
 
       <div className="space-y-4 p-5 sm:p-6">
         {formError ? (
-          <Alert variant="danger" title="Could not create your wallet">
+          <Alert variant="danger" title="Could not create your account">
             {formError}
           </Alert>
         ) : null}
@@ -150,7 +150,7 @@ export function GoogleSignupForm({
             placeholder="+255 712 345 678"
           />
           <p id="signup-phone-help" className="text-[11px] text-slate-500">
-            Used for top-ups, receipts and USSD. No SMS verification is required.
+            Used for order updates and checkout. No SMS verification is required.
           </p>
           {errors.phone ? (
             <p id="signup-phone-error" className="text-[11px] font-medium text-red-600">
@@ -209,12 +209,12 @@ export function GoogleSignupForm({
 
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
-            <Wallet className="h-4 w-4" aria-hidden />
-            New wallet · TZS 0
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            Ready to order
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
-            Top up with M-Pesa, Airtel Money, Tigo Pesa or Halopesa after signup. Your balance and
-            meal history stay in this wallet.
+            Pay for each meal at checkout through Kupon. Your orders and coupons remain in your
+            account history.
           </p>
         </div>
 
@@ -233,7 +233,7 @@ export function GoogleSignupForm({
             className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500/30"
           />
           <span className="text-[11px] leading-relaxed text-slate-600">
-            I am a student at {university.name} and these wallet details are mine.
+            I am a student at {university.name} and these account details are mine.
             {errors.confirm ? (
               <span className="mt-1 block font-medium text-red-600">{errors.confirm}</span>
             ) : null}
@@ -241,12 +241,12 @@ export function GoogleSignupForm({
         </label>
 
         <Button type="submit" size="lg" loading={submitting} className="w-full">
-          Create my wallet
+          Create my account
           <ArrowRight aria-hidden />
         </Button>
 
         <p className="flex items-center justify-center gap-1 text-center text-[11px] text-slate-500">
-          Already have a wallet?
+          Already have an account?
           <Link
             href="/login?role=student"
             className="font-semibold text-primary-700 underline-offset-2 hover:underline"

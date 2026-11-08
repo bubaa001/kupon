@@ -16,7 +16,15 @@ export const dynamic = 'force-dynamic';
 const ordersQuerySchema = z.object({
   id: z.string().min(1).optional(),
   status: z
-    .enum(['PAYMENT_PENDING', 'PAYMENT_FAILED', 'PENDING', 'VERIFIED', 'CANCELLED', 'ALL'])
+    .enum([
+      'PAYMENT_PENDING',
+      'PAYMENT_FAILED',
+      'AWAITING_ACCEPTANCE',
+      'PENDING',
+      'VERIFIED',
+      'CANCELLED',
+      'ALL',
+    ])
     .optional()
     .default('ALL'),
 });
@@ -35,6 +43,7 @@ async function withCoupon<
   if (
     order.status === 'PAYMENT_PENDING' ||
     order.status === 'PAYMENT_FAILED' ||
+    order.status === 'AWAITING_ACCEPTANCE' ||
     (order.status === 'PENDING' && order.expiresAt <= new Date())
   ) {
     return null;
@@ -53,8 +62,8 @@ async function withCoupon<
 
 /**
  * GET /api/student/orders
- * Returns the student's paid coupons with freshly signed QR tokens. Payment
- * intents do not include coupon details until the gateway confirms payment.
+ * Returns the student's orders with freshly signed QR tokens. Coupon details
+ * remain hidden until payment is confirmed and the cafeteria accepts the order.
  *
  * POST /api/student/orders
  * Starts an internal test payment from a vendor menu. Kupon's test gateway

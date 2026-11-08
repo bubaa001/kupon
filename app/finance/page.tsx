@@ -40,7 +40,8 @@ export default function FinancePage() {
               <div>
                 <p className="text-sm font-semibold text-slate-900">Assigned credit & support cases</p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Review finance-approved cafeteria credits and escalated support tickets.
+                  Review payment activity and escalated support tickets. Platform admins approve
+                  cafeteria credit requests.
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />

@@ -29,7 +29,7 @@ import { DetailRow, SectionCard } from '../_components/ui-bits';
 const BRAND_SWATCHES = ['#10B981', '#0EA5E9', '#6366F1', '#F59E0B', '#EF4444', '#0F172A'];
 
 const ACCOUNT_LABELS: Record<string, string> = {
-  STUDENT_WALLET: 'Student wallets',
+  STUDENT_WALLET: 'Legacy student balances (historical)',
   VENDOR_PENDING: 'Vendor pending settlement',
   PLATFORM_REVENUE: 'Kupon platform revenue',
   UNIVERSITY_REVENUE: 'University revenue',
@@ -124,8 +124,8 @@ export default function AdminSettingsPage() {
       await patchJson('/api/admin/settings', {
         paymentRouteCode: routeCode.trim(),
       });
-      toast.success('Lipa Namba updated.', {
-        description: 'New top-ups will be collected to this code from now on.',
+      toast.success('Payment routing code updated.', {
+        description: 'The new code will be recorded with future checkout events.',
       });
       settings.reload();
       audit.reload();
@@ -269,14 +269,14 @@ export default function AdminSettingsPage() {
               </SectionCard>
 
               <SectionCard
-                title="Lipa Namba collection code"
-                description="The 6-digit mobile-money code students pay top-ups to. Must be unique across Kupon."
+                title="Checkout routing code"
+                description="A university-specific code stored with checkout records. This test gateway does not collect money or create student balances."
                 contentClassName="space-y-4"
               >
                 {routeError ? <Alert variant="danger">{routeError}</Alert> : null}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <div className="space-y-1.5 sm:w-64">
-                    <Label htmlFor="route-code">Collection code</Label>
+                    <Label htmlFor="route-code">Routing code</Label>
                     <Input
                       id="route-code"
                       value={routeCode}
@@ -294,8 +294,8 @@ export default function AdminSettingsPage() {
                       <span className="font-mono font-semibold text-slate-800">
                         {university?.paymentRouteCode}
                       </span>
-                      . Changing it only affects new top-ups; historical payments keep their
-                      original route code.
+                      . Changing it only affects new checkout records; historical payments keep
+                      their original route code.
                     </p>
                   </div>
                   <Button

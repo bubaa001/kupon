@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     });
     if (phoneOwner) {
       throw conflict(
-        'This phone number already has a Kupon wallet. Sign in with OTP or ask your admin to link this Google email.',
+        'This phone number is already linked to a Kupon account. Sign in or ask your admin to link this Google email.',
       );
     }
 
@@ -112,12 +112,7 @@ export async function POST(request: NextRequest) {
           studentId: body.studentId,
           course: body.course?.trim() || 'General Studies',
           year: body.year,
-          walletBalance: 0,
         },
-      });
-
-      await tx.wallet.create({
-        data: { studentId: student.id, balance: 0, currency: 'TZS' },
       });
 
       await auditLog(

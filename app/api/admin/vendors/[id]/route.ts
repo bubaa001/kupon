@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
 import { fail, ok, parseJson } from '@/lib/api';
 import { auditLog } from '@/lib/audit';
-import { notFound } from '@/lib/errors';
+import { forbidden, notFound } from '@/lib/errors';
 import { vendorStatusSchema } from '@/lib/validators';
 import { tenantWhere } from '@/lib/tenant';
 import { requireAdmin } from '../../_lib/scope';
@@ -20,6 +20,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       include: { user: { select: { name: true, phone: true } } },
     });
     if (!vendor) throw notFound('Vendor not found in your university.');
+    if (vendor.status === 'PENDING' || body.status === 'PENDING') {
+      throw forbidden('Pending cafeteria applications can only be reviewed by a platform admin.');
+    }
 
     const updated = await prisma.vendor.update({
       where: { id: vendor.id },
@@ -27,12 +30,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       include: { user: { select: { name: true, phone: true } } },
     });
 
-    const action =
-      body.status === 'SUSPENDED'
-        ? 'VENDOR_SUSPENDED'
-        : vendor.status === 'PENDING' && body.status === 'ACTIVE'
-          ? 'VENDOR_APPROVED'
-          : 'VENDOR_REACTIVATED';
+    const action = body.status === 'SUSPENDED' ? 'VENDOR_SUSPENDED' : 'VENDOR_REACTIVATED';
 
     await auditLog({
       actorId: user.id,

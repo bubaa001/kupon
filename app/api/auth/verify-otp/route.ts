@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       },
       include: {
         university: { select: { name: true, code: true } },
-        student: { select: { studentId: true, walletBalance: true } },
+        student: { select: { studentId: true } },
       },
     });
     if (!user) {

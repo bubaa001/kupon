@@ -5,13 +5,11 @@ import Link from 'next/link';
 import {
   ArrowRight,
   BarChart3,
-  Banknote,
+  CircleDollarSign,
   ReceiptText,
   RefreshCw,
-  RotateCcw,
   Users,
   UtensilsCrossed,
-  Wallet,
 } from 'lucide-react';
 import { RevenueAreaChart } from '@/components/charts/revenue-area-chart';
 import { TopMealsBarChart } from '@/components/charts/top-meals-bar-chart';
@@ -23,7 +21,6 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
-import type { MoneyRequestListData } from '@/lib/payments/money-request-types';
 import { formatCompactTZS, formatNumber, formatTZS, percentage } from '@/lib/utils';
 import type { DashboardData, TxRow } from './_components/types';
 import { useApiData } from './_components/hooks';
@@ -38,17 +35,9 @@ function delta(current: number, previous: number): number | undefined {
 
 export default function AdminDashboardPage() {
   const { data, error, loading, reload } = useApiData<DashboardData>('/api/admin/dashboard');
-  // Two separate money-request queues, surfaced with their own counts. Withdrawals
-  // and order refunds are distinct products; never collapse them into one number.
-  const withdrawals = useApiData<MoneyRequestListData>(
-    '/api/admin/withdrawals?summaryOnly=1',
-  );
-  const refunds = useApiData<MoneyRequestListData>('/api/admin/refunds?summaryOnly=1');
   const [selected, setSelected] = useState<TxRow | null>(null);
 
   const stats = data?.stats;
-  const withdrawalSummary = withdrawals.data?.summary;
-  const refundSummary = refunds.data?.summary;
   const chart = data?.chart ?? [];
   const totalRevenue = chart.reduce((sum, point) => sum + point.revenue, 0);
   const hasChartData = totalRevenue > 0 || chart.some((point) => point.transactions > 0);
@@ -60,8 +49,8 @@ export default function AdminDashboardPage() {
         title="Good to see you"
         description={
           data?.university
-            ? `Live wallet, vendor, refund and withdrawal performance for ${data.university.name}.`
-            : 'Live wallet, vendor, refund and withdrawal performance for your campus.'
+            ? `Sales, orders, vendors and student activity for ${data.university.name}.`
+            : 'Sales, orders, vendors and student activity for your campus.'
         }
         actions={
           <>
@@ -103,11 +92,11 @@ export default function AdminDashboardPage() {
         <PageSkeleton />
       ) : error && !data ? null : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard
               label="Revenue today"
               value={formatCompactTZS(stats?.revenueToday ?? 0)}
-              icon={Wallet}
+              icon={CircleDollarSign}
               accent="emerald"
               delta={delta(stats?.revenueToday ?? 0, stats?.revenueYesterday ?? 0)}
               hint={`vs ${formatCompactTZS(stats?.revenueYesterday ?? 0)} same time yesterday`}
@@ -130,51 +119,6 @@ export default function AdminDashboardPage() {
               accent="violet"
               hint={`${formatNumber(stats?.totalStudents ?? 0)} enrolled in this campus`}
             />
-            <Link href="/admin/withdrawals" className="block">
-              <StatCard
-                label="Pending withdrawals"
-                value={
-                  withdrawals.data ? formatNumber(withdrawalSummary?.pending ?? 0) : '—'
-                }
-                icon={Banknote}
-                accent="sky"
-                hint={
-                  withdrawals.data
-                    ? `${formatTZS(withdrawalSummary?.pendingAmount ?? 0)} to cash out`
-                    : 'Loading…'
-                }
-                className="h-full transition-shadow hover:shadow-md"
-              />
-            </Link>
-            <Link href="/admin/refunds" className="block">
-              <StatCard
-                label="Pending order refunds"
-                value={refunds.data ? formatNumber(refundSummary?.pending ?? 0) : '—'}
-                icon={RotateCcw}
-                accent="amber"
-                hint={
-                  refunds.data
-                    ? `${formatTZS(refundSummary?.pendingAmount ?? 0)} to return to wallets`
-                    : 'Loading…'
-                }
-                className="h-full transition-shadow hover:shadow-md"
-              />
-            </Link>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button asChild variant="outline" className="justify-between">
-              <Link href="/admin/withdrawals">
-                Review withdrawals
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="justify-between">
-              <Link href="/admin/refunds">
-                Review order refunds
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -271,7 +215,7 @@ export default function AdminDashboardPage() {
             <SectionCard
               className="xl:col-span-3"
               title="Live transaction feed"
-              description="Every wallet movement across the campus, newest first."
+              description="Order payments and their latest status, newest first."
               action={
                 <Button asChild variant="ghost" size="sm">
                   <Link href="/admin/transactions">
@@ -295,7 +239,7 @@ export default function AdminDashboardPage() {
                   <EmptyState
                     icon={ReceiptText}
                     title="No transactions yet"
-                    description="Top-ups, meal payments and refunds will stream into this feed."
+                    description="Confirmed order payments will appear here."
                     compact
                   />
                 </div>

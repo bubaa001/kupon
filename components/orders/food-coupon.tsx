@@ -32,14 +32,23 @@ const STATUS: Record<
     short: 'Payment pending',
     tone: 'border-amber-200 bg-amber-50 text-amber-800',
     dot: 'bg-amber-500',
-    description: 'This coupon will be issued after Kupon confirms your mobile-money payment.',
+    description:
+      'Kupon is confirming the test payment automatically. No mobile-money request or real charge is made.',
   },
   PAYMENT_FAILED: {
     label: 'Payment not confirmed',
     short: 'Not paid',
     tone: 'border-red-200 bg-red-50 text-red-700',
     dot: 'bg-red-500',
-    description: 'Payment was not confirmed, so this order cannot be collected.',
+    description: 'The test payment was not confirmed, so this order cannot be collected.',
+  },
+  AWAITING_ACCEPTANCE: {
+    label: 'Waiting for cafeteria',
+    short: 'Needs acceptance',
+    tone: 'border-sky-200 bg-sky-50 text-sky-800',
+    dot: 'bg-sky-500',
+    description:
+      'Payment is confirmed. The cafeteria is checking availability; your coupon appears as soon as they accept.',
   },
   EXPIRED: {
     label: 'Coupon expired',
@@ -194,10 +203,16 @@ export function FoodCoupon({
               </p>
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[10px] uppercase tracking-[0.13em] text-slate-400">Total paid</p>
+              <p className="text-[10px] uppercase tracking-[0.13em] text-slate-400">Food total</p>
               <p className="mt-1 text-lg font-semibold tabular text-emerald-300">
                 {formatTZS(order.total)}
               </p>
+              {order.amountPaid > 0 ? (
+                <p className="mt-0.5 text-[9px] text-slate-300">
+                  Paid {formatTZS(order.amountPaid)}
+                  {order.apiFee > 0 ? ` · includes ${formatTZS(order.apiFee)} API fee` : ''}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -227,7 +242,13 @@ export function FoodCoupon({
                 </p>
               </div>
               <span className="shrink-0 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-emerald-800">
-                {order.status === 'VERIFIED' ? 'Collected soon' : 'Show at counter'}
+                {order.status === 'VERIFIED'
+                  ? 'Collected soon'
+                  : order.status === 'AWAITING_ACCEPTANCE'
+                    ? 'Waiting for cafe'
+                    : order.status === 'PENDING'
+                      ? 'Show at counter'
+                      : status.short}
               </span>
             </div>
           </div>
@@ -303,6 +324,14 @@ export function FoodCoupon({
                   Vendor scans this QR, or enters the 6-digit code below.
                 </p>
               </>
+            ) : order.status === 'AWAITING_ACCEPTANCE' ? (
+              <div className="flex h-[184px] w-[184px] flex-col items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-4 text-center text-sky-800">
+                <Clock3 className="h-8 w-8" aria-hidden />
+                <p className="mt-2 text-xs font-semibold">Waiting for availability</p>
+                <p className="mt-1 text-[10px] leading-relaxed">
+                  The cafeteria must accept before Kupon issues your coupon.
+                </p>
+              </div>
             ) : (
               <div
                 className={cn(
@@ -329,19 +358,23 @@ export function FoodCoupon({
               </div>
             )}
 
-            <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Or give this 6-digit code to the vendor
-            </p>
-            <div className="mt-1.5 flex gap-1.5" aria-label={`Coupon code ${order.couponCode}`}>
-              {order.couponCode.split('').map((digit, index) => (
-                <span
-                  key={index}
-                  className="flex h-10 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold tabular text-slate-900 shadow-sm"
-                >
-                  {digit}
-                </span>
-              ))}
-            </div>
+            {order.status === 'PENDING' ? (
+              <>
+                <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Or give this 6-digit code to the vendor
+                </p>
+                <div className="mt-1.5 flex gap-1.5" aria-label={`Coupon code ${order.couponCode}`}>
+                  {order.couponCode.split('').map((digit, index) => (
+                    <span
+                      key={index}
+                      className="flex h-10 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold tabular text-slate-900 shadow-sm"
+                    >
+                      {digit}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
 
           <div
@@ -380,13 +413,21 @@ export function FoodCoupon({
             <span
               className={cn(
                 'flex items-center gap-1',
-                order.status === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-600',
+                order.status === 'VERIFIED'
+                  ? 'text-emerald-700'
+                  : order.status === 'AWAITING_ACCEPTANCE'
+                    ? 'text-sky-700'
+                    : 'text-amber-600',
               )}
             >
               <span
                 className={cn(
                   'flex h-4 w-4 items-center justify-center rounded-full text-white',
-                  order.status === 'VERIFIED' ? 'bg-emerald-600' : 'bg-amber-500',
+                  order.status === 'VERIFIED'
+                    ? 'bg-emerald-600'
+                    : order.status === 'AWAITING_ACCEPTANCE'
+                      ? 'bg-sky-600'
+                      : 'bg-amber-500',
                 )}
               >
                 {order.status === 'VERIFIED' ? (
@@ -395,7 +436,7 @@ export function FoodCoupon({
                   <Clock3 className="h-2.5 w-2.5" />
                 )}
               </span>
-              Verified
+              {order.status === 'AWAITING_ACCEPTANCE' ? 'Cafe acceptance' : 'Verified'}
             </span>
             <span className="h-px flex-1 bg-slate-200" />
             <span className="flex items-center gap-1 text-slate-400">

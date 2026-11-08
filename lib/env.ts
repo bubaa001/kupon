@@ -9,15 +9,19 @@ const optionalUrl = z.preprocess(
   (value) => (value === '' ? undefined : value),
   z.string().url().optional(),
 );
+const optionalSecret = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().min(32).optional(),
+);
 
 const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().min(1, 'DIRECT_URL is required'),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
-  PAYMENT_PROVIDER: z.enum(['mock', 'selcom', 'azampay', 'ncard']).default('mock'),
-  PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(15).default(2.5),
-  AGGREGATOR_FEE_PERCENT: z.coerce.number().min(0).max(15).default(1.5),
-  UNIVERSITY_REVENUE_SHARE_PERCENT: z.coerce.number().min(0).max(100).default(20),
+  PAYMENT_PROVIDER: z.enum(['mock']).default('mock'),
+  PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(15).default(1),
+  AGGREGATOR_FEE_PERCENT: z.coerce.number().min(0).max(15).default(2.5),
+  UNIVERSITY_REVENUE_SHARE_PERCENT: z.coerce.number().min(0).max(100).default(0),
   MOCK_SETTLEMENT_DELAY_MS: z.coerce.number().min(0).max(60_000).default(2000),
   SMS_PROVIDER: z.enum(['mock']).default('mock'),
   USSD_SHORTCODE: z.string().default('*150*88#'),
@@ -29,6 +33,7 @@ const EnvSchema = z.object({
   // Optional HTTPS callback for a public origin different from the canonical app URL.
   // Register this exact callback in Google Cloud Console when using it.
   GOOGLE_MOBILE_REDIRECT_URI: optionalUrl,
+  SUPER_ADMIN_SETUP_TOKEN: optionalSecret,
 });
 
 const parsed = EnvSchema.safeParse({
@@ -48,6 +53,7 @@ const parsed = EnvSchema.safeParse({
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
   GOOGLE_MOBILE_REDIRECT_URI: process.env.GOOGLE_MOBILE_REDIRECT_URI,
+  SUPER_ADMIN_SETUP_TOKEN: process.env.SUPER_ADMIN_SETUP_TOKEN,
 });
 
 if (!parsed.success) {

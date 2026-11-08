@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TransactionSkeleton } from '@/components/ui/skeleton';
-import { STATUS_BADGE, TX_STATUSES, TX_TYPE_LABEL, TX_TYPES } from '@/lib/constants';
+import { STATUS_BADGE, TX_STATUSES } from '@/lib/constants';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { formatDate, formatTZS } from '@/lib/utils';
 import { ErrorState } from '../_components/error-state';
@@ -28,7 +28,6 @@ const RANGES: { value: RangeKey; label: string }[] = [
 
 export default function HistoryPage() {
   const [range, setRange] = useState<RangeKey>('week');
-  const [type, setType] = useState('');
   const [status, setStatus] = useState('');
 
   const [data, setData] = useState<TransactionsData | null>(null);
@@ -40,7 +39,6 @@ export default function HistoryPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ range });
-      if (type) params.set('type', type);
       if (status) params.set('status', status);
       setData(await apiFetch<TransactionsData>(`/api/student/transactions?${params.toString()}`));
     } catch (err) {
@@ -50,7 +48,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [range, type, status]);
+  }, [range, status]);
 
   useEffect(() => {
     void load();
@@ -72,10 +70,9 @@ export default function HistoryPage() {
     }));
   }, [data]);
 
-  const hasFilters = type.length > 0 || status.length > 0;
+  const hasFilters = status.length > 0;
 
   function resetFilters() {
-    setType('');
     setStatus('');
   }
 
@@ -84,7 +81,7 @@ export default function HistoryPage() {
       <PageHeader
         eyebrow="Miamala • Historia"
         title="Historia ya oda na malipo"
-        description="Angalia malipo ya chakula na marejesho yako kwa kipindi unachochagua."
+        description="Angalia oda za chakula na hali ya malipo kwa kipindi unachochagua."
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
             <RefreshCcw aria-hidden />
@@ -103,19 +100,7 @@ export default function HistoryPage() {
         </TabsList>
 
         <TabsContent value={range} className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Select
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              aria-label="Chuja kwa aina ya muamala"
-            >
-              <option value="">Aina zote</option>
-              {TX_TYPES.map((item) => (
-                <option key={item} value={item}>
-                  {TX_TYPE_LABEL[item]}
-                </option>
-              ))}
-            </Select>
+          <div className="grid grid-cols-1 gap-2">
             <Select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
@@ -131,23 +116,13 @@ export default function HistoryPage() {
           </div>
 
           <Card className="overflow-hidden rounded-2xl p-4 shadow-card sm:p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-                  Zilizoingia
-                </p>
-                <p className="mt-1 text-lg font-semibold tabular text-emerald-700">
-                  {loading || !data ? '—' : formatTZS(data.totalIn)}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-                  Zilizotoka
+                  Jumla ya malipo ya chakula
                 </p>
                 <p className="mt-1 text-lg font-semibold tabular text-slate-900">
-                  {loading || !data ? '—' : formatTZS(data.totalOut)}
+                  {loading || !data ? '—' : formatTZS(data.totalSpent)}
                 </p>
-              </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <Badge variant="neutral">Jumla {data?.counts.total ?? 0}</Badge>

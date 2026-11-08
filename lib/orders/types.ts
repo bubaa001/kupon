@@ -7,6 +7,7 @@
 export type OrderStatus =
   | 'PAYMENT_PENDING'
   | 'PAYMENT_FAILED'
+  | 'AWAITING_ACCEPTANCE'
   | 'PENDING'
   | 'VERIFIED'
   | 'CANCELLED'
@@ -49,6 +50,9 @@ export type OrderView = {
   expiresAt: string;
   paymentTest: boolean;
   paymentStage: string | null;
+  amountPaid: number;
+  apiFee: number;
+  kuponFee: number;
   creditApplied: number;
   vendor: OrderVendorView;
   student: OrderStudentView;
@@ -95,6 +99,7 @@ export type VendorQrData = {
 export type VendorOrdersData = {
   orders: OrderView[];
   counts: {
+    awaitingAcceptance: number;
     pending: number;
     verified: number;
     today: number;
@@ -105,40 +110,6 @@ export type StudentOrdersData = {
   orders: OrderView[];
   active: OrderView | null;
 };
-
-/**
- * Why a student may cancel their own unverified coupon. Kept client-safe so the
- * cancel dialog, the API schema and the audit trail all speak the same language.
- */
-export const ORDER_CANCEL_REASONS = [
-  'VENDOR_CLOSED',
-  'ITEM_UNAVAILABLE',
-  'ORDERED_BY_MISTAKE',
-  'OTHER',
-] as const;
-
-export type OrderCancelReason = (typeof ORDER_CANCEL_REASONS)[number];
-
-export const ORDER_CANCEL_REASON_LABEL: Record<OrderCancelReason, string> = {
-  VENDOR_CLOSED: 'Vendor alifunga / Vendor closed',
-  ITEM_UNAVAILABLE: 'Chakula hakipo / Item unavailable',
-  ORDERED_BY_MISTAKE: 'Niliagiza kimakosa / Ordered by mistake',
-  OTHER: 'Sababu nyingine / Other reason',
-};
-
-/** Response of `POST /api/student/orders/[id]/cancel`. */
-export type CancelOrderResult = {
-  order: OrderView;
-  balance: number;
-  /** `true` only on the request that actually reversed the money. */
-  refunded: boolean;
-  /** `true` when a replay found the order already cancelled (no money moved). */
-  alreadyCancelled: boolean;
-  /** Reference of the reversal transaction, when this call created one. */
-  reversalReference: string | null;
-  message: string;
-};
-
 
 export type PlaceOrderInput = {
   vendorId: string;

@@ -39,6 +39,11 @@ export const vendorLoginSchema = z.object({
   pin: z.string().regex(/^\d{4}$/, 'PIN must be 4 digits'),
 });
 
+export const vendorPasswordLoginSchema = z.object({
+  phone: phoneSchema,
+  password: z.string().min(12).max(128),
+});
+
 export const staffLoginSchema = z.object({
   phone: phoneSchema,
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -136,6 +141,7 @@ export const menuItemSchema = z.object({
     .max(500)
     .transform((value) => value),
   available: z.boolean().optional().default(true),
+  autoAccept: z.boolean().optional().default(false),
 });
 
 export const menuPatchSchema = menuItemSchema.partial().extend({

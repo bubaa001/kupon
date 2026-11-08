@@ -11,7 +11,7 @@ export async function GET() {
     const vendorScope = user.managedVendor ? { vendorId: user.managedVendor.id } : {};
     const [creditRequests, supportTickets] = await Promise.all([
       prisma.creditRequest.findMany({
-        where: vendorScope,
+        where: { ...vendorScope, status: { in: ['APPROVED', 'REJECTED'] } },
         include: {
           order: { select: { reference: true, status: true, expiresAt: true } },
           student: { select: { studentId: true, user: { select: { name: true } } } },

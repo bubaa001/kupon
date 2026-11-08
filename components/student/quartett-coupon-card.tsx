@@ -21,7 +21,9 @@ export function QuartettCouponCard({
   className?: string;
 }) {
   const hero = order.items[0];
-  const expired = useExpired(order.expiresAt);
+  const expiredAt = useExpired(order.expiresAt);
+  const expired = order.status === 'PENDING' && expiredAt;
+  const awaitingAcceptance = order.status === 'AWAITING_ACCEPTANCE';
   const extraItems = Math.max(0, order.itemCount - 1);
 
   return (
@@ -75,7 +77,7 @@ export function QuartettCouponCard({
           </span>
         ) : null}
         <span className="absolute bottom-1.5 left-1.5">
-          <StatusChip expired={expired} />
+          <StatusChip expired={expired} awaitingAcceptance={awaitingAcceptance} />
         </span>
       </div>
 
@@ -83,7 +85,7 @@ export function QuartettCouponCard({
       <div className="flex flex-1 gap-2 px-2.5 pt-2">
         <div className="flex w-[45%] flex-col border-r border-slate-300/80 pr-2">
           <p className="text-[6.5px] font-bold uppercase tracking-[0.16em] text-slate-400">
-            Meal coupon
+            {awaitingAcceptance ? 'Meal request' : 'Meal coupon'}
           </p>
           <p className="mt-0.5 line-clamp-3 text-[15px] font-extrabold uppercase leading-[1.03] tracking-[-0.02em] text-slate-900">
             {hero?.name ?? 'Coupon'}
@@ -97,7 +99,11 @@ export function QuartettCouponCard({
           <MetaRow label="Muda" value={formatTime(order.createdAt)} />
           <MetaRow label="Ref" value={order.reference.replace('ORD-', '')} mono />
           <MetaRow label="Total" value={formatTZS(order.total)} />
-          <MetaRow label="Code" value={order.couponCode} mono />
+          <MetaRow
+            label={awaitingAcceptance ? 'Status' : 'Code'}
+            value={awaitingAcceptance ? 'Waiting for cafe' : order.couponCode}
+            mono
+          />
           <MetaRow label="Vendor" value={order.vendor.code} mono />
         </dl>
       </div>
@@ -113,7 +119,7 @@ export function QuartettCouponCard({
             expired ? 'text-red-600' : 'text-amber-700',
           )}
         >
-          {expired ? 'Expired' : 'Inasubiri'}
+          {expired ? 'Expired' : awaitingAcceptance ? 'Waiting for cafe' : 'Inasubiri'}
         </p>
       </div>
     </article>
@@ -146,12 +152,26 @@ function MetaRow({
   );
 }
 
-function StatusChip({ expired }: { expired: boolean }) {
+function StatusChip({
+  expired,
+  awaitingAcceptance,
+}: {
+  expired: boolean;
+  awaitingAcceptance: boolean;
+}) {
   if (expired) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-slate-950/80 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-[0.1em] text-white backdrop-blur-md">
         <span className="h-1 w-1 rounded-full bg-red-400" aria-hidden />
         Expired
+      </span>
+    );
+  }
+  if (awaitingAcceptance) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/60 bg-sky-100/95 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-[0.1em] text-sky-950 backdrop-blur-md">
+        <span className="h-1 w-1 animate-pulse rounded-full bg-sky-700" aria-hidden />
+        Needs acceptance
       </span>
     );
   }

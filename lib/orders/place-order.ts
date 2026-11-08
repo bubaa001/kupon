@@ -6,6 +6,7 @@ import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
 import type { PlaceOrderInput } from './types';
 import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
+import { calcOrderCheckoutFees } from '@/lib/fees';
 
 const MAX_ITEMS = 20;
 const MAX_QUANTITY = 10;
@@ -115,9 +116,11 @@ export async function placeOrder(input: {
       quantity: choice.quantity,
       emoji: item.emoji,
       imageUrl: item.imageUrl,
+      autoAccept: item.autoAccept,
     };
   });
 
+  const requiresAcceptance = orderItems.some((item) => !item.autoAccept);
   const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = orderItems.reduce((sum, item) => sum + item.quantity, 0);
   if (total <= 0) throw new AppError('Order total must be greater than zero.', 400);
@@ -150,6 +153,7 @@ export async function placeOrder(input: {
     }
 
     const cashAmount = total - creditApplied;
+    const fees = calcOrderCheckoutFees(cashAmount);
     const paymentReference = cashAmount > 0 ? randomReference('PAY') : null;
     const transaction = paymentReference
       ? await tx.transaction.create({
@@ -158,7 +162,11 @@ export async function placeOrder(input: {
             universityId: student.universityId,
             studentId: student.id,
             vendorId: vendor.id,
-            amount: cashAmount,
+            amount: fees.amountCharged,
+            fee: fees.apiFee + fees.kuponFee,
+            platformFee: fees.kuponFee,
+            aggregatorFee: fees.apiFee,
+            vendorSettlement: fees.vendorSettlement,
             type: 'PAYMENT',
             status: 'PENDING',
             isTest: true,
@@ -178,6 +186,9 @@ export async function placeOrder(input: {
                 price: item.price,
               })),
               creditApplied,
+              gatewayFee: fees.apiFee,
+              kuponFee: fees.kuponFee,
+              vendorSettlement: fees.vendorSettlement,
               provider: 'kupon-test-gateway',
               stage: 'INITIATED',
             }),
@@ -191,7 +202,7 @@ export async function placeOrder(input: {
           transactionId: transaction.id,
           sequence: 1,
           stage: 'INITIATED',
-          source: 'KUPO_TEST_GATEWAY',
+          source: 'KUPON_TEST_GATEWAY',
         },
       });
     }
@@ -202,16 +213,21 @@ export async function placeOrder(input: {
         universityId: student.universityId,
         studentId: student.id,
         vendorId: vendor.id,
-        status: transaction ? 'PAYMENT_PENDING' : 'PENDING',
+        status: transaction
+          ? 'PAYMENT_PENDING'
+          : requiresAcceptance
+            ? 'AWAITING_ACCEPTANCE'
+            : 'PENDING',
         total,
         creditApplied,
+        requiresAcceptance,
         testOnly: true,
         itemCount,
         couponCode,
         note: input.payload.note?.trim() || null,
         transactionId: transaction?.id ?? null,
         expiresAt,
-        items: { create: orderItems },
+        items: { create: orderItems.map(({ autoAccept: _autoAccept, ...item }) => item) },
       },
       include: orderInclude,
     });
@@ -256,16 +272,23 @@ export async function placeOrder(input: {
           updatedOrder.expiresAt,
         )
       : null;
+  const serializedOrder = serializeOrder(updatedOrder, couponToken);
 
   return {
-    order: serializeOrder(updatedOrder, couponToken),
+    order: serializedOrder,
     transactionId: created.paymentReference,
     payment: {
-      status: created.paymentReference ? 'PENDING' : 'SETTLED',
-      message: created.paymentReference
-        ? `Kupon test gateway is simulating payment of ${total - created.order.creditApplied} TZS. No real money is collected.`
-        : 'Order paid with cafeteria credit. No new money was collected.',
-      demo: true,
+        status: created.paymentReference ? 'PENDING' : 'SETTLED',
+        message: created.paymentReference
+          ? `Kupon test gateway is simulating TZS ${serializedOrder.amountPaid.toLocaleString()} payment, including TZS ${serializedOrder.apiFee.toLocaleString()} API fee. No real money is collected.`
+          : updatedOrder.status === 'AWAITING_ACCEPTANCE'
+            ? 'Paid with cafeteria credit. The cafeteria must accept the request before a coupon is issued.'
+            : 'Order paid with cafeteria credit. No new money was collected.',
+        demo: true,
+        amountCharged: serializedOrder.amountPaid,
+        apiFee: serializedOrder.apiFee,
+        kuponFee: serializedOrder.kuponFee,
+      requiresAcceptance: updatedOrder.status === 'AWAITING_ACCEPTANCE',
     },
   };
 }
@@ -278,7 +301,9 @@ export async function getStudentOrderCoupon(studentProfileId: string, orderId: s
   });
   if (!order) throw notFound('Order not found.');
   const couponToken =
-    order.status === 'PAYMENT_PENDING' || order.status === 'PAYMENT_FAILED'
+    order.status === 'PAYMENT_PENDING' ||
+    order.status === 'PAYMENT_FAILED' ||
+    order.status === 'AWAITING_ACCEPTANCE'
       ? null
       : await signCouponToken(
           {

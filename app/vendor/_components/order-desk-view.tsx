@@ -8,6 +8,8 @@ import {
   ClipboardCheck,
   Clock3,
   Inbox,
+  CheckCheck,
+  PackageX,
   QrCode,
   RefreshCw,
   ScanLine,
@@ -17,11 +19,20 @@ import {
 } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { apiFetch } from '@/lib/client-api';
+import { apiFetch, postJson } from '@/lib/client-api';
 import type { OrderView, VendorOrdersData } from '@/lib/orders/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -29,7 +40,7 @@ import { LoadError } from './feedback';
 import { OrderCard } from './order-card';
 import { VerifyCouponDialog } from './verify-coupon-dialog';
 
-type TabKey = 'PENDING' | 'VERIFIED' | 'ALL';
+type TabKey = 'REQUESTS' | 'PENDING' | 'VERIFIED' | 'ALL';
 type VerifyMode = 'code' | 'scan';
 type VerifyTarget = { order: OrderView | null; mode: VerifyMode };
 
@@ -41,10 +52,15 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabKey>('PENDING');
+  const [tab, setTab] = useState<TabKey>('REQUESTS');
   const [liveState, setLiveState] = useState<'live' | 'new' | 'reconnecting'>('live');
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [verifyTarget, setVerifyTarget] = useState<VerifyTarget | null>(null);
+  const [unavailableOrder, setUnavailableOrder] = useState<OrderView | null>(null);
+  const [unavailableReason, setUnavailableReason] = useState('');
+  const [requestBusy, setRequestBusy] = useState<string | null>(null);
+  const [acceptingAll, setAcceptingAll] = useState(false);
+  const [reportingUnavailable, setReportingUnavailable] = useState(false);
 
   const dataRef = useRef<VendorOrdersData | null>(null);
   const knownPendingRef = useRef<Set<string> | null>(null);
@@ -58,7 +74,9 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
       if (!mountedRef.current) return;
 
       const pendingIds = payload.orders
-        .filter((order) => order.status === 'PENDING')
+        .filter(
+          (order) => order.status === 'PENDING' || order.status === 'AWAITING_ACCEPTANCE',
+        )
         .map((order) => order.id);
       const known = knownPendingRef.current;
 
@@ -75,10 +93,19 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
             setNewIds(new Set());
           }, HIGHLIGHT_MS);
 
+          const requestCount = payload.orders.filter(
+            (order) => fresh.includes(order.id) && order.status === 'AWAITING_ACCEPTANCE',
+          ).length;
           toast.success(
-            fresh.length === 1 ? 'New order received' : `${fresh.length} new orders received`,
+            requestCount
+              ? `${requestCount} new meal request${requestCount === 1 ? '' : 's'}`
+              : fresh.length === 1
+                ? 'New coupon ready'
+                : `${fresh.length} coupons ready`,
             {
-              description: 'A student is waiting at the counter — verify their coupon.',
+              description: requestCount
+                ? 'Accept each request or report food that is unavailable.'
+                : 'A student is waiting at the counter — verify their coupon.',
             },
           );
           try {
@@ -147,6 +174,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
         return {
           orders,
           counts: {
+            awaitingAcceptance: previous.counts.awaitingAcceptance,
             pending: Math.max(0, previous.counts.pending - (wasPending ? 1 : 0)),
             verified: previous.counts.verified + (wasPending ? 1 : 0),
             today: previous.counts.today,
@@ -167,10 +195,25 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
   const orders = useMemo(() => {
     const rows = data?.orders ?? [];
     if (tab === 'ALL') return rows;
+    if (tab === 'REQUESTS') {
+      return rows.filter((order) => order.status === 'AWAITING_ACCEPTANCE');
+    }
     return rows.filter((order) => order.status === tab);
   }, [data, tab]);
 
-  const counts = data?.counts ?? { pending: 0, verified: 0, today: 0 };
+  const counts = data?.counts ?? { awaitingAcceptance: 0, pending: 0, verified: 0, today: 0 };
+  const requestGroups = useMemo(() => {
+    const groups = new Map<string, number>();
+    for (const order of data?.orders ?? []) {
+      if (order.status !== 'AWAITING_ACCEPTANCE') continue;
+      for (const item of order.items) {
+        groups.set(item.name, (groups.get(item.name) ?? 0) + item.quantity);
+      }
+    }
+    return Array.from(groups, ([name, quantity]) => ({ name, quantity })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [data]);
   const newCount = newIds.size;
   const stale = liveState === 'reconnecting' && Boolean(data);
 
@@ -185,21 +228,80 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
     setVerifyTarget({ order, mode });
   }
 
+  async function acceptRequest(order: OrderView) {
+    setRequestBusy(order.id);
+    try {
+      await postJson(`/api/vendor/orders/${encodeURIComponent(order.id)}/accept`, {});
+      toast.success(`${order.items.map((item) => item.name).join(', ')} accepted`, {
+        description: 'The student coupon is now ready to show at the counter.',
+      });
+      await load(true);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not accept this request.');
+    } finally {
+      setRequestBusy(null);
+    }
+  }
+
+  async function acceptAllRequests() {
+    setAcceptingAll(true);
+    try {
+      const result = await postJson<{ accepted: number }>('/api/vendor/orders/accept-all', {});
+      toast.success(`${result.accepted} request${result.accepted === 1 ? '' : 's'} accepted`);
+      await load(true);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not accept all requests.');
+    } finally {
+      setAcceptingAll(false);
+    }
+  }
+
+  async function reportUnavailable() {
+    if (!unavailableOrder || unavailableReason.trim().length < 5) return;
+    setReportingUnavailable(true);
+    try {
+      await postJson(
+        `/api/vendor/orders/${encodeURIComponent(unavailableOrder.id)}/unavailable`,
+        { reason: unavailableReason.trim() },
+      );
+      toast.success('Credit request sent to the platform admin', {
+        description: 'The student will see the decision and any approved cafeteria credit.',
+      });
+      setUnavailableOrder(null);
+      setUnavailableReason('');
+      await load(true);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not send this credit request.');
+    } finally {
+      setReportingUnavailable(false);
+    }
+  }
+
   const emptyState = (
     <EmptyState
       icon={
-        tab === 'PENDING' ? Inbox : tab === 'VERIFIED' ? CheckCircle2 : ClipboardCheck
+        tab === 'REQUESTS'
+          ? Inbox
+          : tab === 'PENDING'
+            ? CheckCircle2
+            : tab === 'VERIFIED'
+              ? CheckCircle2
+              : ClipboardCheck
       }
       title={
-        tab === 'PENDING'
-          ? 'No orders waiting'
+        tab === 'REQUESTS'
+          ? 'No meal requests waiting'
+          : tab === 'PENDING'
+            ? 'No coupons ready'
           : tab === 'VERIFIED'
             ? 'No verified coupons yet'
             : 'No orders yet'
       }
       description={
-        tab === 'PENDING'
-          ? 'When a student scans your counter QR and pays, their order appears here live. Keep this screen open during service.'
+        tab === 'REQUESTS'
+          ? 'Manual foods appear here after payment. Auto-accepted foods skip this step and issue a coupon immediately.'
+          : tab === 'PENDING'
+            ? 'Accepted or auto-accepted orders appear here. Ask the student to show their coupon before handing over the food.'
           : tab === 'VERIFIED'
             ? 'Coupons you verify move here so you can always look up what was collected and when.'
             : 'Students order by scanning the counter QR on your home screen. Orders appear here automatically.'
@@ -221,8 +323,8 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Order desk"
-        title="Verify student coupons"
-        description="Students scan your counter QR, complete Kupon test checkout, then show their meal coupon. Verify it here before handing over the food."
+        title="Order & coupon desk"
+        description="Paid requests for manual foods wait here for acceptance; selected foods can auto-accept. Only accepted orders receive a coupon."
         actions={
           <>
             <Button
@@ -318,21 +420,25 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
         <div className={cn('space-y-4 transition-opacity', refreshing && 'opacity-70')} aria-busy={refreshing}>
           <div className="grid min-w-0 grid-cols-3 gap-2.5">
             <CountTile
-              label="Pending"
-              value={counts.pending}
-              icon={Clock3}
+              label="Requests"
+              value={counts.awaitingAcceptance}
+              icon={Inbox}
               tone="amber"
-              highlight={counts.pending > 0}
+              highlight={counts.awaitingAcceptance > 0}
             />
-            <CountTile label="Verified" value={counts.verified} icon={CheckCircle2} tone="emerald" />
+            <CountTile label="Ready" value={counts.pending} icon={Clock3} tone="sky" />
             <CountTile label="Today" value={counts.today} icon={CalendarDays} tone="sky" />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
-              <TabsList className="grid w-full grid-cols-3 sm:w-[26rem]">
+              <TabsList className="grid w-full grid-cols-4 sm:w-[32rem]">
+                <TabsTrigger value="REQUESTS" className="gap-1 px-2 text-xs sm:px-3">
+                  Requests
+                  <TabCount value={counts.awaitingAcceptance} active={tab === 'REQUESTS'} />
+                </TabsTrigger>
                 <TabsTrigger value="PENDING" className="gap-1 px-2 text-xs sm:px-3">
-                  Incoming
+                  Ready
                   <TabCount value={counts.pending} active={tab === 'PENDING'} />
                 </TabsTrigger>
                 <TabsTrigger value="VERIFIED" className="gap-1 px-2 text-xs sm:px-3">
@@ -346,13 +452,41 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
               </TabsList>
             </Tabs>
             <p className="text-[11px] text-slate-500">
-              {tab === 'PENDING'
-                ? `${orders.length} waiting for coupon verification`
+              {tab === 'REQUESTS'
+                ? `${orders.length} request${orders.length === 1 ? '' : 's'} need a decision`
+                : tab === 'PENDING'
+                  ? `${orders.length} coupon${orders.length === 1 ? '' : 's'} ready to verify`
                 : tab === 'VERIFIED'
                   ? `${orders.length} verified coupon${orders.length === 1 ? '' : 's'}`
                   : `${orders.length} order${orders.length === 1 ? '' : 's'} in this window`}
             </p>
           </div>
+
+          {tab === 'REQUESTS' && orders.length > 0 ? (
+            <section className="card-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-900">Requests grouped by food</p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {requestGroups.map((group) => (
+                    <span
+                      key={group.name}
+                      className="rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-[11px] text-sky-800"
+                    >
+                      {group.name} · {group.quantity}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => void acceptAllRequests()}
+                disabled={acceptingAll || counts.awaitingAcceptance === 0}
+              >
+                <CheckCheck className="h-4 w-4" />
+                Accept all
+              </Button>
+            </section>
+          ) : null}
 
           {orders.length === 0 ? (
             <div className="card-surface min-w-0 p-4">{emptyState}</div>
@@ -366,6 +500,12 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
                   animationDelay={Math.min(index, 6) * 40}
                   onEnterCode={(selected) => openVerify(selected, 'code')}
                   onScanQr={(selected) => openVerify(selected, 'scan')}
+                  onAcceptRequest={(selected) => void acceptRequest(selected)}
+                  busy={requestBusy === order.id}
+                  onReportUnavailable={(selected) => {
+                    setUnavailableOrder(selected);
+                    setUnavailableReason('Food is no longer available.');
+                  }}
                 />
               ))}
             </ul>
@@ -389,6 +529,53 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
         initialMode={verifyTarget?.mode ?? 'code'}
         onVerified={handleVerified}
       />
+
+      <Dialog
+        open={unavailableOrder !== null}
+        onOpenChange={(open) => {
+          if (!reportingUnavailable && !open) {
+            setUnavailableOrder(null);
+            setUnavailableReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report food as unavailable</DialogTitle>
+            <DialogDescription>
+              Send this paid order to the platform admin for a cafeteria credit decision. The
+              student will not receive a coupon while the case is open.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={unavailableReason}
+            onChange={(event) => setUnavailableReason(event.target.value.slice(0, 500))}
+            placeholder="Explain what could not be served"
+            maxLength={500}
+            aria-label="Reason food is unavailable"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUnavailableOrder(null);
+                setUnavailableReason('');
+              }}
+              disabled={reportingUnavailable}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void reportUnavailable()}
+              disabled={reportingUnavailable || unavailableReason.trim().length < 5}
+              loading={reportingUnavailable}
+            >
+              <PackageX className="h-4 w-4" />
+              Send to admin
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

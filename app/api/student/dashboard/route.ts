@@ -60,7 +60,7 @@ export async function GET() {
         prisma.transaction.findMany({
           where: {
             studentId: student.id,
-            type: { in: ['PAYMENT', 'REFUND'] },
+            type: 'PAYMENT',
           },
           include: { vendor: { select: { name: true, code: true } } },
           orderBy: { createdAt: 'desc' },

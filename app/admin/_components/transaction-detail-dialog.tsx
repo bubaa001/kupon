@@ -80,7 +80,7 @@ export function TransactionDetailDialog({
               <DetailRow label="Student ID">{row.student.studentId}</DetailRow>
               <DetailRow label="Student phone">{row.student.phone}</DetailRow>
               <DetailRow label="Vendor">
-                {row.vendor ? `${row.vendor.name} (${row.vendor.code})` : 'Kupon wallet'}
+                {row.vendor ? `${row.vendor.name} (${row.vendor.code})` : '—'}
               </DetailRow>
               <DetailRow label="Lipa Namba">{row.routeCode ?? '—'}</DetailRow>
               <DetailRow label="Details">{row.metadataSummary ?? '—'}</DetailRow>

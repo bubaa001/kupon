@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Link2, Mail, Unlink, Wallet } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Link2, Mail, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Avatar } from '@/components/ui/avatar';
@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -21,32 +20,22 @@ import { Label } from '@/components/ui/label';
 import { Money } from '@/components/ui/money';
 import { RefundStatusBadge } from '@/components/ui/status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, postJson } from '@/lib/client-api';
-import { cn, formatDate, formatDateTime, formatTZS, relativeTime } from '@/lib/utils';
+import { formatDate, formatDateTime, formatTZS, relativeTime } from '@/lib/utils';
 import type { StudentDetailData } from './types';
 import { useApiData } from './hooks';
 import { AuditList } from './audit-list';
 import { DataTableSkeleton, DetailRow, MiniStat } from './ui-bits';
 import { TransactionTable } from './transaction-table';
 
-export type AdjustTarget = {
-  id: string;
-  name: string;
-  studentId: string;
-  balance: number;
-};
-
 export function StudentDetailDialog({
   studentId,
   open,
   onOpenChange,
-  onAdjust,
 }: {
   studentId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdjust: (student: AdjustTarget) => void;
 }) {
   const url = open && studentId ? `/api/admin/students/${studentId}` : null;
   const { data, error, loading, reload } = useApiData<StudentDetailData>(url);
@@ -55,9 +44,9 @@ export function StudentDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Student wallet</DialogTitle>
+          <DialogTitle>Student account</DialogTitle>
           <DialogDescription>
-            Full wallet history, refunds and the audit trail for this student.
+            Account, order history and audit trail for this student.
           </DialogDescription>
         </DialogHeader>
 
@@ -76,7 +65,7 @@ export function StudentDetailDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={data.student.name} size="lg" />
                 <div className="min-w-0">
@@ -96,54 +85,19 @@ export function StudentDetailDialog({
                   </div>
                 </div>
               </div>
-              <div className="flex items-end justify-between gap-3 sm:flex-col sm:items-end">
-                <div className="sm:text-right">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    Wallet balance
-                  </p>
-                  <Money amount={data.student.balance} className="text-lg" />
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onAdjust({
-                      id: data.student.id,
-                      name: data.student.name,
-                      studentId: data.student.studentId,
-                      balance: data.student.balance,
-                    });
-                  }}
-                >
-                  <Wallet className="h-4 w-4" />
-                  Adjust wallet
-                </Button>
-              </div>
             </div>
 
             <Tabs defaultValue="overview">
               <TabsList className="w-full justify-start overflow-x-auto">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="refunds">Refunds</TabsTrigger>
+                <TabsTrigger value="refunds">Legacy refunds</TabsTrigger>
                 <TabsTrigger value="audit">Audit</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <MiniStat
-                    label="Total top-ups"
-                    value={formatTZS(data.stats.totalTopUps)}
-                    tone="emerald"
-                  />
-                  <MiniStat label="Total spent" value={formatTZS(data.stats.totalSpent)} />
-                  <MiniStat label="Refunded" value={formatTZS(data.stats.totalRefunded)} />
-                  <MiniStat
-                    label="Manual adjustments"
-                    value={formatTZS(data.stats.adjustments)}
-                    tone={data.stats.adjustments < 0 ? 'red' : 'neutral'}
-                  />
+                  <MiniStat label="Order payments" value={formatTZS(data.stats.totalSpent)} />
                   <MiniStat label="Transactions" value={String(data.stats.transactionCount)} />
                   <MiniStat
                     label="Last activity"
@@ -191,7 +145,7 @@ export function StudentDetailDialog({
                   <EmptyState
                     icon={ArrowDownLeft}
                     title="No transactions yet"
-                    description="This student has not topped up or paid for a meal yet."
+                    description="This student has not paid for a meal yet."
                     compact
                   />
                 )}
@@ -231,8 +185,8 @@ export function StudentDetailDialog({
                 ) : (
                   <EmptyState
                     icon={ArrowUpRight}
-                    title="No refund requests"
-                    description="This student has not asked for a refund of unused balance."
+                    title="No legacy refund records"
+                    description="Current cafeteria issues use the credit-request flow instead."
                     compact
                   />
                 )}
@@ -241,204 +195,12 @@ export function StudentDetailDialog({
               <TabsContent value="audit">
                 <AuditList
                   entries={data.audit}
-                  emptyDescription="Manual wallet adjustments for this student are recorded here."
+                  emptyDescription="Account and access events for this student are recorded here."
                 />
               </TabsContent>
             </Tabs>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 50000];
-
-export function AdjustWalletDialog({
-  target,
-  open,
-  onOpenChange,
-  onDone,
-}: {
-  target: AdjustTarget | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onDone: () => void;
-}) {
-  const [type, setType] = useState<'CREDIT' | 'DEBIT'>('CREDIT');
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setType('CREDIT');
-      setAmount('');
-      setReason('');
-      setError(null);
-      setSubmitting(false);
-    }
-  }, [open]);
-
-  const amountNumber = Number(amount);
-  const validAmount =
-    Number.isFinite(amountNumber) && amountNumber >= 100 && amountNumber <= 500_000;
-  const overBalance =
-    type === 'DEBIT' && target ? validAmount && amountNumber > target.balance : false;
-
-  async function submit() {
-    if (!target) return;
-    if (!validAmount) {
-      setError('Enter an amount between TZS 100 and TZS 500,000.');
-      return;
-    }
-    if (reason.trim().length < 5) {
-      setError('Add a short reason — it is written to the audit log.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const data = await postJson<{ balance: number; reference: string; message: string }>(
-        `/api/admin/students/${target.id}/adjust`,
-        { type, amount: Math.round(amountNumber), reason: reason.trim() },
-      );
-      toast.success(data.message, { description: `Reference ${data.reference}` });
-      onDone();
-      onOpenChange(false);
-    } catch (caught) {
-      const message =
-        caught instanceof ApiClientError ? caught.message : 'The adjustment could not be saved.';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <span className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-            <Wallet className="h-5 w-5" />
-          </span>
-          <DialogTitle>Manual wallet adjustment</DialogTitle>
-          <DialogDescription>
-            {target ? (
-              <>
-                <span className="font-medium text-slate-700">{target.name}</span> •{' '}
-                <span className="font-mono text-[11px]">{target.studentId}</span> • balance{' '}
-                <span className="font-semibold text-slate-700">{formatTZS(target.balance)}</span>
-              </>
-            ) : (
-              'Select a student first.'
-            )}
-          </DialogDescription>
-        </DialogHeader>
-
-        {error ? <Alert variant="danger">{error}</Alert> : null}
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setType('CREDIT')}
-            className={cn(
-              'flex items-center gap-2 rounded-xl border p-3 text-left transition-colors',
-              type === 'CREDIT'
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
-            )}
-          >
-            <ArrowDownLeft className="h-4 w-4" />
-            <span>
-              <span className="block text-xs font-semibold">Credit</span>
-              <span className="text-[10px] opacity-80">Top the wallet up</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setType('DEBIT')}
-            className={cn(
-              'flex items-center gap-2 rounded-xl border p-3 text-left transition-colors',
-              type === 'DEBIT'
-                ? 'border-red-300 bg-red-50 text-red-700'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
-            )}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-            <span>
-              <span className="block text-xs font-semibold">Debit</span>
-              <span className="text-[10px] opacity-80">Recover / correct funds</span>
-            </span>
-          </button>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="adjust-amount">Amount (TZS)</Label>
-          <Input
-            id="adjust-amount"
-            type="number"
-            inputMode="numeric"
-            min={100}
-            max={500_000}
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            placeholder="5000"
-            className="tabular"
-          />
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {QUICK_AMOUNTS.map((quick) => (
-              <button
-                key={quick}
-                type="button"
-                onClick={() => setAmount(String(quick))}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-primary-300 hover:text-primary-700"
-              >
-                {type === 'CREDIT' ? '+' : ''}
-                {quick.toLocaleString('en-US')}
-              </button>
-            ))}
-          </div>
-          {overBalance ? (
-            <p className="text-[11px] font-medium text-amber-700">
-              This debit is larger than the current wallet balance — the server will reject it.
-            </p>
-          ) : null}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="adjust-reason">Reason for the audit log</Label>
-          <Textarea
-            id="adjust-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="e.g. Cash top-up received at the finance office, receipt #4182"
-            maxLength={300}
-            className="min-h-[80px]"
-          />
-          <p className="text-right text-[10px] text-slate-400">{reason.length}/300</p>
-        </div>
-
-        <Alert variant="warning" title="This moves real ledger entries">
-          The wallet balance, double-entry journal and an immutable audit entry are written in one
-          transaction. It cannot be undone from the UI.
-        </Alert>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={submitting}
-          >
-            Cancel
-          </Button>
-          <Button type="button" loading={submitting} onClick={() => void submit()}>
-            {type === 'CREDIT' ? 'Credit wallet' : 'Debit wallet'}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

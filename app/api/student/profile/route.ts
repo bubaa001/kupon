@@ -46,7 +46,7 @@ export async function GET() {
         prisma.creditRequest.count({
           where: {
             studentId: student.id,
-            status: { in: ['PENDING_VENDOR', 'PENDING_FINANCE'] },
+            status: { in: ['PENDING_VENDOR', 'PENDING_ADMIN', 'PENDING_FINANCE'] },
           },
         }),
         prisma.order.count({

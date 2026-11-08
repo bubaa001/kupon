@@ -6,7 +6,7 @@ import {
   RefreshCw,
   SearchX,
   Store,
-  Wallet,
+  CircleDollarSign,
   Percent,
   ReceiptText,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
 import { StatCard } from '@/components/ui/stat-card';
-import { STATUS_BADGE, TX_STATUSES, TX_TYPE_LABEL, TX_TYPES } from '@/lib/constants';
+import { STATUS_BADGE, TX_STATUSES } from '@/lib/constants';
 import { formatTZS } from '@/lib/utils';
 import type { TxListData, TxRow } from '../_components/types';
 import { queryString, useApiData, useDebouncedValue } from '../_components/hooks';
@@ -51,7 +51,6 @@ export default function AdminTransactionsPage() {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState('ALL');
-  const [type, setType] = useState('ALL');
   const [range, setRange] = useState<RangeValue>('7d');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<TxRow | null>(null);
@@ -70,12 +69,12 @@ export default function AdminTransactionsPage() {
       `/api/admin/transactions${queryString({
         q: debouncedSearch || undefined,
         status: status === 'ALL' ? undefined : status,
-        type: type === 'ALL' ? undefined : type,
+        type: 'PAYMENT',
         range,
         page,
         pageSize: PAGE_SIZE,
       })}`,
-    [debouncedSearch, status, type, range, page],
+    [debouncedSearch, status, range, page],
   );
 
   const { data, error, loading, reload } = useApiData<TxListData>(url);
@@ -85,19 +84,17 @@ export default function AdminTransactionsPage() {
       `/api/admin/transactions/export${queryString({
         q: debouncedSearch || undefined,
         status: status === 'ALL' ? undefined : status,
-        type: type === 'ALL' ? undefined : type,
+        type: 'PAYMENT',
         range,
       })}`,
-    [debouncedSearch, status, type, range],
+    [debouncedSearch, status, range],
   );
 
-  const filtersActive =
-    Boolean(search) || status !== 'ALL' || type !== 'ALL' || range !== '7d';
+  const filtersActive = Boolean(search) || status !== 'ALL' || range !== '7d';
 
   function resetFilters() {
     setSearch('');
     setStatus('ALL');
-    setType('ALL');
     setRange('7d');
     setPage(1);
   }
@@ -105,7 +102,7 @@ export default function AdminTransactionsPage() {
   const printSubtitle = [
     rangeOptionLabel(range),
     status === 'ALL' ? 'All statuses' : `${STATUS_BADGE[status as keyof typeof STATUS_BADGE]?.label ?? status}`,
-    type === 'ALL' ? 'All types' : TX_TYPE_LABEL[type as keyof typeof TX_TYPE_LABEL] ?? type,
+    'Meal payments',
     debouncedSearch ? `Search “${debouncedSearch}”` : null,
     generatedAt ? `Generated ${generatedAt}` : null,
   ]
@@ -117,9 +114,9 @@ export default function AdminTransactionsPage() {
       <PrintHeader title="Transaction ledger" subtitle={printSubtitle} />
 
       <PageHeader
-        eyebrow="Money movement"
+        eyebrow="Order activity"
         title="Transactions"
-        description="Every top-up, meal payment, refund and manual adjustment on your campus."
+        description="Meal payment records from the Kupon test gateway. No real money is collected in this build."
         actions={
           <div className="no-print flex flex-wrap items-center gap-2">
             <Button
@@ -141,7 +138,7 @@ export default function AdminTransactionsPage() {
         <StatCard
           label="Settled meal volume"
           value={data ? formatTZS(data.summary.gross) : '—'}
-          icon={Wallet}
+          icon={CircleDollarSign}
           accent="emerald"
           hint="Matching settled payments"
         />
@@ -177,7 +174,7 @@ export default function AdminTransactionsPage() {
               placeholder="Reference, student, vendor, amount…"
               ariaLabel="Search transactions"
             />
-            <div className="grid grid-cols-2 gap-2 sm:flex">
+            <div className="grid grid-cols-1 gap-2 sm:flex">
               <FilterField label="Status" className="sm:w-36">
                 <Select
                   value={status}
@@ -191,23 +188,6 @@ export default function AdminTransactionsPage() {
                   {TX_STATUSES.map((item) => (
                     <option key={item} value={item}>
                       {STATUS_BADGE[item].label}
-                    </option>
-                  ))}
-                </Select>
-              </FilterField>
-              <FilterField label="Type" className="sm:w-40">
-                <Select
-                  value={type}
-                  onChange={(event) => {
-                    setType(event.target.value);
-                    setPage(1);
-                  }}
-                  aria-label="Filter by transaction type"
-                >
-                  <option value="ALL">All types</option>
-                  {TX_TYPES.map((item) => (
-                    <option key={item} value={item}>
-                      {TX_TYPE_LABEL[item]}
                     </option>
                   ))}
                 </Select>

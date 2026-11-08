@@ -58,6 +58,7 @@ export async function POST(request: Request) {
           description: body.description,
           imageUrl: body.imageUrl,
           available: body.available,
+          autoAccept: body.autoAccept,
           approvalStatus: 'APPROVED',
         },
       });

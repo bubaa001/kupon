@@ -14,24 +14,28 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function loginError(request: Request, code: string) {
-  const url = externalUrl(request, '/login');
+function loginError(request: Request, code: string, role: 'student' | 'vendor' | 'staff' = 'student') {
+  const destination =
+    role === 'staff' ? '/staff/login' : role === 'vendor' ? '/vendor/login' : '/login';
+  const url = externalUrl(request, destination);
   url.searchParams.set('error', code);
-  url.searchParams.set('role', 'student');
+  url.searchParams.set('role', role);
   return NextResponse.redirect(url);
 }
 
 /** Starts Google OAuth. The student's selected university is bound into state. */
 export async function GET(request: Request) {
-  const config = getGoogleConfig();
-  if (!config) return loginError(request, 'google_not_configured');
-
   const requestUrl = new URL(request.url);
-  const requestedUniversityId = requestUrl.searchParams.get('universityId');
-  if (!requestedUniversityId) {
-    return loginError(request, 'google_university');
+  const requestedRole = requestUrl.searchParams.get('role');
+  const role =
+    requestedRole === 'vendor' ? 'vendor' : requestedRole === 'staff' ? 'staff' : 'student';
+  const config = getGoogleConfig();
+  if (!config) return loginError(request, 'google_not_configured', role);
+
+  const requestedUniversityId = requestUrl.searchParams.get('universityId') ?? '';
+  if (role !== 'staff' && !requestedUniversityId) {
+    return loginError(request, 'google_university', role);
   }
-  const requestedRole = requestUrl.searchParams.get('role') === 'vendor' ? 'vendor' : 'student';
 
   const canonical = new URL(env.NEXT_PUBLIC_APP_URL);
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
@@ -53,8 +57,8 @@ export async function GET(request: Request) {
     const mobile = new URL(config.mobileRedirectUri);
     if (actualOrigin !== mobile.origin) {
       const bounce = new URL('/api/auth/google/start', mobile.origin);
-      bounce.searchParams.set('universityId', requestedUniversityId);
-      bounce.searchParams.set('role', requestedRole);
+      if (requestedUniversityId) bounce.searchParams.set('universityId', requestedUniversityId);
+      bounce.searchParams.set('role', role);
       return NextResponse.redirect(bounce);
     }
   }
@@ -73,29 +77,33 @@ export async function GET(request: Request) {
     if (!isLoopback && config.mobileRedirectUri) {
       const mobile = new URL(config.mobileRedirectUri);
       const bounce = new URL('/api/auth/google/start', mobile.origin);
-      bounce.searchParams.set('universityId', requestedUniversityId);
-      bounce.searchParams.set('role', requestedRole);
+      if (requestedUniversityId) bounce.searchParams.set('universityId', requestedUniversityId);
+      bounce.searchParams.set('role', role);
       return NextResponse.redirect(bounce);
     }
     const bounce = new URL('/api/auth/google/start', canonical);
-    bounce.searchParams.set('universityId', requestedUniversityId);
-    bounce.searchParams.set('role', requestedRole);
+    if (requestedUniversityId) bounce.searchParams.set('universityId', requestedUniversityId);
+    bounce.searchParams.set('role', role);
     return NextResponse.redirect(bounce);
   }
 
-  const university = await prisma.university.findUnique({
-    where: { id: requestedUniversityId },
-    select: { id: true, status: true },
-  });
-  if (!university || university.status !== 'ACTIVE') {
-    return loginError(request, 'google_university');
+  let universityId = '';
+  if (requestedUniversityId) {
+    const university = await prisma.university.findUnique({
+      where: { id: requestedUniversityId },
+      select: { id: true, status: true },
+    });
+    if (!university || university.status !== 'ACTIVE') {
+      return loginError(request, 'google_university', role);
+    }
+    universityId = university.id;
   }
 
   const state = randomBytes(24).toString('base64url');
   const payload: GoogleStatePayload = {
     state,
-    universityId: university.id,
-    role: requestedRole,
+    universityId,
+    role,
     createdAt: Date.now(),
   };
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');

@@ -8,9 +8,9 @@ import { prisma } from '@/lib/db';
 import { LoginForm, type LoginRole } from './login-form';
 
 export const metadata: Metadata = {
-  title: 'Sign in',
+  title: 'Student sign in',
   description:
-    'Sign in to Kupon as a student or campus vendor. Students create a wallet with Google; vendors apply with Google for admin approval.',
+    'Students sign in with Google to order from a cafeteria.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -27,10 +27,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const requestedRole = Array.isArray(searchParams?.role)
     ? searchParams?.role[0]
     : searchParams?.role;
-  // Staff have a separate entrance. The public login is only for students and
-  // vendors; an old staff bookmark is redirected instead of exposing the tab.
+  // Keep the public sign-in focused on students. Other account types have
+  // dedicated entry points with the correct controls for their role.
   if (requestedRole === 'staff') redirect('/staff/login');
-  const initialRole: LoginRole = requestedRole === 'vendor' ? 'vendor' : 'student';
+  if (requestedRole === 'vendor') redirect('/vendor/login');
+  const initialRole: LoginRole = 'student';
 
   // Live demo tenant snapshot, not hardcoded marketing figures. The login page
   // stays server-rendered/dynamic, so these counts reflect the current seed.
@@ -155,20 +156,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                   Kupon account
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-navy sm:text-3xl">
-                  Sign in or create an account
+                  Student sign in
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                  Students sign up with Google. Vendors apply with Google and are approved by their
-                  campus admin.
+                  Sign in with Google to browse cafeteria menus, place orders, and keep your meal
+                  coupons together.
                 </p>
               </div>
 
-              <LoginForm initialRole={initialRole} />
+              <LoginForm initialRole={initialRole} audience="student" />
             </div>
 
             <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-400">
-              Seeded demo data. Top ups and payments are simulated by a mock aggregator, so no real
-              money moves. Phone OTP is temporarily disabled; students use Google.
+              Seeded demo data. The Kupon test gateway simulates payment statuses; no real money
+              moves. Phone OTP is temporarily disabled; students use Google.
             </p>
           </div>
         </section>

@@ -92,12 +92,14 @@ export async function POST(request: Request) {
       },
     });
     if (!order) throw notFound('Order not found.');
-    if (order.status !== 'PENDING' || order.expiresAt <= new Date()) {
+    if (
+      !['PENDING', 'AWAITING_ACCEPTANCE'].includes(order.status) ||
+      (order.status === 'PENDING' && order.expiresAt <= new Date())
+    ) {
       throw conflict('Only an active, unredeemed coupon can be submitted for cafeteria credit.');
     }
     const paidByTestPayment =
-      order.transaction?.status === 'SETTLED' &&
-      order.transaction.amount === order.total - order.creditApplied;
+      order.transaction?.status === 'SETTLED';
     const paidByCafeteriaCredit =
       !order.transaction && order.testOnly && order.creditApplied === order.total;
     if (!paidByTestPayment && !paidByCafeteriaCredit) {

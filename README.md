@@ -59,7 +59,7 @@ Captured from the running app with real seeded data at 375px and desktop widths
 | A change of notebook or staff makes a customer's claim hard to verify | A consistent record for every order and credit decision; the problem is record reliability, not assumed dishonesty |
 | Students may need to find cash or leave money with the cafeteria | Direct mobile-money checkout is the planned live flow; this test gateway records payment states without moving real money or creating a student wallet |
 | Cafeterias lack dependable sales visibility | Database-backed transaction and menu analytics for transparency and decisions |
-| The system must grow beyond one cafeteria | Vendor-scoped data and role boundaries are designed to support multiple outlets |
+| The system must grow beyond one cafeteria | Start with one cafeteria, support seven outlets, then expand to cafeterias at other universities through vendor-scoped data and role boundaries |
 
 ---
 
@@ -67,30 +67,30 @@ Captured from the running app with real seeded data at 375px and desktop widths
 
 ### Student (mobile-first, installable PWA)
 
-- **Google sign-in** for students and vendors. Vendors submit an application for platform review; there is no student wallet or top-up flow.
-- **Scan the cafeteria counter QR**, browse the available menu, choose meals and submit an order. Kupon's test gateway automatically records an auditable `INITIATED → RECEIVED → CONFIRMED` lifecycle; Finance has no checkout approval step.
-- A **meal coupon** with items, order ID, fallback code, QR and status appears only after the test transaction is confirmed. It animates to **VERIFIED** when cafeteria staff redeem it.
+- **Google sign-in** for students. Vendor owners and staff use their own sign-in pages and can choose a password or Google; there is no student wallet or top-up flow.
+- **Scan the cafeteria counter QR**, browse today's available menu, and see the food total plus a 2.5% test collection fee before ordering. Kupon's internal gateway records `INITIATED → RECEIVED → CONFIRMED` automatically; Finance is not part of checkout.
+- Cafeteria owners can auto-accept every order or review requests. A **meal coupon** with items, order ID, fallback code and QR appears only after payment confirmation and any required cafeteria acceptance.
 - Transaction history with Today / Week / Month tabs, type/status filters and totals.
-- Credit request for an unfulfilled, active coupon; an accepted credit is restricted to that cafeteria. A further-review ticket records a TZS 1,500 test-only vendor charge; no cash refund or fee movement occurs.
+- Credit request for an unfulfilled order; the cafeteria can reject it or forward it to a platform admin. Approved credit is restricted to that cafeteria and visible to the student. A further-review ticket records a TZS 1,500 test-only cafeteria charge; no cash refund occurs.
 - Approved cafeteria credits are shown to students with their cafeteria name and current available amount.
 - Profile, university, student ID, PWA install hint and logout.
 
 ### Vendor (mobile-first POS)
 
-- Vendor Google sign-in, a Google-first application form, and university-admin approval before the terminal goes live. The legacy vendor code + PIN form is preserved behind a demo toggle.
+- Vendor phone/password or Google sign-in. New owners can apply with Google, create a password, and wait for platform-admin document and site review before the terminal goes live.
 - A printable, camera-friendly **counter QR** (`KPN:V:<vendor code>`) for students to scan. It opens the vendor's live approved menu and cannot move money on its own.
-- **Live order desk:** incoming confirmed test orders with student identity, items, totals and coupon status; polling every 3 seconds, new-order toasts/haptics and animated cards.
+- **Order desk:** confirmed test requests, grouped by food and quantity, with individual or bulk acceptance. Auto-accepted items skip manual review; coupons stay hidden until accepted. Staff can report unavailable food for platform-admin review.
 - **Coupon verification:** scan the student's coupon QR or enter the 6-digit code shown on their phone. Single-use conditional status transition plus a celebratory verified screen; the student coupon updates live.
-- Menu management with a live student preview, real photo uploads, prices, categories and availability. Vendors upload their own dish photos; there is no emoji fallback. Food is vendor-owned and goes live immediately; the university admin vets the vendor, not each dish.
-- Menu availability, order history and cafeteria-scoped credit decisions.
-- Team access: cafeteria owners create scoped staff and Finance accounts. Staff can verify coupons and mark menu items available/unavailable; Finance can review assigned credit/support cases and view payment events only.
+- Menu management with a live student preview, photos, prices, categories, availability and per-food auto-accept. Vendors upload their own dish photos; there is no emoji fallback. Food is vendor-owned and goes live immediately; admins vet the cafeteria, not each dish.
+- Menu availability, order history, cafeteria-scoped credit cases, payment history and test withdrawals. Withdrawals require TZS 50,000 and record a TZS 2,000 fee (TZS 1,500 API + TZS 500 Kupon); they do not send real money.
+- Team access: cafeteria owners can issue scoped, one-time invitations for staff and Finance; platform admins can do the same. Invitees set a password and can also use Google with the invited email.
 - Sales analytics exclude internal test payments from real-money totals.
 - Vendor never sees another vendor's or university's orders or sales.
 
 ### Cafeteria staff
 
-- The cafeteria owner creates each staff account; platform admins can also create accounts.
-- Staff sign in at `/staff/login`, see only their assigned cafeteria, verify its coupons and update daily menu availability.
+- The cafeteria owner invites each staff member; platform admins can also issue a scoped invitation.
+- Staff sign in at `/staff/login` with their phone/password or invited Google email, see only their assigned cafeteria, verify its coupons and update daily menu availability.
 - Staff cannot edit prices, view settlements, manage accounts or approve/confirm payments.
 
 ### University admin (responsive dashboard)
@@ -100,10 +100,9 @@ Captured from the running app with real seeded data at 375px and desktop widths
 - Top-selling meals with progress bars and a horizontal bar chart.
 - Live transaction feed with status badges.
 - Searchable/filterable transaction table, CSV download and print-to-PDF report.
-- Vendor onboarding, suspension, per-vendor sales.
+- Vendor sales oversight and support.
 - Student search and audit history.
-- Vendor vetting: add, view sales, suspend or reactivate a vendor. Admins do not approve individual dishes.
-- Vendor onboarding and support oversight; cafeteria vendors review student credit requests.
+- Active-vendor oversight and scoped team-account creation. New cafeteria applications and physical-site checks are handled by platform admins; university admins cannot activate pending applications or issue cafeteria credit.
 - University profile, **Lipa Namba** routing code, SaaS billing invoices, ledger health, audit trail.
 - Daily/weekly/monthly profit & loss, fee waterfall, revenue leakage and top vendors.
 
@@ -113,14 +112,15 @@ Captured from the running app with real seeded data at 375px and desktop widths
 - Onboard a university: code, route code, city, SaaS fee, first admin account.
 - Suspend/reactivate tenants, edit Lipa Namba with uniqueness validation and audit.
 - Platform revenue: GMV, transaction fees, university share, aggregator cost, SaaS revenue, net.
+- Review cafeteria credit requests after vendor escalation; approval records cafeteria-specific student credit, not a cash refund.
 - System health: transaction status, ledger balance check, mock uptime/latency and service status.
 
 ### Finance
 
 - Cafeteria-created Finance accounts are scoped to that cafeteria; platform admins may create scoped accounts or platform-wide Finance accounts.
 - Inspect internal test-payment records and their automatically recorded lifecycle (read-only).
-- Review assigned closing-time credit requests and escalated support tickets.
-- Finance cannot approve a student checkout. Test records do not represent actual collection or payout.
+- View test-payment history and review scoped support tickets. Credit history is read-only.
+- Finance cannot approve checkout or issue student credit. Test records do not represent actual collection or payout.
 
 ### USSD — paused
 
@@ -137,7 +137,7 @@ USSD/offline payments are **not supported in this build**. The legacy wallet-bas
 | Charts | Recharts |
 | State | Local React state + typed fetch client; session from httpOnly JWT cookie |
 | QR | `qrcode.react` (generate), `html5-qrcode` (scan) |
-| Auth | `jose` HS256 JWT in an httpOnly, SameSite=Lax cookie; bcrypt for staff credentials; Google OAuth 2.0 for student sign-in/signup and vendor sign-in/application |
+| Auth | `jose` HS256 JWT in an httpOnly, SameSite=Lax cookie; bcrypt for manual credentials; Google OAuth 2.0 for students, vendors and invited staff |
 | Validation | Zod on every mutation + query filter |
 | Database | Prisma 6 + PostgreSQL (Supabase) |
 | Payments | Internal Kupon test gateway; no live provider integration or real-money custody |
@@ -201,25 +201,15 @@ pnpm start
 
 ## Demo credentials
 
-| Role | Credentials | Where it lands |
-| --- | --- | --- |
-| **New student (Google)** | Any verified Google account → **Continue with Google** | Creates a student account with no wallet |
-| Seeded student | `amina.mwinyi@udsm.ac.tz` (after an admin links your real Google email) | Continue with Google |
-| Seeded student | `kelvin.mwakalinga@must.ac.tz` (after linking) | Continue with Google |
-| **New vendor (Google)** | Vendor tab → Continue with Google → application | `/vendor-pending`, then `/vendor` after approval |
-| **Vendor (UDSM) legacy** | `V-UDSM-001` · PIN `1234` via the demo terminal toggle | `/vendor` |
-| Vendor (MUST) legacy | `V-MUST-001` · PIN `1234` via the demo terminal toggle | `/vendor` |
-| **University admin (UDSM)** | `+255745000001` · `admin1234` | `/staff/login` → `/admin` |
-| University admin (MUST) | `+255745000002` · `admin1234` | `/staff/login` → `/admin` |
-| **Super admin (Bubaa Comp)** | `+255745000000` · `super1234` | `/staff/login` → `/super-admin` |
-| **Finance** | Create a platform-wide account from Super Admin → Finance Users | `/finance` |
-| USSD (paused) | Disabled in code | `/ussd` not found; API returns 404 |
+Kupon does not ship shared platform-owner credentials. Configure `SUPER_ADMIN_SETUP_TOKEN` with a random value of at least 32 characters, run the app, and open `/first-owner` to create the first platform owner with a private phone, email and password. Setup becomes unavailable after a super-admin account exists. Use the same verified email for Google sign-in later.
 
-**Staff do not use the public landing login.** The public `/login` page exposes only Student and Vendor tabs. University and platform staff enter through `/staff/login`; old `/login?role=staff` bookmarks redirect there. The staff page is `noindex`, not linked from the landing page, and staff sign-out returns to `/staff/login`.
+Generate a setup token with `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"` and add it to the local `.env` and deployment environment. Do not commit the value.
 
-All other seeded students: UDSM `+255713456789`, `+255714567890`, `+255715678901`, `+255716789012`; MUST `+255718901234`, `+255719012345`, `+255720123456`, `+255721234567`. OTP endpoints still work for tests/back-office tooling, but the login UI no longer shows them.
+Students use Google at `/login`. Cafeteria owners use `/vendor/login` to sign in with phone/password or Google, or begin a Google-verified application. Staff use `/staff/login`; their cafeteria owner or a platform admin generates a one-time invitation at `/vendor/team` or `/admin/team`.
 
-### Google auth: students and vendors
+The demo seed is only for disposable development databases. It does not create a platform owner. Never run it against production data.
+
+### Google auth: students, vendors and staff
 
 Phone OTP is temporarily disabled in the UI (`OTP_LOGIN_ENABLED = false` in `app/login/login-form.tsx`). The complete OTP code and API endpoints are kept intact for when SMS delivery is enabled.
 
@@ -234,21 +224,23 @@ Security model:
 1. Google OAuth authorization-code flow with a random signed `state` cookie (10-minute TTL) and server-side token exchange.
 2. Google's `email_verified` claim is required.
 3. The OAuth callback never creates a wallet by itself. It issues a **signed, HttpOnly, 15-minute signup ticket**; the signup POST must present that ticket, so a browser cannot create accounts without Google consent.
-4. The signup route re-checks university status, unique Google email/sub, unique phone and unique student number inside one transaction, then writes `User`, `StudentProfile`, `Wallet` and the audit log atomically.
+4. The signup route re-checks university status, unique Google email/sub, unique phone and unique student number inside one transaction, then writes `User`, `StudentProfile` and the audit log atomically. No student wallet is created.
 5. The same httpOnly Kupon session cookie is issued after signup or sign-in; the client secret never reaches the browser.
 
 > Open Gmail signup is intentionally enabled for this MVP. For a production campus rollout, restrict signup to the university's Google Workspace domain (or match student numbers against the registry).
 
-**Vendor — Continue with Google**
+**Vendor — `/vendor/login`**
 
-1. Vendor tab → select campus → **Continue with Google**.
+1. Select the campus and continue with Google, or use phone/password for an existing vendor account.
 2. If that Google account is already an approved vendor, it goes straight to the order desk.
-3. If the Google account is brand new, `/vendor-apply` asks for business name, owner name, business phone and what the vendor sells.
+3. If the Google account is brand new, `/vendor-apply` asks for business name, owner name, business phone, a password, registration details, physical cafeteria location and a secure registration-document link.
 4. Submitting creates a **PENDING vendor** and a vendor session, then redirects to `/vendor-pending`.
-5. The university admin sees the pending request in **Admin → Vendors**, filters **Pending**, and clicks **Approve**. The vendor can then refresh `/vendor-pending` and enters `/vendor`.
-6. Rejected/pending vendors cannot call any vendor API (`requireVendor` blocks non-ACTIVE status); the pending page is the only authenticated screen they can open.
+5. A platform admin reviews the documents and confirms the cafeteria physically exists in **Platform → Vendor review**. The vendor can then refresh `/vendor-pending` and enter `/vendor`.
+6. If changes are requested, the vendor sees the review note and can update and resubmit the application from `/vendor-pending`. Pending vendors cannot use operational APIs.
 
-The legacy vendor code + 4-digit PIN form is preserved behind **“Use an existing terminal code (demo)”** on the Vendor tab so the seeded vendors remain usable.
+**Staff — `/staff/login`** accepts phone/password or Google sign-in. Google only works for an existing staff/Finance/admin record whose email matches the verified Google email. Invitations are single-use, expire after seven days, and bind the account to one cafeteria.
+
+**First platform owner:** configure `SUPER_ADMIN_SETUP_TOKEN` in the server environment and visit `/first-owner`. The first owner chooses their own credentials; the password is stored as a bcrypt hash, and the same verified email can be linked through Google later.
 
 Configure it in `.env` (see `.env.example`):
 
@@ -279,8 +271,8 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 - **Google auth on the hosted app:** open the stable Vercel domain from your phone. Set `GOOGLE_REDIRECT_URI` to `https://<your-domain>/api/auth/callback/google` in Vercel and add that exact URI to the OAuth client’s authorized redirect URIs in Google Cloud Console. A local tunnel is not needed for the hosted app.
 - **Existing account not linked to Google:** the callback does not attach Google automatically. Link it from **Admin → Students → student → Google sign-in fallback**, or run `pnpm link:google <phone> <email>`. New students do not need this step — they get the signup form.
 - **`google_signup_expired`:** the 15-minute signup ticket expired. Start **Continue with Google** again.
-- **`google_vendor_expired`:** the 15-minute vendor application ticket expired. Start again from the Vendor tab.
-- **`google_vendor_missing`:** that Google account has no vendor record yet — submit a vendor application from the Vendor tab.
+- **`google_vendor_expired`:** the 15-minute vendor application ticket expired. Start again from `/vendor/login`.
+- **`google_vendor_missing`:** that Google account has no vendor record yet — submit a vendor application from `/vendor/login`.
 - **Phone or student number already registered:** ask an admin to link the Google email to the existing student account. Signup never merges identities.
 
 ---
@@ -358,7 +350,7 @@ scripts/                      Seed verification, smoke tests, screenshots
 
 No marketing metric, test account, transaction, coupon, ledger line or vendor list is hardcoded in the UI.
 - `lib/public-data.ts` provides live platform totals for the public landing page, including the value of verified meal orders. The landing page itself is image-free.
-- The login page reads its campus snapshot from Prisma (students/vendors/dishes) and the staff page has no seeded credentials; credentials live in this README only.
+- The login page reads its campus snapshot from Prisma (students/vendors/dishes); there are no shared platform-owner credentials.
 - The student scanner fetches active vendors from the database via `GET /api/student/vendors`; there is no `DEMO_VENDORS` array.
 - Food photos are vendor-uploaded files (`POST /api/vendor/menu/upload`) and stored on `MenuItem.imageUrl`; emoji are ignored in the interface. Uploaded files are served by `GET /api/uploads/food/<filename>` because Next.js production does not serve files added to `public/` after the build. In production, point the upload route at S3/R2/Cloudinary instead.
 
@@ -369,21 +361,22 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 | Audience | Entrance | Notes |
 | --- | --- | --- |
 | Students | `/login` (Student) | Google sign-in/signup; OTP UI disabled behind a flag |
-| Vendors | `/login` (Vendor) | Google sign-in/application; legacy PIN demo toggle |
-| University bursars | `/staff/login` | Password; `noindex`; not linked from the landing page |
-| Platform operators | `/staff/login` | Same staff entrance; RBAC lands them on `/super-admin` |
+| Vendors | `/vendor/login` | Phone/password or Google; Google can start an application |
+| Cafeteria staff | `/staff/login` | Phone/password or Google matching the invited email |
+| Platform operators | `/staff/login` | First owner is created at `/first-owner`; Google can be linked later |
 
-- `/login` renders only Student and Vendor tabs. There is no Staff tab, staff demo card or staff link on the public landing page.
+- `/login` renders only Student sign-in. Vendor owners and staff have distinct entry points linked from the landing page.
 - `/login?role=staff` redirects to `/staff/login` for old bookmarks.
 - `/admin` and `/super-admin` layouts redirect unauthenticated users to `/staff/login`, not `/login`.
 - Staff sign-out and the dashboard sign-out button return to `/staff/login`.
-- `/staff/login` is `noindex`, disallowed in `robots.ts`, and signs an existing student/vendor session out of the way by redirecting it to its own home.
-- The staff API (`/api/auth/staff-login`) is unchanged; only the entrance and navigation architecture changed.
+- `/staff/login` is `noindex` and disallowed in `robots.ts`.
+- Cafeteria owners/platform admins create one-time, seven-day staff invitations; invitees choose a password and can also use Google with that email.
+- First-owner setup requires a 32+ character `SUPER_ADMIN_SETUP_TOKEN`; it closes when a super-admin account exists.
 
 ## Security model
 
 - **RBAC on every API route:** `requireApiUser(['STUDENT'])`, `['VENDOR']`, `['ADMIN','SUPER_ADMIN']`, `['SUPER_ADMIN']`.
-- **Google OAuth fallback:** state-cookie-protected authorization-code flow; server-side code exchange; `email_verified` required. Existing student accounts sign in only when the Google email is pre-linked. New students receive a signed 15-minute signup ticket.
+- **Google OAuth:** state-cookie-protected authorization-code flow; server-side code exchange; `email_verified` required. New student and vendor signup paths use signed, short-lived tickets. Google can sign in to a non-student account only when its verified email matches the existing account.
 - **Meal coupons:** camera-friendly short QR (`KPN:C:<6-digit code>`) plus the visible 6-digit fallback. A coupon is available only after automatic test-gateway confirmation; vendor verification requires the coupon to belong to the signed-in vendor and university, and a conditional update prevents double redemption.
 - **QR production settings:** payloads are short pointers (`KPN:V:<vendor code>`) rather than JWTs; 224 px (196 px compact), error correction Q, 4-module quiet zone, black on white. This avoids the 60–77 module QR grids that phone cameras could not resolve.
 - **Tenant isolation:** admin queries use `resolveTenantScope()`; students/vendors are derived from the session, never from a client-supplied ID. `assertTenant()` blocks cross-university reads/writes.
@@ -419,7 +412,7 @@ do not contact a mobile-money provider, collect money, send payouts, or increase
 balances. Test cafeteria credit is isolated from any future live-credit ledger.
 
 Wallet top-ups, student wallet payment codes, legacy counter charges, legacy USSD flows, and
-AzamPay/Whop callbacks are disabled. Do not treat a test confirmation, credit balance, ticket fee,
+Legacy provider callbacks are disabled. Do not treat a test confirmation, credit balance, ticket fee,
 or vendor payout record as real money movement. A future live payment integration must be
 implemented and reviewed separately before enabling collection or payouts.
 

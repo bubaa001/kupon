@@ -6,11 +6,11 @@ import { usePathname } from 'next/navigation';
 import {
   Activity,
   ArrowLeftRight,
-  Banknote,
   BarChart3,
   Bell,
   Building2,
   ChevronRight,
+  CircleDollarSign,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -50,13 +50,12 @@ const ADMIN_NAV: NavGroup[] = [
       { href: '/admin/transactions', label: 'Transactions', icon: ArrowLeftRight },
       { href: '/admin/vendors', label: 'Vendors', icon: Store },
       { href: '/admin/students', label: 'Students', icon: Users },
+      { href: '/admin/team', label: 'Team accounts', icon: Users },
     ],
   },
   {
     title: 'Manage',
     items: [
-      { href: '/admin/withdrawals', label: 'Withdrawals', icon: Banknote },
-      { href: '/admin/refunds', label: 'Order refunds', icon: RotateCcw },
       { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
     ],
   },
@@ -75,6 +74,8 @@ const SUPER_NAV: NavGroup[] = [
       { href: '/super-admin/revenue', label: 'Platform revenue', icon: TrendingUp },
       { href: '/super-admin/health', label: 'System health', icon: Activity },
       { href: '/super-admin/finance-users', label: 'Team accounts', icon: Users },
+      { href: '/super-admin/vendor-applications', label: 'Vendor review', icon: Store },
+      { href: '/super-admin/credit-requests', label: 'Credit approvals', icon: CircleDollarSign },
     ],
   },
 ];

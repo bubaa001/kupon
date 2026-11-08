@@ -70,7 +70,7 @@ function couponCode(): string {
 function ledgerLinesForPayment(amount: number, txnId: string, universityId: string) {
   const f = fees(amount);
   return [
-    { transactionId: txnId, universityId, account: 'STUDENT_WALLET', debit: amount, credit: 0 },
+    { transactionId: txnId, universityId, account: 'TEST_PAYMENT_CLEARING', debit: amount, credit: 0 },
     {
       transactionId: txnId,
       universityId,
@@ -102,13 +102,6 @@ function ledgerLinesForPayment(amount: number, txnId: string, universityId: stri
   ];
 }
 
-function ledgerLinesForTopUp(amount: number, txnId: string, universityId: string) {
-  return [
-    { transactionId: txnId, universityId, account: 'CASH_TRUST', debit: amount, credit: 0 },
-    { transactionId: txnId, universityId, account: 'STUDENT_WALLET', debit: 0, credit: amount },
-  ];
-}
-
 function dayAt(daysAgo: number, hour: number, minute: number) {
   const base = subDays(new Date(), daysAgo);
   return setMinutes(setHours(base, hour), minute);
@@ -129,7 +122,6 @@ type UniSeed = {
     studentId: string;
     course: string;
     year: number;
-    opening: number;
   }[];
   vendors: {
     name: string;
@@ -159,7 +151,6 @@ const UDSM: UniSeed = {
       studentId: 'UDSM/2024/CS/001',
       course: 'Computer Science',
       year: 2,
-      opening: 145000,
     },
     {
       name: 'Juma Omary Kileo',
@@ -168,7 +159,6 @@ const UDSM: UniSeed = {
       studentId: 'UDSM/2024/ENG/014',
       course: 'Civil Engineering',
       year: 2,
-      opening: 120000,
     },
     {
       name: 'Neema Godfrey Mushi',
@@ -177,7 +167,6 @@ const UDSM: UniSeed = {
       studentId: 'UDSM/2023/EDU/032',
       course: 'Education',
       year: 3,
-      opening: 165000,
     },
     {
       name: 'Baraka Emmanuel Mwakyusa',
@@ -186,7 +175,6 @@ const UDSM: UniSeed = {
       studentId: 'UDSM/2024/LAW/007',
       course: 'Law',
       year: 2,
-      opening: 132000,
     },
     {
       name: 'Zainab Salum Juma',
@@ -195,7 +183,6 @@ const UDSM: UniSeed = {
       studentId: 'UDSM/2023/MED/021',
       course: 'Medicine',
       year: 4,
-      opening: 190000,
     },
   ],
   vendors: [
@@ -267,7 +254,6 @@ const MUST: UniSeed = {
       studentId: 'MUST/2024/ICT/009',
       course: 'Information Technology',
       year: 2,
-      opening: 128000,
     },
     {
       name: 'Rehema John Mwakyusa',
@@ -276,7 +262,6 @@ const MUST: UniSeed = {
       studentId: 'MUST/2023/ENG/003',
       course: 'Electrical Engineering',
       year: 3,
-      opening: 155000,
     },
     {
       name: 'Salim Abdallah Msuya',
@@ -285,7 +270,6 @@ const MUST: UniSeed = {
       studentId: 'MUST/2024/BUS/018',
       course: 'Business Administration',
       year: 2,
-      opening: 118000,
     },
     {
       name: 'Halima Rajabu Mwambe',
@@ -294,7 +278,6 @@ const MUST: UniSeed = {
       studentId: 'MUST/2023/SCI/025',
       course: 'Applied Chemistry',
       year: 3,
-      opening: 172000,
     },
     {
       name: 'Daudi Josephat Mbwambo',
@@ -303,7 +286,6 @@ const MUST: UniSeed = {
       studentId: 'MUST/2024/ICT/011',
       course: 'Information Technology',
       year: 2,
-      opening: 140000,
     },
   ],
   vendors: [
@@ -398,26 +380,14 @@ async function main() {
   await reset();
 
   const adminPassword = await bcrypt.hash('admin1234', 10);
-  const superPassword = await bcrypt.hash('super1234', 10);
   const pinHashes = {
     '1234': await bcrypt.hash('1234', 10),
     '2345': await bcrypt.hash('2345', 10),
     '3456': await bcrypt.hash('3456', 10),
   } as Record<string, string>;
 
-  const superAdmin = await prisma.user.create({
-    data: {
-      id: randomUUID(),
-      name: 'Bubaa Comp Admin',
-      phone: '+255745000000',
-      role: 'SUPER_ADMIN',
-      passwordHash: superPassword,
-    },
-  });
-
   const allTransactions: any[] = [];
   const allLedger: any[] = [];
-  const allRefundRequests: any[] = [];
   const allAuditLogs: any[] = [];
   let totalPayments = 0;
 
@@ -498,7 +468,7 @@ async function main() {
       menuItems.push(created);
     }
 
-    // Five students per university, each with an opening balance from two weeks ago.
+    // Five student accounts with deterministic simulated order activity.
     const students = [];
     for (let s = 0; s < uniSeed.students.length; s += 1) {
       const sSeed = uniSeed.students[s];
@@ -520,81 +490,9 @@ async function main() {
           studentId: sSeed.studentId,
           course: sSeed.course,
           year: sSeed.year,
-          walletBalance: sSeed.opening,
         },
       });
-      const wallet = await prisma.wallet.create({
-        data: {
-          id: randomUUID(),
-          studentId: student.id,
-          balance: sSeed.opening,
-          currency: 'TZS',
-        },
-      });
-
-      const openingTxnId = randomUUID();
-      allTransactions.push({
-        id: openingTxnId,
-        reference: ref('TOP'),
-        universityId: university.id,
-        studentId: student.id,
-        amount: sSeed.opening,
-        fee: 0,
-        // Opening balances are demo capital, not a real mobile-money collection.
-        aggregatorFee: 0,
-        type: 'TOPUP',
-        status: 'SETTLED',
-        network: pick(['M-PESA', 'TIGO_PESA', 'AIRTEL_MONEY', 'HALOTEL']),
-        phone: sSeed.phone,
-        routeCode: university.paymentRouteCode,
-        metadata: JSON.stringify({
-          provider: 'snippe-mock',
-          seed: 'opening-balance',
-          routeCode: university.paymentRouteCode,
-          lipaNamba: university.paymentRouteCode,
-        }),
-        createdAt: subDays(new Date(), 14),
-        settledAt: subDays(new Date(), 14),
-      });
-      allLedger.push(...ledgerLinesForTopUp(sSeed.opening, openingTxnId, university.id));
-
-      students.push({ ...student, user, wallet, opening: sSeed.opening });
-    }
-
-    // 30 top-ups over the last 7 days (3 per student).
-    for (const student of students) {
-      const amounts = [5000, 10000, 20000, 5000, 15000];
-      for (let t = 0; t < 3; t += 1) {
-        const amount = pick(amounts);
-        const txnId = randomUUID();
-        const createdAt = dayAt(1 + Math.floor(rand() * 6), 7 + Math.floor(rand() * 12), Math.floor(rand() * 60));
-        allTransactions.push({
-          id: txnId,
-          reference: ref('TOP'),
-          universityId: university.id,
-          studentId: student.id,
-          amount,
-          fee: 0,
-          // The mock provider does not charge a real collection fee. With a live
-          // aggregator, decide whether to absorb this or pass it to the student.
-          aggregatorFee: 0,
-          type: 'TOPUP',
-          status: 'SETTLED',
-          network: pick(['M-PESA', 'TIGO_PESA', 'AIRTEL_MONEY', 'HALOTEL']),
-          phone: student.user.phone,
-          routeCode: university.paymentRouteCode,
-          metadata: JSON.stringify({
-            provider: 'snippe-mock',
-            seed: 'recent-topup',
-            routeCode: university.paymentRouteCode,
-            lipaNamba: university.paymentRouteCode,
-          }),
-          createdAt,
-          settledAt: createdAt,
-        });
-        allLedger.push(...ledgerLinesForTopUp(amount, txnId, university.id));
-        student.opening += amount;
-      }
+      students.push({ ...student, user });
     }
 
     // 120 payments: 12 per student across the last 7 days. A handful are left
@@ -626,6 +524,7 @@ async function main() {
           vendorSettlement: status === 'SETTLED' ? f.vendorSettlement : 0,
           type: 'PAYMENT',
           status,
+          isTest: true,
           routeCode: university.paymentRouteCode,
           metadata: JSON.stringify({
             item: item.name,
@@ -634,7 +533,8 @@ async function main() {
             routeCode: university.paymentRouteCode,
             lipaNamba: university.paymentRouteCode,
             universityCode: university.code,
-            provider: 'snippe-mock',
+            provider: 'kupon-test-gateway',
+            channel: 'MOBILE_MONEY_ORDER',
           }),
           failureReason: status === 'FAILED' ? 'MOCK_TIMEOUT: aggregator did not confirm in time' : null,
           createdAt,
@@ -642,116 +542,12 @@ async function main() {
         });
 
         if (status === 'SETTLED') {
-          student.opening -= amount;
           vendor.pendingBalance = (vendor.pendingBalance ?? 0) + f.vendorSettlement;
           allLedger.push(...ledgerLinesForPayment(amount, txnId, university.id));
           totalPayments += 1;
         }
         paymentIndex += 1;
       }
-    }
-
-    // Persist the final wallet balances (opening + top-ups − settled payments).
-    for (const student of students) {
-      await prisma.wallet.update({
-        where: { id: student.wallet.id },
-        data: { balance: Math.max(0, student.opening) },
-      });
-      await prisma.studentProfile.update({
-        where: { id: student.id },
-        data: { walletBalance: Math.max(0, student.opening) },
-      });
-    }
-
-    // Money requests. Everything in this legacy plan is a WITHDRAWAL: the student
-    // is cashing out unused wallet balance to mobile money, not reversing an order.
-    // Order REFUND examples are created after the order board below, because a
-    // refund must point at a real paid + vendor-verified order.
-    const refundPlan = [
-      { student: students[0], amount: 4000, status: 'PENDING', note: null, reason: 'I am travelling home this weekend and have unused balance.' },
-      { student: students[1], amount: 2500, status: 'PENDING', note: null, reason: 'I mostly cook in the hostel now. Please cash out the remaining balance.' },
-      { student: students[2], amount: 6000, status: 'APPROVED', note: 'Verified with the student affairs office. Payout queued.', reason: 'Medical leave for the rest of the semester.' },
-      { student: students[3], amount: 3000, status: 'PENDING', note: null, reason: 'I am transferring to another university next month.' },
-      { student: students[4], amount: 2000, status: 'REJECTED', note: 'Cash-out window closes 14 days after top-up. Please spend or carry over the balance.', reason: 'Change of mind.' },
-    ];
-
-    for (const plan of refundPlan) {
-      const requestId = randomUUID();
-      const createdAt = dayAt(1 + Math.floor(rand() * 5), 9 + Math.floor(rand() * 8), 15);
-      const requestRow: Record<string, unknown> = {
-        id: requestId,
-        reference: ref('WDR'),
-        kind: 'WITHDRAWAL',
-        studentId: plan.student.id,
-        universityId: university.id,
-        amount: plan.amount,
-        reason: plan.reason,
-        status: plan.status,
-        adminNote: plan.note,
-        reviewedById: plan.status === 'PENDING' ? null : admin.id,
-        reviewedAt: plan.status === 'PENDING' ? null : new Date(createdAt.getTime() + 3600_000),
-        payoutStatus: plan.status === 'APPROVED' ? 'SETTLED' : null,
-        createdAt,
-      };
-      allRefundRequests.push(requestRow);
-
-      if (plan.status === 'APPROVED') {
-        const txnId = randomUUID();
-        const txnReference = ref('WDR');
-        const createdAtTxn = new Date(createdAt.getTime() + 3900_000);
-        allTransactions.push({
-          id: txnId,
-          reference: txnReference,
-          universityId: university.id,
-          studentId: plan.student.id,
-          amount: plan.amount,
-          fee: 0,
-          type: 'WITHDRAWAL',
-          status: 'SETTLED',
-          phone: plan.student.user.phone,
-          routeCode: university.paymentRouteCode,
-          metadata: JSON.stringify({
-            provider: 'snippe-mock',
-            kind: 'WITHDRAWAL',
-            withdrawalRequestId: requestId,
-            reason: plan.reason,
-            routeCode: university.paymentRouteCode,
-          }),
-          createdAt: createdAtTxn,
-          settledAt: createdAtTxn,
-        });
-        requestRow.payoutTransactionId = txnId;
-        requestRow.payoutReference = txnReference;
-        plan.student.opening -= plan.amount;
-        allLedger.push(
-          {
-            transactionId: txnId,
-            universityId: university.id,
-            account: 'STUDENT_WALLET',
-            debit: plan.amount,
-            credit: 0,
-          },
-          {
-            transactionId: txnId,
-            universityId: university.id,
-            account: 'CASH_TRUST',
-            debit: 0,
-            credit: plan.amount,
-          },
-        );
-      }
-    }
-
-    // Re-persist balances after the approved refund.
-    for (const student of students) {
-      await prisma.wallet.update({
-        where: { id: student.wallet.id },
-        data: { balance: Math.max(0, student.opening) },
-      });
-      await prisma.studentProfile.update({
-        where: { id: student.id },
-        data: { walletBalance: Math.max(0, student.opening) },
-      });
     }
 
     // One paid settlement per vendor, plus their current pending balance.
@@ -806,15 +602,6 @@ async function main() {
       {
         actorId: admin.id,
         universityId: university.id,
-        action: 'WITHDRAWAL_APPROVED',
-        entity: 'RefundRequest',
-        entityId: allRefundRequests[allRefundRequests.length - 3]?.id ?? null,
-        metadata: JSON.stringify({ kind: 'WITHDRAWAL', amount: 6000, note: 'Redirected to mobile-money payout' }),
-        createdAt: subDays(new Date(), 2),
-      },
-      {
-        actorId: admin.id,
-        universityId: university.id,
         action: 'VENDOR_APPROVED',
         entity: 'Vendor',
         entityId: vendors[0].id,
@@ -822,7 +609,7 @@ async function main() {
         createdAt: subDays(new Date(), 1),
       },
       {
-        actorId: superAdmin.id,
+        actorId: null,
         universityId: university.id,
         action: 'UNIVERSITY_ONBOARDED',
         entity: 'University',
@@ -840,7 +627,6 @@ async function main() {
   // Bulk insert keeps the seed fast on PostgreSQL.
   await prisma.transaction.createMany({ data: allTransactions });
   await prisma.ledgerEntry.createMany({ data: allLedger });
-  await prisma.refundRequest.createMany({ data: allRefundRequests });
   await prisma.auditLog.createMany({ data: allAuditLogs });
 
   // Seed a realistic order board. Recent settled payment transactions become
@@ -909,6 +695,7 @@ async function main() {
         studentId: txn.studentId,
         vendorId: txn.vendorId,
         status: isPending ? 'PENDING' : 'VERIFIED',
+        testOnly: true,
         total: txn.amount,
         itemCount: 1,
         couponCode: code,
@@ -943,8 +730,7 @@ async function main() {
     orderCount += 1;
   }
 
-  // The demo student gets one extra VERIFIED coupon so the order-refund screen is
-  // demonstrable immediately (a PENDING coupon can only be cancelled, not refunded).
+  // The demo student gets one extra verified coupon for the purchase history.
   const amina = await prisma.studentProfile.findFirst({
     where: { user: { phone: '+255712345678' } },
     include: { user: true },
@@ -984,6 +770,7 @@ async function main() {
           studentId: extraTxn.studentId,
           vendorId: extraTxn.vendorId,
           status: 'VERIFIED',
+          testOnly: true,
           total: extraTxn.amount,
           itemCount: 1,
           couponCode: extraCode,
@@ -1018,41 +805,6 @@ async function main() {
     }
   }
 
-  // Pending ORDER REFUND examples (kind=REFUND, tied to a verified order + its
-  // original PAYMENT transaction) so both admin queues have real work at boot.
-  const seededUniversities = await prisma.university.findMany({
-    select: { id: true, code: true },
-  });
-  const orderRefundReasons = [
-    'Ordered by mistake; the vendor kept the meal and asked me to raise a refund.',
-    'The meal was not available when I reached the counter even though the coupon was verified.',
-  ];
-  let orderRefundIndex = 0;
-  for (const university of seededUniversities) {
-    const target = createdOrders.find(
-      (order) =>
-        order.universityId === university.id &&
-        order.status === 'VERIFIED' &&
-        order.transactionId &&
-        order.studentId !== amina?.id,
-    );
-    if (!target || !target.transactionId) continue;
-    await prisma.refundRequest.create({
-      data: {
-        reference: ref('RFD'),
-        kind: 'REFUND',
-        studentId: target.studentId,
-        universityId: target.universityId,
-        amount: target.total,
-        reason: orderRefundReasons[orderRefundIndex % orderRefundReasons.length],
-        status: 'PENDING',
-        orderId: target.id,
-        transactionId: target.transactionId,
-      },
-    });
-    orderRefundIndex += 1;
-  }
-
   const counts = {
     universities: await prisma.university.count(),
     students: await prisma.studentProfile.count(),
@@ -1061,9 +813,6 @@ async function main() {
     transactions: await prisma.transaction.count(),
     payments: totalPayments,
     ledgerEntries: await prisma.ledgerEntry.count(),
-    refunds: await prisma.refundRequest.count(),
-    withdrawalRequests: await prisma.refundRequest.count({ where: { kind: 'WITHDRAWAL' } }),
-    orderRefundRequests: await prisma.refundRequest.count({ where: { kind: 'REFUND' } }),
     orders: await prisma.order.count(),
   };
 

@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const querySchema = z.object({
-  status: z.enum(['PENDING', 'VERIFIED', 'ALL']).default('ALL'),
+  status: z.enum(['AWAITING_ACCEPTANCE', 'PENDING', 'VERIFIED', 'ALL']).default('ALL'),
 });
 
 /**
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         : {}),
     };
 
-    const [orders, pending, verified, today] = await Promise.all([
+    const [orders, pending, awaitingAcceptance, verified, today] = await Promise.all([
       prisma.order.findMany({
         where,
         include: orderInclude,
@@ -55,6 +55,13 @@ export async function GET(request: Request) {
           expiresAt: { gt: new Date() },
         },
       }),
+      prisma.order.count({
+        where: {
+          vendorId: vendor.id,
+          universityId: user.universityId,
+          status: 'AWAITING_ACCEPTANCE',
+        },
+      }),
       prisma.order.count({ where: { vendorId: vendor.id, universityId: user.universityId, status: 'VERIFIED' } }),
       prisma.order.count({
         where: {
@@ -67,7 +74,7 @@ export async function GET(request: Request) {
 
     return ok({
       orders: orders.map(serializeVendorOrder),
-      counts: { pending, verified, today },
+      counts: { awaitingAcceptance, pending, verified, today },
     });
   } catch (error) {
     return fail(error);

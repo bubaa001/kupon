@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { getAuthUser, roleHome } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { LoginForm } from '@/app/login/login-form';
 
 export const metadata: Metadata = {
@@ -23,6 +24,8 @@ export const dynamic = 'force-dynamic';
 export default async function StaffLoginPage() {
   const sessionUser = await getAuthUser();
   if (sessionUser) redirect(roleHome(sessionUser.role));
+  const firstOwnerSetupAvailable =
+    (await prisma.user.count({ where: { role: 'SUPER_ADMIN' } })) === 0;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-navy">
@@ -52,8 +55,8 @@ export default async function StaffLoginPage() {
               Staff sign in
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              For cafeteria teams, Finance and platform administrators. Student and vendor accounts
-              should use their regular sign-in.
+              For cafeteria teams, Finance and platform administrators. Students and cafeteria
+              owners have their own sign-in pages.
             </p>
           </div>
 
@@ -61,15 +64,30 @@ export default async function StaffLoginPage() {
         </div>
 
         <div className="mt-5 flex flex-col items-center gap-2 text-center">
-          <Link
-            href="/login"
-            className="text-xs font-semibold text-slate-300 underline-offset-4 hover:text-white hover:underline"
-          >
-            Student or vendor? Go to regular sign-in
-          </Link>
+          <div className="flex flex-col items-center gap-2">
+            <Link
+              href="/login"
+              className="text-xs font-semibold text-slate-300 underline-offset-4 hover:text-white hover:underline"
+            >
+              Student sign in
+            </Link>
+            <Link
+              href="/vendor/login"
+              className="text-xs font-semibold text-slate-300 underline-offset-4 hover:text-white hover:underline"
+            >
+              Cafeteria owner sign in
+            </Link>
+            {firstOwnerSetupAvailable ? (
+              <Link
+                href="/first-owner"
+                className="text-xs font-semibold text-primary-200 underline-offset-4 hover:text-white hover:underline"
+              >
+                Set up the first platform owner
+              </Link>
+            ) : null}
+          </div>
           <p className="text-[10px] leading-relaxed text-slate-500">
-            Staff sign-in is not exposed on the public landing page. Share this URL only with
-            authorised cafeteria or platform team members.
+            Staff access is created by a cafeteria owner or platform administrator.
           </p>
         </div>
       </div>

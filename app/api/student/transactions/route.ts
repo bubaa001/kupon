@@ -2,7 +2,7 @@ import { subDays, startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { fail, ok, searchParams } from '@/lib/api';
-import { TX_STATUSES, TX_TYPES } from '@/lib/constants';
+import { TX_STATUSES } from '@/lib/constants';
 import type { TransactionsData } from '@/app/student/_lib/types';
 import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
 import { getStudentContext, serializeTransaction } from '../_lib/student';
@@ -12,7 +12,6 @@ export const dynamic = 'force-dynamic';
 
 const querySchema = z.object({
   range: z.enum(['today', 'week', 'month']).default('month'),
-  type: z.enum(TX_TYPES).optional(),
   status: z.enum(TX_STATUSES).optional(),
 });
 
@@ -35,25 +34,23 @@ export async function GET(request: Request) {
     const { user, student } = await getStudentContext();
     await processKuponTestGatewayPayments({ studentId: student.id });
     const params = searchParams(request);
-    const rawType = params.get('type');
     const rawStatus = params.get('status');
 
     const query = querySchema.parse({
       range: params.get('range') ?? 'month',
-      type: rawType ? rawType : undefined,
       status: rawStatus ? rawStatus : undefined,
     });
 
     const start = rangeStart(query.range, new Date());
     const baseWhere = {
       studentId: student.id,
+      type: 'PAYMENT',
       createdAt: { gte: start },
       NOT: {
         isTest: true,
         type: 'PAYMENT',
         paymentEvents: { some: { stage: 'EXPIRED' } },
       },
-      ...(query.type ? { type: query.type } : {}),
     };
 
     const [rows, statusGroups, settledByType] = await Promise.all([
@@ -87,22 +84,11 @@ export async function GET(request: Request) {
       if (group.status === 'FAILED') counts.failed = count;
     }
 
-    let totalIn = 0;
-    let totalOut = 0;
-    for (const group of settledByType) {
-      const sum = group._sum.amount ?? 0;
-      if (group.type === 'TOPUP' || group.type === 'ADJUSTMENT_CREDIT') {
-        totalIn += sum;
-      } else {
-        totalOut += sum;
-      }
-    }
-
     const data: TransactionsData = {
       transactions: rows.map(serializeTransaction),
       counts,
-      totalIn,
-      totalOut,
+      totalSpent:
+        settledByType.find((group) => group.type === 'PAYMENT')?._sum.amount ?? 0,
     };
 
     return ok(data);

@@ -288,7 +288,8 @@ export function SalesView() {
               </div>
 
               <p className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-[11px] leading-relaxed text-slate-500">
-                Kupon keeps a 2.5% platform fee on settled payments. The remainder lands in your
+                Kupon keeps a 1% transaction share on settled payments. Students see a separate
+                2.5% API fee at checkout. The remainder lands in your
                 pending settlement balance for payout.
               </p>
             </section>

@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       ];
     }
 
-    const [students, total, balanceAgg] = await Promise.all([
+    const [students, total] = await Promise.all([
       prisma.studentProfile.findMany({
         where,
         include: {
@@ -44,12 +44,6 @@ export async function GET(request: Request) {
         take: query.pageSize,
       }),
       prisma.studentProfile.count({ where }),
-      prisma.studentProfile.aggregate({
-        where: tenant,
-        _sum: { walletBalance: true },
-        _avg: { walletBalance: true },
-        _count: { _all: true },
-      }),
     ]);
 
     return ok({
@@ -61,18 +55,13 @@ export async function GET(request: Request) {
         phone: maskPhone(student.user.phone),
         course: student.course,
         year: student.year,
-        balance: student.walletBalance,
         university: student.university,
         joinedAt: student.createdAt.toISOString(),
       })),
       total,
       page: query.page,
       pageSize: query.pageSize,
-      summary: {
-        totalStudents: balanceAgg._count._all,
-        totalBalance: balanceAgg._sum.walletBalance ?? 0,
-        averageBalance: Math.round(balanceAgg._avg.walletBalance ?? 0),
-      },
+      summary: { totalStudents: total },
     });
   } catch (error) {
     return fail(error);

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const user = await requireApiUser(['STUDENT']);
     const student = requireStudent(user);
     if (!user.universityId || !user.university) {
-      throw forbidden('Your student wallet is not linked to a university.');
+      throw forbidden('Your student profile is not linked to a university.');
     }
 
     const limit = rateLimit(`student:vendor-scan:${student.id}`, 30, 60_000);

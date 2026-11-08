@@ -4,6 +4,7 @@ import { conflict, notFound } from '@/lib/errors';
 import { LEDGER_ACCOUNTS, postJournal } from '@/lib/ledger';
 import { randomReference, safeJson } from '@/lib/utils';
 import { TEST_PAYMENT_TTL_MS } from './payment-ttl';
+import { calcOrderCheckoutFees } from '@/lib/fees';
 
 /**
  * Confirms a test order only after the Kupon test gateway records receipt and
@@ -25,8 +26,10 @@ export async function settleOrderCheckout(input: {
   }
   const order = payment.order;
   const orderId = order.id;
-  if (payment.amount !== order.total - order.creditApplied) {
-    throw conflict('The amount due after cafeteria credit does not match this payment.');
+  const cashDue = order.total - order.creditApplied;
+  const fees = calcOrderCheckoutFees(cashDue);
+  if (payment.amount !== fees.amountCharged) {
+    throw conflict('The amount due, including the API fee, does not match this payment.');
   }
 
   const metadata = safeJson<Record<string, unknown>>(payment.metadata, {});
@@ -51,8 +54,16 @@ export async function settleOrderCheckout(input: {
       data: {
         status: 'SETTLED',
         settledAt: new Date(),
+        fee: fees.apiFee + fees.kuponFee,
+        platformFee: fees.kuponFee,
+        aggregatorFee: fees.apiFee,
+        universityRevenue: 0,
+        vendorSettlement: fees.vendorSettlement,
         metadata: JSON.stringify({
           ...metadata,
+          gatewayFee: fees.apiFee,
+          kuponFee: fees.kuponFee,
+          vendorSettlement: fees.vendorSettlement,
           stage: 'CONFIRMED',
           confirmedAt: new Date().toISOString(),
         }),
@@ -71,7 +82,7 @@ export async function settleOrderCheckout(input: {
 
     const orderClaim = await tx.order.updateMany({
       where: { id: orderId, status: 'PAYMENT_PENDING' },
-      data: { status: 'PENDING' },
+      data: { status: order.requiresAcceptance ? 'AWAITING_ACCEPTANCE' : 'PENDING' },
     });
     if (orderClaim.count === 0) {
       throw conflict('The order is no longer waiting for payment.');
@@ -88,11 +99,26 @@ export async function settleOrderCheckout(input: {
           description: 'Simulated test confirmation; not cash',
         },
         {
-          account: LEDGER_ACCOUNTS.TEST_ORDER_ENTITLEMENT,
-          credit: payment.amount,
-          description: 'Test-only order entitlement',
+          account: LEDGER_ACCOUNTS.VENDOR_PENDING,
+          credit: fees.vendorSettlement,
+          description: 'Simulated vendor settlement',
+        },
+        {
+          account: LEDGER_ACCOUNTS.AGGREGATOR_PAYABLE,
+          credit: fees.apiFee,
+          description: 'Simulated API collection fee',
+        },
+        {
+          account: LEDGER_ACCOUNTS.PLATFORM_REVENUE,
+          credit: fees.kuponFee,
+          description: 'Simulated Kupon transaction share',
         },
       ],
+    });
+    if (!payment.vendorId) throw notFound('Vendor not found for this payment.');
+    await tx.vendor.update({
+      where: { id: payment.vendorId },
+      data: { pendingBalance: { increment: fees.vendorSettlement } },
     });
 
     await tx.paymentEvent.create({
@@ -100,7 +126,7 @@ export async function settleOrderCheckout(input: {
         transactionId: payment.id,
         sequence: (payment.paymentEvents[0]?.sequence ?? 0) + 1,
         stage: 'CONFIRMED',
-        source: 'KUPO_TEST_GATEWAY',
+        source: 'KUPON_TEST_GATEWAY',
       },
     });
     await auditLog(
@@ -112,7 +138,7 @@ export async function settleOrderCheckout(input: {
         metadata: {
           reference: payment.reference,
           amount: payment.amount,
-          source: 'KUPO_TEST_GATEWAY',
+          source: 'KUPON_TEST_GATEWAY',
         },
       },
       tx,
@@ -198,7 +224,7 @@ export async function failOrderCheckout(input: {
         transactionId: payment.id,
         sequence: (payment.paymentEvents[0]?.sequence ?? 0) + 1,
         stage: input.stage,
-        source: 'KUPO_TEST_GATEWAY',
+        source: 'KUPON_TEST_GATEWAY',
         note: input.reason,
       },
     });
@@ -211,7 +237,7 @@ export async function failOrderCheckout(input: {
         metadata: {
           reference: payment.reference,
           reason: input.reason,
-          source: 'KUPO_TEST_GATEWAY',
+          source: 'KUPON_TEST_GATEWAY',
         },
       },
       tx,

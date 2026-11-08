@@ -4,7 +4,6 @@ import { fail, ok, parseJson } from '@/lib/api';
 import { requireApiUser, requireVendor } from '@/lib/auth';
 import { conflict, notFound, tooManyRequests } from '@/lib/errors';
 import { prisma } from '@/lib/db';
-import { issueCafeteriaCredit } from '@/lib/credits/issue-credit';
 import { rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -32,15 +31,30 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     if (body.decision === 'ACCEPT') {
-      const account = await prisma.$transaction((tx) =>
-        issueCafeteriaCredit({
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.creditRequest.updateMany({
+          where: { id: creditRequest.id, status: 'PENDING_VENDOR' },
+          data: {
+            status: 'PENDING_ADMIN',
+            reviewedById: user.id,
+            vendorReviewedAt: new Date(),
+            vendorNote: body.note ?? null,
+          },
+        });
+        if (!claimed.count) throw conflict('This request was already reviewed.');
+        await auditLog(
+          {
+            actorId: user.id,
+            universityId: creditRequest.universityId,
+            action: 'CAFETERIA_CREDIT_FORWARDED_TO_ADMIN',
+            entity: 'CreditRequest',
+            entityId: creditRequest.id,
+            metadata: { reference: creditRequest.reference, note: body.note ?? null },
+          },
           tx,
-          request: creditRequest,
-          expectedStatus: 'PENDING_VENDOR',
-          actorId: user.id,
-        }),
-      );
-      return ok({ status: 'APPROVED', creditBalance: account.balance });
+        );
+      });
+      return ok({ status: 'PENDING_ADMIN' });
     }
 
     await prisma.$transaction(async (tx) => {

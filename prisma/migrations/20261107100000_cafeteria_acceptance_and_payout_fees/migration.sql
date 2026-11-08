@@ -1,0 +1,27 @@
+ALTER TABLE "MenuItem"
+ADD COLUMN "autoAccept" BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE "Order"
+ADD COLUMN "requiresAcceptance" BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE "CreditRequest"
+ADD COLUMN "adminNote" TEXT;
+
+UPDATE "CreditRequest"
+SET "status" = 'PENDING_ADMIN'
+WHERE "status" = 'PENDING_FINANCE';
+
+ALTER TABLE "Settlement"
+ADD COLUMN "feeAmount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "apiFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "kuponFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "netAmount" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "Vendor"
+ADD COLUMN "businessRegistrationNumber" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "physicalAddress" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "registrationDocumentUrl" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "applicationReviewNote" TEXT,
+ADD COLUMN "applicationRejectedAt" TIMESTAMP(3),
+ADD COLUMN "applicationReviewedAt" TIMESTAMP(3),
+ADD COLUMN "physicalSiteVerified" BOOLEAN NOT NULL DEFAULT false;

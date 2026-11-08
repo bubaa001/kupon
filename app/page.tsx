@@ -87,7 +87,7 @@ function SiteHeader() {
           </a>
         </nav>
         <Button asChild size="sm" className="h-10 rounded-full px-5 text-sm">
-          <Link href="/login">Sign in</Link>
+          <Link href="/login">Student sign in</Link>
         </Button>
       </div>
     </header>
@@ -157,8 +157,8 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="h-12 w-full rounded-full px-6 sm:w-auto">
-              <Link href="/vendor-apply">
-                Bring Kupon to your cafeteria
+              <Link href="/vendor/login">
+                Vendor sign in or apply
                 <ArrowRight aria-hidden className="h-4 w-4" />
               </Link>
             </Button>
@@ -168,7 +168,7 @@ function Hero() {
               variant="outline"
               className="h-12 w-full rounded-full border-slate-300 bg-white px-6 sm:w-auto"
             >
-              <Link href="#how-it-works">See how it works</Link>
+              <Link href="#account-access">Choose your access</Link>
             </Button>
           </div>
           <p className="mt-5 text-xs leading-relaxed text-slate-500">
@@ -306,10 +306,10 @@ function CafeteriaSection() {
               Clear for the person buying. Clear for the team serving.
             </h2>
             <Link
-              href="/vendor-apply"
+              href="/vendor/login"
               className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary-800"
             >
-              Apply as a cafeteria
+              Sign in or apply
               <ArrowUpRight
                 aria-hidden
                 className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
@@ -412,11 +412,72 @@ function FinalCta() {
             size="lg"
             className="mt-6 h-12 w-full rounded-full px-6 sm:mt-0 sm:w-auto"
           >
-            <Link href="/vendor-apply">
-              Apply as a cafeteria
+            <Link href="/vendor/login">
+              Vendor sign in or apply
               <ArrowRight aria-hidden className="h-4 w-4" />
             </Link>
           </Button>
+        </div>
+      </section>
+    </MarketingReveal>
+  );
+}
+
+function AccountAccessSection() {
+  const options = [
+    {
+      href: '/login',
+      title: 'Student',
+      description: 'Sign in with Google to browse meals, pay, and see your coupons.',
+      action: 'Student sign in',
+    },
+    {
+      href: '/vendor/login',
+      title: 'Cafeteria owner',
+      description: 'Sign in with your password or Google, or submit a cafeteria request.',
+      action: 'Vendor sign in or apply',
+    },
+    {
+      href: '/staff/login',
+      title: 'Cafeteria staff',
+      description: 'Open your invited account to verify coupons and manage today’s menu.',
+      action: 'Staff sign in',
+    },
+  ];
+
+  return (
+    <MarketingReveal>
+      <section
+        id="account-access"
+        aria-labelledby="account-access-title"
+        className="scroll-mt-24 bg-[#f0f5f2] px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+      >
+        <div className="mx-auto w-full max-w-7xl">
+          <p className="eyebrow text-primary-800">Choose your access</p>
+          <h2
+            id="account-access-title"
+            className="mt-3 max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.05em] text-navy sm:text-4xl"
+          >
+            One platform, the right doorway for each role.
+          </h2>
+          <div className="mt-8 grid gap-3 md:grid-cols-3">
+            {options.map((option) => (
+              <article
+                key={option.title}
+                className="flex min-h-48 flex-col rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+              >
+                <h3 className="text-lg font-semibold tracking-tight text-navy">{option.title}</h3>
+                <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{option.description}</p>
+                <Link
+                  href={option.href}
+                  className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary-800 hover:underline"
+                >
+                  {option.action}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
     </MarketingReveal>
@@ -441,7 +502,13 @@ function SiteFooter() {
             How it works
           </Link>
           <Link className="transition-colors hover:text-navy" href="/login">
-            Sign in
+            Student sign in
+          </Link>
+          <Link className="transition-colors hover:text-navy" href="/vendor/login">
+            Vendor access
+          </Link>
+          <Link className="transition-colors hover:text-navy" href="/staff/login">
+            Staff access
           </Link>
         </div>
       </div>
@@ -462,6 +529,7 @@ export default async function HomePage() {
         <CafeteriaSection />
         <TrustSection />
         <FinalCta />
+        <AccountAccessSection />
       </main>
       <SiteFooter />
     </div>

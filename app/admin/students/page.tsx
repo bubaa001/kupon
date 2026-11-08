@@ -6,14 +6,11 @@ import {
   RefreshCw,
   SearchX,
   Users,
-  Wallet,
-  WalletCards,
 } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Money } from '@/components/ui/money';
 import { PageHeader } from '@/components/ui/page-header';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
@@ -25,14 +22,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatDate, formatTZS } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { StudentListData, StudentRow } from '../_components/types';
 import { queryString, useApiData, useDebouncedValue } from '../_components/hooks';
-import {
-  AdjustWalletDialog,
-  StudentDetailDialog,
-  type AdjustTarget,
-} from '../_components/student-dialogs';
+import { StudentDetailDialog } from '../_components/student-dialogs';
 import {
   Pagination,
   SearchField,
@@ -47,7 +40,6 @@ export default function AdminStudentsPage() {
   const debouncedSearch = useDebouncedValue(search);
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [adjustTarget, setAdjustTarget] = useState<AdjustTarget | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -64,21 +56,12 @@ export default function AdminStudentsPage() {
   );
   const { data, error, loading, reload } = useApiData<StudentListData>(url);
 
-  function openAdjust(student: StudentRow) {
-    setAdjustTarget({
-      id: student.id,
-      name: student.name,
-      studentId: student.studentId,
-      balance: student.balance,
-    });
-  }
-
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Wallet holders"
+        eyebrow="Student accounts"
         title="Students"
-        description="Search campus wallet holders, inspect their history and make audited manual adjustments."
+        description="Search your university's students and review account, order and audit history."
         actions={
           <Button type="button" variant="outline" size="sm" onClick={reload} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -104,25 +87,11 @@ export default function AdminStudentsPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard
-              label="Students on Kupon"
+              label="Student accounts"
               value={data ? String(data.summary.totalStudents) : '—'}
               icon={Users}
               accent="violet"
-              hint="Registered wallet holders"
-            />
-            <StatCard
-              label="Wallet float"
-              value={data ? formatTZS(data.summary.totalBalance) : '—'}
-              icon={Wallet}
-              accent="emerald"
-              hint="Held across all student wallets"
-            />
-            <StatCard
-              label="Average balance"
-              value={data ? formatTZS(data.summary.averageBalance) : '—'}
-              icon={WalletCards}
-              accent="sky"
-              hint="Per student"
+              hint="Registered students"
             />
           </div>
 
@@ -147,7 +116,6 @@ export default function AdminStudentsPage() {
                       <TableHead>Student</TableHead>
                       <TableHead>Course</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -177,9 +145,6 @@ export default function AdminStudentsPage() {
                             {student.phone}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Money amount={student.balance} className="text-xs" />
-                        </TableCell>
                         <TableCell>
                           <span className="text-[11px] text-slate-500">
                             {formatDate(student.joinedAt)}
@@ -196,15 +161,6 @@ export default function AdminStudentsPage() {
                               <Eye className="h-3.5 w-3.5" />
                               View
                             </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openAdjust(student)}
-                            >
-                              <Wallet className="h-3.5 w-3.5" />
-                              Adjust
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -219,7 +175,7 @@ export default function AdminStudentsPage() {
                 description={
                   search
                     ? 'Try the student number, full name or a phone fragment.'
-                    : 'Students appear here after their first OTP login with this university.'
+                    : 'Students appear here after creating a Kupon account with Google.'
                 }
                 action={
                   search ? (
@@ -249,16 +205,6 @@ export default function AdminStudentsPage() {
         onOpenChange={(open) => {
           if (!open) setDetailId(null);
         }}
-        onAdjust={setAdjustTarget}
-      />
-
-      <AdjustWalletDialog
-        target={adjustTarget}
-        open={Boolean(adjustTarget)}
-        onOpenChange={(open) => {
-          if (!open) setAdjustTarget(null);
-        }}
-        onDone={reload}
       />
     </div>
   );

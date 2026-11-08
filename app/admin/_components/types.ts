@@ -100,7 +100,6 @@ export type StudentRow = {
   phone: string;
   course: string;
   year: number;
-  balance: number;
   university: { name: string; code: string };
   joinedAt: string;
 };
@@ -110,7 +109,7 @@ export type StudentListData = {
   total: number;
   page: number;
   pageSize: number;
-  summary: { totalStudents: number; totalBalance: number; averageBalance: number };
+  summary: { totalStudents: number };
 };
 
 export type StudentRefund = {
@@ -146,17 +145,13 @@ export type StudentDetailData = {
     googleLinked: boolean;
     course: string;
     year: number;
-    balance: number;
-    currency: string;
     joinedAt: string;
     lastLoginAt: string | null;
     university: { id: string; name: string; code: string; paymentRouteCode: string };
   };
   stats: {
-    totalTopUps: number;
     totalSpent: number;
     totalRefunded: number;
-    adjustments: number;
     transactionCount: number;
     lastActivityAt: string | null;
   };
@@ -182,7 +177,6 @@ export type RefundRow = {
     course: string;
     year: number;
     phone: string;
-    balance: number;
   };
 };
 

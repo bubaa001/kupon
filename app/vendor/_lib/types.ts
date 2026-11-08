@@ -68,6 +68,7 @@ export type MenuItemRow = {
   emoji: string;
   imageUrl: string | null;
   available: boolean;
+  autoAccept: boolean;
   approvalStatus: string;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +88,10 @@ export type PayoutRow = {
   id: string;
   reference: string;
   amount: number;
+  feeAmount: number;
+  apiFee: number;
+  kuponFee: number;
+  netAmount: number;
   status: string;
   periodStart: string;
   periodEnd: string;
@@ -99,6 +104,9 @@ export type SettlementResponse = {
   totalSettled: number;
   settlementAccount: string;
   minimumPayout: number;
+  payoutFee: number;
+  apiFee: number;
+  kuponFee: number;
   payouts: PayoutRow[];
   recentPayments: SaleRow[];
 };

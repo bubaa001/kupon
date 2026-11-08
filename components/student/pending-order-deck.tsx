@@ -50,7 +50,7 @@ function FanSkeleton() {
 }
 
 /**
- * The pending coupon "hand": overlapping quartett cards, exactly like a stack of
+ * The pending coupon/request "hand": overlapping quartett cards, exactly like a stack of
  * collectible cards. The selected card sits in front; tapping a peeking card (or
  * the arrows) brings it forward. Actions below open the expanded coupon or
  * cancel that order. A single pending card simply renders as itself.
@@ -178,7 +178,7 @@ export function PendingOrderDeck({
             className="flex items-center gap-2 text-sm font-semibold tracking-tight text-slate-900"
           >
             <Ticket className="h-4 w-4 text-amber-600" aria-hidden />
-            Coupons zinazosubiri
+            Orders zinazosubiri
             {orders.length > 0 ? (
               <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-800">
                 {orders.length}
@@ -190,8 +190,8 @@ export function PendingOrderDeck({
           </h2>
           <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
             {orders.length > 1
-              ? 'Telezesha kadi kwa kidole (au tumia vishale) kuchagua, kisha onyesha coupon kwa vendor au ghairi order.'
-              : 'Onyesha coupon kwa vendor, au ghairi kabla ya ku-verify kupata refund kwenye wallet.'}
+              ? 'Telezesha kadi kwa kidole (au tumia vishale) kuchagua, kisha fungua maelezo ya order.'
+              : 'Order zinazohitaji kukubaliwa na cafeteria na coupon zilizo tayari zinaonekana hapa.'}
           </p>
         </div>
         {error && orders.length > 0 && onRetry ? (

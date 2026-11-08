@@ -61,22 +61,6 @@ export default function FinanceRequestsPage() {
     void load();
   }, [load]);
 
-  async function decideCredit(id: string, decision: 'APPROVE' | 'REJECT') {
-    setBusy(id);
-    try {
-      await patchJson(`/api/finance/requests/credits/${encodeURIComponent(id)}`, {
-        decision,
-        note: decision === 'REJECT' ? 'Rejected by Finance.' : undefined,
-      });
-      toast.success(`Closing-time credit ${decision.toLowerCase()}d.`);
-      await load();
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not review the request.');
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function decideSupport(ticket: SupportTicket, decision: 'APPROVE' | 'REJECT') {
     const note = window.prompt(`Finance note for ${ticket.reference}:`, '');
     if (note === null) return;
@@ -102,9 +86,9 @@ export default function FinanceRequestsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Finance review"
-        title="Credit & support cases"
-        description="Review closing-time credit requests and escalated cases within your permitted cafeteria scope."
+        eyebrow="Finance operations"
+        title="Support cases"
+        description="Review escalated support tickets. New cafeteria credit requests are decided by the platform admin."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -114,12 +98,12 @@ export default function FinanceRequestsPage() {
       />
 
       <Alert variant="warning">
-        Store credit is locked to the originating cafeteria. The TZS 1,500 escalation charge and
-        any approval here are test records only; this system cannot send cash refunds.
+        Store credit is cafeteria-specific and requires platform-admin approval. The TZS 1,500
+        escalation charge is test-recorded against the cafeteria; no cash refund is sent here.
       </Alert>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-900">Credit requests</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Credit decisions · history</h2>
         {loading && !data ? (
           <Card className="p-5 text-sm text-slate-500">Loading requests…</Card>
         ) : data?.creditRequests.length ? (
@@ -145,16 +129,6 @@ export default function FinanceRequestsPage() {
                     {item.kind.replaceAll('_', ' ')} · {formatDateTime(item.createdAt)}
                   </p>
                 </div>
-                {item.kind === 'VENDOR_CLOSING' && item.status === 'PENDING_FINANCE' ? (
-                  <div className="flex shrink-0 gap-2">
-                    <Button size="sm" disabled={busy === item.id} onClick={() => void decideCredit(item.id, 'APPROVE')}>
-                      <Check className="h-4 w-4" /> Approve credit
-                    </Button>
-                    <Button size="sm" variant="outline" disabled={busy === item.id} onClick={() => void decideCredit(item.id, 'REJECT')}>
-                      <X className="h-4 w-4" /> Reject
-                    </Button>
-                  </div>
-                ) : null}
               </div>
             </Card>
           ))

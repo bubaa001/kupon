@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { KeyRound, UserPlus, Users } from 'lucide-react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Copy, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -16,49 +16,79 @@ type TeamRole = 'STAFF' | 'FINANCE';
 type TeamAccount = {
   id: string;
   name: string;
+  email: string | null;
   phone: string;
   role: TeamRole;
+  createdAt: string;
+};
+type TeamInvite = {
+  id: string;
+  name: string;
+  email: string;
+  role: TeamRole;
+  expiresAt: string;
   createdAt: string;
 };
 
 export default function VendorTeamPage() {
   const [accounts, setAccounts] = useState<TeamAccount[]>([]);
+  const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState<TeamRole>('STAFF');
+  const [inviteUrl, setInviteUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const loadAccounts = useCallback(async () => {
+  const loadTeam = useCallback(async () => {
     try {
-      const payload = await apiFetch<{ accounts: TeamAccount[] }>('/api/vendor/team');
+      const payload = await apiFetch<{ accounts: TeamAccount[]; invites: TeamInvite[] }>(
+        '/api/vendor/team',
+      );
       setAccounts(payload.accounts);
+      setInvites(payload.invites);
     } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not load team accounts.');
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not load team access.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadAccounts();
-  }, [loadAccounts]);
+    void loadTeam();
+  }, [loadTeam]);
 
-  async function createAccount(event: React.FormEvent<HTMLFormElement>) {
+  async function createInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
+    setInviteUrl('');
     try {
-      await postJson('/api/vendor/team', { name, phone, password, role });
+      const result = await postJson<{ invite: { inviteUrl: string } }>('/api/vendor/team', {
+        name,
+        email,
+        phone,
+        role,
+      });
       setName('');
+      setEmail('');
       setPhone('');
-      setPassword('');
-      toast.success(`${role === 'STAFF' ? 'Staff' : 'Finance'} account created.`);
-      await loadAccounts();
+      setInviteUrl(result.invite.inviteUrl);
+      toast.success('Invitation created. Share the link with your team member.');
+      await loadTeam();
     } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not create the account.');
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not create the invite.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyInvite() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      toast.success('Invitation link copied.');
+    } catch {
+      toast.error('Could not copy the link. Select and copy it instead.');
     }
   }
 
@@ -67,29 +97,26 @@ export default function VendorTeamPage() {
       <PageHeader
         eyebrow="Cafeteria operations"
         title="Team access"
-        description="Create staff and Finance accounts for this cafeteria. Their access stays within your outlet."
+        description="Invite people to work under your cafeteria. You remain the owner and the only person who can invite this team."
       />
       <Alert variant="info">
-        Staff can verify coupons and update today’s menu availability. Finance can review this
-        cafeteria’s credit/support cases and monitor payment records. Payment confirmation is
-        automatic; neither role can approve a student checkout.
+        Staff verify coupons and update today’s menu. Finance can review this cafeteria’s records.
+        Each invitation is linked to your cafeteria, expires in seven days, and can be used once.
       </Alert>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)]">
         <Card className="p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-slate-900">Create an account</h2>
+          <h2 className="text-base font-semibold text-slate-900">Invite a team member</h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Share the initial password securely. The team member can use it at the staff sign-in.
+            They set a password after opening the link and can also use Google with this email.
           </p>
-          <form onSubmit={createAccount} className="mt-5 space-y-4">
+          <form onSubmit={createInvite} className="mt-5 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="team-role">Account type</Label>
               <select
                 id="team-role"
                 value={role}
-                onChange={(event) =>
-                  setRole(event.target.value === 'FINANCE' ? 'FINANCE' : 'STAFF')
-                }
+                onChange={(event) => setRole(event.target.value === 'FINANCE' ? 'FINANCE' : 'STAFF')}
                 className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
               >
                 <option value="STAFF">Cafeteria staff</option>
@@ -109,6 +136,18 @@ export default function VendorTeamPage() {
               />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="team-email">Google email</Label>
+              <Input
+                id="team-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                maxLength={254}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="team-phone">Phone number</Label>
               <Input
                 id="team-phone"
@@ -121,31 +160,22 @@ export default function VendorTeamPage() {
                 required
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="team-password">Initial password</Label>
-              <Input
-                id="team-password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                minLength={12}
-                maxLength={128}
-                required
-              />
-              <p className="text-[11px] text-slate-500">
-                Use at least 12 characters with lowercase, uppercase, and a number.
-              </p>
-            </div>
             <Button type="submit" disabled={saving} loading={saving}>
               <UserPlus className="h-4 w-4" />
-              Create {role === 'STAFF' ? 'staff' : 'Finance'} account
+              Create invitation
             </Button>
           </form>
-          <div className="mt-5 flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-            Passwords are stored as bcrypt hashes and are never shown again.
-          </div>
+
+          {inviteUrl ? (
+            <div className="mt-5 space-y-2 rounded-xl border border-primary-200 bg-primary-50 p-3">
+              <p className="text-xs font-semibold text-primary-900">Share this one-time link</p>
+              <Input readOnly value={inviteUrl} aria-label="Team invitation link" />
+              <Button type="button" variant="outline" className="w-full bg-white" onClick={copyInvite}>
+                <Copy className="h-4 w-4" />
+                Copy invitation link
+              </Button>
+            </div>
+          ) : null}
         </Card>
 
         <Card className="p-5 sm:p-6">
@@ -157,18 +187,29 @@ export default function VendorTeamPage() {
             </span>
           </div>
           {loading ? (
-            <p className="mt-5 text-sm text-slate-500">Loading team accounts…</p>
-          ) : accounts.length === 0 ? (
+            <p className="mt-5 text-sm text-slate-500">Loading team access…</p>
+          ) : accounts.length === 0 && invites.length === 0 ? (
             <p className="mt-5 rounded-xl border border-dashed border-slate-200 p-4 text-sm leading-relaxed text-slate-500">
-              No team accounts yet. Create one to give staff or Finance access to this cafeteria.
+              No team members yet. Create an invitation to get started.
             </p>
           ) : (
             <ul className="mt-4 divide-y divide-slate-100">
+              {invites.map((invite) => (
+                <li key={invite.id} className="py-3">
+                  <p className="truncate text-sm font-semibold text-slate-800">{invite.name}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">{invite.email}</p>
+                  <p className="mt-1 text-[10px] text-amber-700">
+                    Invitation expires {formatDateTime(invite.expiresAt)}
+                  </p>
+                </li>
+              ))}
               {accounts.map((account) => (
                 <li key={account.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-slate-800">{account.name}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{account.phone}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {account.email || account.phone}
+                    </p>
                     <p className="mt-1 text-[10px] text-slate-400">
                       Added {formatDateTime(account.createdAt)}
                     </p>

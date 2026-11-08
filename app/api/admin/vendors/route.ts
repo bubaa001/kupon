@@ -1,14 +1,11 @@
-import bcrypt from 'bcryptjs';
 import { startOfDay } from 'date-fns';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
-import { fail, ok, parseJson } from '@/lib/api';
-import { auditLog } from '@/lib/audit';
-import { badRequest, conflict, notFound } from '@/lib/errors';
-import { vendorSchema } from '@/lib/validators';
+import { fail, ok } from '@/lib/api';
+import { forbidden } from '@/lib/errors';
 import { resolveTenantScope, tenantWhere } from '@/lib/tenant';
-import { parseQuery, requireAdmin, requireUniversityId } from '../_lib/scope';
+import { parseQuery, requireAdmin } from '../_lib/scope';
 import { serializeVendor } from '../_lib/serializers';
 
 export const runtime = 'nodejs';
@@ -99,86 +96,11 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const user = await requireAdmin();
-    const body = await parseJson(request, vendorSchema);
-    const universityId = requireUniversityId(user, request);
-
-    const university = await prisma.university.findUnique({
-      where: { id: universityId },
-      select: { id: true, code: true, name: true },
-    });
-    if (!university) throw notFound('University not found.');
-
-    const expectedPrefix = `V-${university.code}-`;
-    if (!body.code.startsWith(expectedPrefix)) {
-      throw badRequest(
-        `Vendor codes for ${university.code} start with ${expectedPrefix}, e.g. ${expectedPrefix}004.`,
-      );
-    }
-
-    const [existingCode, existingPhone] = await Promise.all([
-      prisma.vendor.findUnique({ where: { code: body.code }, select: { id: true } }),
-      prisma.user.findUnique({ where: { phone: body.phone }, select: { id: true } }),
-    ]);
-    if (existingCode) throw conflict(`Vendor code ${body.code} is already registered.`);
-    if (existingPhone) {
-      throw conflict('That phone number is already linked to a Kupon account.');
-    }
-
-    const pinHash = await bcrypt.hash(body.pin, 10);
-
-    const vendorId = await prisma.$transaction(async (tx) => {
-      const owner = await tx.user.create({
-        data: {
-          name: body.ownerName,
-          phone: body.phone,
-          role: 'VENDOR',
-          universityId,
-        },
-      });
-      const vendor = await tx.vendor.create({
-        data: {
-          userId: owner.id,
-          universityId,
-          name: body.name,
-          code: body.code,
-          pin: pinHash,
-          description: body.description,
-          settlementAccount: body.settlementAccount,
-        },
-      });
-      await auditLog(
-        {
-          actorId: user.id,
-          universityId,
-          action: 'VENDOR_CREATED',
-          entity: 'Vendor',
-          entityId: vendor.id,
-          metadata: {
-            code: vendor.code,
-            name: vendor.name,
-            ownerName: body.ownerName,
-            phone: body.phone,
-          },
-        },
-        tx,
-      );
-      return vendor.id;
-    });
-
-    const created = await prisma.vendor.findUniqueOrThrow({
-      where: { id: vendorId },
-      include: { user: { select: { name: true, phone: true } } },
-    });
-
-    return ok(
-      {
-        vendor: serializeVendor(created, { salesToday: 0, transactionsToday: 0 }),
-        message: `${created.name} can now sign in with code ${created.code}.`,
-      },
-      { status: 201 },
+    await requireAdmin();
+    throw forbidden(
+      'Cafeteria owners must apply with Google and be approved by a platform admin.',
     );
   } catch (error) {
     return fail(error);

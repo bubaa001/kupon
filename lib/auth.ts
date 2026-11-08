@@ -30,7 +30,6 @@ export type AuthUser = SessionPayload & {
   student: {
     id: string;
     studentId: string;
-    walletBalance: number;
     course: string;
     year: number;
   } | null;
@@ -112,7 +111,6 @@ export async function getAuthUser(): Promise<AuthUser | null> {
         select: {
           id: true,
           studentId: true,
-          walletBalance: true,
           course: true,
           year: true,
         },
@@ -218,7 +216,7 @@ export function assertTenant(user: AuthUser, universityId: string) {
 
 export function requireStudent(user: AuthUser) {
   if (user.role !== 'STUDENT' || !user.student) {
-    throw forbidden('A student wallet is required for this action.');
+    throw forbidden('A student account is required for this action.');
   }
   return user.student;
 }

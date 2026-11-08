@@ -6,6 +6,12 @@ import { badRequest, conflict, notFound, tooManyRequests } from '@/lib/errors';
 import { auditLog } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
 import { formatTZS, randomReference } from '@/lib/utils';
+import {
+  API_PAYOUT_FEE,
+  KUPON_PAYOUT_FEE,
+  MIN_WITHDRAWAL,
+  VENDOR_PAYOUT_FEE,
+} from '@/lib/constants';
 import { paymentSelect, saleRow, studentSummarySelect } from '../_lib/analytics';
 import { requireVendorAccess } from '../_lib/access';
 
@@ -17,7 +23,7 @@ const settlementRequestSchema = z.object({
   amount: z
     .number()
     .int('Enter a whole shilling amount')
-    .min(500, 'Minimum payout is TZS 500')
+    .min(MIN_WITHDRAWAL, `Minimum payout is TZS ${MIN_WITHDRAWAL.toLocaleString()}`)
     .max(5_000_000)
     .optional(),
 });
@@ -66,7 +72,10 @@ export async function GET() {
       pendingBalance: snapshot.pendingBalance,
       totalSettled: snapshot.totalSettled,
       settlementAccount: snapshot.settlementAccount,
-      minimumPayout: 500,
+      minimumPayout: MIN_WITHDRAWAL,
+      payoutFee: VENDOR_PAYOUT_FEE,
+      apiFee: API_PAYOUT_FEE,
+      kuponFee: KUPON_PAYOUT_FEE,
       payouts: payouts.map((payout) => ({
         id: payout.id,
         reference: payout.reference,
@@ -87,8 +96,8 @@ export async function GET() {
 /**
  * POST /api/vendor/settlement
  *
- * Mock instant payout: moves money from `pendingBalance` to `totalSettled` and
- * records a PAID Settlement plus an audit log in ONE transaction. The
+ * Test settlement: updates the vendor's simulated balances and records the
+ * settlement plus an audit log in ONE transaction. No payout is sent. The
  * `pendingBalance: { gte: amount }` guard makes double payout impossible even if
  * two requests race — the losing request rolls back with a 409.
  */
@@ -121,6 +130,11 @@ export async function POST(request: Request) {
     if (snapshot.pendingBalance <= 0) {
       throw conflict('There is no pending balance yet. Sales appear here after the first scan.');
     }
+    if (snapshot.pendingBalance < MIN_WITHDRAWAL) {
+      throw conflict(
+        `Withdrawals are available once your balance reaches TZS ${MIN_WITHDRAWAL.toLocaleString()}.`,
+      );
+    }
 
     const amount = body.amount ?? snapshot.pendingBalance;
     if (amount > snapshot.pendingBalance) {
@@ -129,6 +143,10 @@ export async function POST(request: Request) {
       );
     }
     if (amount <= 0) throw badRequest('Settlement amount must be greater than zero.');
+    if (amount < MIN_WITHDRAWAL) {
+      throw badRequest(`Minimum payout is TZS ${MIN_WITHDRAWAL.toLocaleString()}.`);
+    }
+    const netAmount = amount - VENDOR_PAYOUT_FEE;
 
     const lastPayout = await prisma.settlement.findFirst({
       where: { vendorId: vendor.id },
@@ -146,7 +164,7 @@ export async function POST(request: Request) {
         where: { id: vendor.id, pendingBalance: { gte: amount } },
         data: {
           pendingBalance: { decrement: amount },
-          totalSettled: { increment: amount },
+          totalSettled: { increment: netAmount },
         },
       });
       if (applied.count === 0) {
@@ -159,7 +177,11 @@ export async function POST(request: Request) {
           vendorId: vendor.id,
           universityId,
           amount,
-          status: 'PAID',
+          feeAmount: VENDOR_PAYOUT_FEE,
+          apiFee: API_PAYOUT_FEE,
+          kuponFee: KUPON_PAYOUT_FEE,
+          netAmount,
+          status: 'SIMULATED',
           periodStart,
           periodEnd: now,
           paidAt: now,
@@ -170,15 +192,19 @@ export async function POST(request: Request) {
         {
           actorId: user.id,
           universityId,
-          action: 'VENDOR_SETTLEMENT_PAID',
+          action: 'VENDOR_TEST_SETTLEMENT_RECORDED',
           entity: 'Settlement',
           entityId: settlement.id,
           metadata: {
             reference: settlement.reference,
             amount,
+            feeAmount: VENDOR_PAYOUT_FEE,
+            apiFee: API_PAYOUT_FEE,
+            kuponFee: KUPON_PAYOUT_FEE,
+            netAmount,
             vendorCode: vendor.code,
             settlementAccount: snapshot.settlementAccount,
-            mode: 'mock-instant-payout',
+            mode: 'internal-test-simulation',
           },
         },
         tx,
@@ -194,6 +220,10 @@ export async function POST(request: Request) {
           id: settlement.id,
           reference: settlement.reference,
           amount: settlement.amount,
+          feeAmount: settlement.feeAmount,
+          apiFee: settlement.apiFee,
+          kuponFee: settlement.kuponFee,
+          netAmount: settlement.netAmount,
           status: settlement.status,
           periodStart: settlement.periodStart.toISOString(),
           periodEnd: settlement.periodEnd.toISOString(),
@@ -203,7 +233,7 @@ export async function POST(request: Request) {
         pendingBalance: updated?.pendingBalance ?? 0,
         totalSettled: updated?.totalSettled ?? 0,
         settlementAccount: snapshot.settlementAccount,
-        message: `${formatTZS(amount)} marked as paid to ${snapshot.settlementAccount}.`,
+        message: `Test settlement recorded for ${formatTZS(amount)} less a ${formatTZS(VENDOR_PAYOUT_FEE)} fee (${formatTZS(API_PAYOUT_FEE)} API + ${formatTZS(KUPON_PAYOUT_FEE)} Kupon). ${formatTZS(netAmount)} was recorded; no money was sent to ${snapshot.settlementAccount}.`,
       };
     });
 
