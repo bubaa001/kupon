@@ -40,7 +40,15 @@ export async function GET(request: Request) {
     const [vendors, salesToday, university] = await Promise.all([
       prisma.vendor.findMany({
         where,
-        include: { user: { select: { name: true, phone: true } } },
+        include: {
+          user: {
+            select: {
+              name: true,
+              phone: true,
+              vendorApplication: { select: { phone: true } },
+            },
+          },
+        },
         orderBy: [{ status: 'asc' }, { name: 'asc' }],
       }),
       prisma.transaction.groupBy({
@@ -72,9 +80,10 @@ export async function GET(request: Request) {
     );
 
     const rows = vendors.map((vendor) => {
-      if (!vendor.user.phone) throw new Error('A vendor account is missing its required phone number.');
+      const ownerPhone = vendor.user.phone ?? vendor.user.vendorApplication?.phone;
+      if (!ownerPhone) throw new Error('A vendor account is missing its required contact phone number.');
       return serializeVendor(
-        { ...vendor, user: { ...vendor.user, phone: vendor.user.phone } },
+        { ...vendor, user: { ...vendor.user, phone: ownerPhone } },
         salesByVendor.get(vendor.id) ?? { salesToday: 0, transactionsToday: 0 },
       );
     });

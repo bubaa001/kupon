@@ -75,8 +75,8 @@ export async function POST(request: Request) {
     );
     const body = applicationSchema.parse(rawFields);
     const [existingUser, existingApplication] = await Promise.all([
-      prisma.user.findFirst({
-        where: { OR: [{ email: body.email }, { phone: body.phone }] },
+      prisma.user.findUnique({
+        where: { email: body.email },
         select: { id: true },
       }),
       prisma.vendorApplication.findFirst({
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     ]);
 
     if (existingUser) {
-      throw conflict('These details already belong to a Kupon account. Sign in instead.');
+      throw conflict('This email already belongs to a Kupon account. Sign in with that account.');
     }
     if (existingApplication?.status === 'APPROVED') {
       throw conflict('This request is approved. Continue with Google using this email.');

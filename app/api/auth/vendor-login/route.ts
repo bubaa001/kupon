@@ -24,7 +24,14 @@ export async function POST(request: Request) {
     const vendor = await prisma.vendor.findUnique({
       where: { code: body.code },
       include: {
-        user: { select: { id: true, name: true, phone: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            vendorApplication: { select: { phone: true } },
+          },
+        },
         university: { select: { id: true, name: true, code: true, status: true } },
       },
     });
@@ -52,7 +59,7 @@ export async function POST(request: Request) {
       role: 'VENDOR',
       universityId: vendor.universityId,
       name: vendor.user.name,
-      phone: vendor.user.phone ?? '',
+      phone: vendor.user.phone ?? vendor.user.vendorApplication?.phone ?? '',
     });
 
     const response = ok({

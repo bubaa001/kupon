@@ -133,6 +133,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
           universityId: true,
         },
       },
+      vendorApplication: { select: { phone: true } },
     },
   });
 
@@ -168,7 +169,10 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     role: user.role as Role,
     universityId: user.universityId,
     name: user.name,
-    phone: user.phone ?? '',
+    phone:
+      user.role === 'VENDOR'
+        ? user.phone ?? user.vendorApplication?.phone ?? ''
+        : user.phone ?? '',
     university: user.university
       ? {
           id: user.university.id,

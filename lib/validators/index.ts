@@ -40,7 +40,19 @@ export const vendorLoginSchema = z.object({
 });
 
 export const vendorPasswordLoginSchema = z.object({
-  phone: phoneSchema,
+  identifier: z
+    .string()
+    .trim()
+    .min(1)
+    .max(254)
+    .transform((value) => (value.includes('@') ? value.toLowerCase() : normalizePhone(value)))
+    .refine(
+      (value) =>
+        value.includes('@')
+          ? z.string().email().safeParse(value).success
+          : /^\+255[67]\d{8}$/.test(value),
+      'Enter a valid email or Tanzanian phone number.',
+    ),
   password: z.string().min(8).max(128),
 });
 

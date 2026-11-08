@@ -59,16 +59,6 @@ export async function POST(request: NextRequest) {
         'This Google email is already linked to a Kupon account. Contact the Platform Admin to resolve the conflict with your approved vendor application.',
       );
     }
-    const phoneOwner = await prisma.user.findUnique({
-      where: { phone: application.phone },
-      select: { id: true },
-    });
-    if (phoneOwner) {
-      throw conflict(
-        'The phone number on your application is already linked to a Kupon account. If it is yours, contact the Platform Admin to resolve the conflict; otherwise ask them to correct the application phone number.',
-      );
-    }
-
     const passwordHash = await bcrypt.hash(body.password, 12);
     const pinHash = await bcrypt.hash(randomBytes(24).toString('hex'), 10);
     const prefix = `V-${university.code}-`;
@@ -101,7 +91,7 @@ export async function POST(request: NextRequest) {
           name: application.ownerName,
           email: ticket.email,
           googleId: ticket.sub,
-          phone: application.phone,
+          phone: null,
           passwordHash,
           role: 'VENDOR',
           universityId: university.id,
@@ -149,7 +139,7 @@ export async function POST(request: NextRequest) {
       role,
       universityId: created.user.universityId,
       name: created.user.name,
-      phone: created.user.phone ?? '',
+      phone: application.phone,
     });
     const response = ok({
       vendor: created.vendor,

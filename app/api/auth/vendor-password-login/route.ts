@@ -17,15 +17,19 @@ export async function POST(request: Request) {
     }
 
     const body = await parseJson(request, vendorPasswordLoginSchema);
-    if (!rateLimit(`vendor-password-login:${body.phone}`, 8, 10 * 60_000).allowed) {
+    if (!rateLimit(`vendor-password-login:${body.identifier}`, 8, 10 * 60_000).allowed) {
       throw tooManyRequests('This account is temporarily locked. Try again later.');
     }
 
-    const user = await prisma.user.findUnique({
-      where: { phone: body.phone },
+    const user = await prisma.user.findFirst({
+      where: {
+        role: 'VENDOR',
+        OR: [{ email: body.identifier }, { phone: body.identifier }],
+      },
       include: {
         university: { select: { id: true, name: true, code: true, status: true } },
         vendor: { select: { id: true, name: true, code: true, status: true } },
+        vendorApplication: { select: { phone: true } },
       },
     });
     const hash =
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
       role: 'VENDOR',
       universityId: user.universityId,
       name: user.name,
-      phone: user.phone ?? '',
+      phone: user.phone ?? user.vendorApplication?.phone ?? '',
     });
     const response = ok({
       user: {

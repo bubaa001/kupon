@@ -27,7 +27,7 @@ function GoogleGlyph() {
 
 export function VendorAccessForm() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,9 @@ export function VendorAccessForm() {
     setError(null);
     try {
       const result = await postJson<LoginResult>('/api/auth/vendor-password-login', {
-        phone: normalizePhone(phone),
+        identifier: identifier.includes('@')
+          ? identifier.trim().toLowerCase()
+          : normalizePhone(identifier),
         password,
       });
       toast.success(`Welcome back, ${result.user.name}.`);
@@ -82,15 +84,14 @@ export function VendorAccessForm() {
       {error ? <Alert variant="danger" title="Sign in or application failed">{error}</Alert> : null}
       <form onSubmit={submit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="vendor-phone">Phone number</Label>
+          <Label htmlFor="vendor-identifier">Email or phone number</Label>
           <Input
-            id="vendor-phone"
-            type="tel"
-            inputMode="tel"
+            id="vendor-identifier"
+            type="text"
             autoComplete="username"
-            placeholder="+255 7xx xxx xxx"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            placeholder="you@example.com or +255 7xx xxx xxx"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
             required
           />
         </div>
@@ -117,7 +118,7 @@ export function VendorAccessForm() {
           </div>
         </div>
         <Button type="submit" className="w-full" loading={loading} disabled={loading}>
-          Sign in with phone and password
+          Sign in with email or phone
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>

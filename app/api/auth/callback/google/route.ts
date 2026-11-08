@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
         student: { select: { id: true } },
         vendor: { select: { id: true, name: true, code: true, status: true } },
         managedVendor: { select: { id: true, status: true, universityId: true } },
+        vendorApplication: { select: { phone: true } },
       },
     });
 
@@ -297,7 +298,7 @@ export async function GET(request: NextRequest) {
         role: 'VENDOR',
         universityId: user.universityId,
         name: user.name,
-        phone: user.phone ?? '',
+        phone: user.phone ?? user.vendorApplication?.phone ?? '',
       });
       const response = NextResponse.redirect(
         externalUrl(request, user.vendor.status === 'PENDING' ? '/vendor-pending' : '/vendor'),

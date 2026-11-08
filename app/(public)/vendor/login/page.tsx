@@ -39,7 +39,8 @@ export default async function VendorLoginPage() {
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Apply first and wait for platform review. Once approved, use Google to activate your
-            account. Existing owners can sign in with Google or phone and password.
+            account. Existing owners can sign in with Google or email and password. Older accounts
+            can also use their phone number.
           </p>
           <div className="mt-6">
             <VendorAccessForm />
