@@ -205,7 +205,7 @@ Kupon does not ship shared platform-owner credentials. Configure `SUPER_ADMIN_SE
 
 Generate a setup token with `node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"` and add it to the local `.env` and deployment environment. Do not commit the value.
 
-Students use Google at `/login`. Cafeteria owners apply at `/vendor-apply` without choosing a preconfigured campus or signing in first. Applicants provide business registration and location details; an authorised representative must also provide proof they can act for the owner. The Kupon Platform Admin creates institutions in **Platform → University management** (`/super-admin/tenants`), then reviews the request, verifies the physical cafeteria and assigns it to that institution. Applicants only name the institution; they cannot create or approve it. After approval, the owner continues with Google using the email on the application and sets a password. Existing owners use `/vendor/login`. Staff use `/staff/login`; their cafeteria owner or a platform admin generates a one-time invitation at `/vendor/team` or `/admin/team`.
+Students use Google at `/login`. Cafeteria owners apply at `/vendor-apply` without choosing a preconfigured campus or signing in first. Applicants provide the owner's name, NIDA number and reliable phone, the cafeteria and institution names and contact numbers, an email for later Google sign-in, and upload a TIN/TRA document. The document is stored privately in PostgreSQL and can only be downloaded by a platform admin for review. The Kupon Platform Admin creates institutions in **Platform → University management** (`/super-admin/tenants`), then reviews the request, verifies the cafeteria and assigns it to that institution. Applicants only name the institution; they cannot create or approve it. After approval, the owner continues with Google using the email on the application and sets a password. Existing owners use `/vendor/login`. Staff use `/staff/login`; their cafeteria owner or a platform admin generates a one-time invitation at `/vendor/team` or `/admin/team`.
 
 The demo seed is only for disposable development databases. It does not create a platform owner. Never run it against production data.
 
@@ -231,8 +231,8 @@ Security model:
 
 **Vendor — `/vendor-apply`, then `/vendor/login`**
 
-1. Apply first at `/vendor-apply`. Enter the campus name yourself; no preset campus or account is required. Owners submit registration and location details; managers/representatives also submit proof of authority.
-2. The platform admin creates the campus under **Platform → University management** if needed, reviews the documents, and verifies the physical cafeteria in **Platform → Vendor review**. Only the platform admin assigns an application to an active Kupon campus.
+1. Apply first at `/vendor-apply`. Enter the owner name, NIDA number, reliable owner phone, cafeteria name, institution name and contact phone, Google email, and upload the TIN/TRA document (PDF/JPG/PNG, up to 5 MB).
+2. The platform admin creates the institution under **Platform → University management** if needed, privately downloads and reviews the document, verifies the cafeteria and assigns the application to an active Kupon campus.
 3. After approval, open `/vendor/login` and continue with Google using the same email entered on the application.
 4. Google verifies the email, then the owner creates a password. Kupon creates the vendor account only after this approved Google verification and signs the owner in.
 5. Existing vendor owners can sign in with Google or phone/password. Pending or rejected requests cannot use operational APIs.

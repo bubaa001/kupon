@@ -1,48 +1,42 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ApiClientError, postJson } from '@/lib/client-api';
+import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { isValidTzPhone, normalizePhone } from '@/lib/utils';
 
 type ApplicationForm = {
   ownerName: string;
+  nidaNumber: string;
   email: string;
   phone: string;
-  applicantRole: 'OWNER' | 'AUTHORIZED_REPRESENTATIVE';
-  authorizationDocumentUrl: string;
   businessName: string;
   universityName: string;
-  city: string;
-  description: string;
-  businessRegistrationNumber: string;
-  physicalAddress: string;
-  registrationDocumentUrl: string;
+  institutionPhone: string;
 };
 
-type FieldErrors = Partial<Record<keyof ApplicationForm | 'confirm', string>>;
+type FieldErrors = Partial<Record<keyof ApplicationForm | 'tinDocument' | 'confirm', string>>;
+
+const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const isValidInstitutionPhone = (value: string) => /^\+255\d{9}$/.test(normalizePhone(value));
 
 export function VendorApplyForm() {
   const [values, setValues] = useState<ApplicationForm>({
     ownerName: '',
+    nidaNumber: '',
     email: '',
     phone: '',
-    applicantRole: 'OWNER',
-    authorizationDocumentUrl: '',
     businessName: '',
     universityName: '',
-    city: '',
-    description: '',
-    businessRegistrationNumber: '',
-    physicalAddress: '',
-    registrationDocumentUrl: '',
+    institutionPhone: '',
   });
+  const [tinDocument, setTinDocument] = useState<File | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -56,37 +50,25 @@ export function VendorApplyForm() {
   function validate() {
     const next: FieldErrors = {};
     if (values.ownerName.trim().length < 2) next.ownerName = 'Enter your name.';
+    if (!/^\d{20}$/.test(values.nidaNumber.trim())) {
+      next.nidaNumber = 'Enter the 20-digit NIDA number.';
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
       next.email = 'Enter the Google email you will use after approval.';
     }
     if (!isValidTzPhone(values.phone)) next.phone = 'Use a valid Tanzanian number.';
-    if (
-      values.applicantRole === 'AUTHORIZED_REPRESENTATIVE' &&
-      !/^https:\/\//i.test(values.authorizationDocumentUrl.trim())
-    ) {
-      next.authorizationDocumentUrl =
-        'Provide a secure link showing that you can represent this business.';
-    }
     if (values.businessName.trim().length < 2) next.businessName = 'Enter your business name.';
     if (values.universityName.trim().length < 2) {
       next.universityName = 'Enter the university or campus where you operate.';
     }
-    if (values.city.trim().length < 2) next.city = 'Enter the city or town.';
-    if (values.description.trim().length < 10) {
-      next.description = 'Describe what you sell (at least 10 characters).';
+    if (!isValidInstitutionPhone(values.institutionPhone)) {
+      next.institutionPhone = 'Use a reliable Tanzanian institution phone number.';
     }
-    if (values.businessRegistrationNumber.trim().length < 3) {
-      next.businessRegistrationNumber = 'Enter the business registration number.';
-    }
-    if (values.physicalAddress.trim().length < 8) {
-      next.physicalAddress = 'Enter the cafeteria location.';
-    }
-    try {
-      if (new URL(values.registrationDocumentUrl).protocol !== 'https:') {
-        next.registrationDocumentUrl = 'Use a secure HTTPS document link.';
-      }
-    } catch {
-      next.registrationDocumentUrl = 'Enter a valid secure document link.';
+    if (!tinDocument) next.tinDocument = 'Upload the TIN/TRA document for review.';
+    else if (!ACCEPTED_DOCUMENT_TYPES.includes(tinDocument.type)) {
+      next.tinDocument = 'Choose a PDF, JPG or PNG document.';
+    } else if (tinDocument.size > MAX_DOCUMENT_BYTES || tinDocument.size === 0) {
+      next.tinDocument = 'Keep the document under 5 MB.';
     }
     if (!confirm) next.confirm = 'Confirm that you are authorised to apply for this business.';
     setErrors(next);
@@ -96,15 +78,23 @@ export function VendorApplyForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
-    if (!validate()) return;
+    if (!validate() || !tinDocument) return;
 
     setSubmitting(true);
     try {
-      await postJson('/api/vendor/applications', {
-        ...values,
-        email: values.email.trim().toLowerCase(),
-        phone: normalizePhone(values.phone),
-        confirm: true,
+      const body = new FormData();
+      body.set('ownerName', values.ownerName.trim());
+      body.set('nidaNumber', values.nidaNumber.trim());
+      body.set('email', values.email.trim().toLowerCase());
+      body.set('phone', normalizePhone(values.phone));
+      body.set('businessName', values.businessName.trim());
+      body.set('universityName', values.universityName.trim());
+      body.set('institutionPhone', normalizePhone(values.institutionPhone));
+      body.set('tinDocument', tinDocument);
+      body.set('confirm', 'true');
+      await apiFetch('/api/vendor/applications', {
+        method: 'POST',
+        body,
       });
       setSubmitted(true);
     } catch (error) {
@@ -138,38 +128,23 @@ export function VendorApplyForm() {
     );
   }
 
-  function field(
-    key: keyof ApplicationForm,
-    label: string,
-    placeholder: string,
-    options: { type?: string; maxLength?: number; multiline?: boolean } = {},
-  ) {
+  function field(key: keyof ApplicationForm, label: string, placeholder: string, type = 'text') {
     const id = `vendor-application-${key}`;
     const error = errors[key];
     return (
       <div className="space-y-1.5">
         <Label htmlFor={id}>{label}</Label>
-        {options.multiline ? (
-          <Textarea
-            id={id}
-            value={values[key]}
-            onChange={(event) => update(key, event.target.value)}
-            placeholder={placeholder}
-            maxLength={options.maxLength}
-            aria-invalid={Boolean(error) || undefined}
-          />
-        ) : (
-          <Input
-            id={id}
-            type={options.type ?? 'text'}
-            value={values[key]}
-            onChange={(event) => update(key, event.target.value)}
-            placeholder={placeholder}
-            maxLength={options.maxLength}
-            autoComplete={key === 'email' ? 'email' : key === 'ownerName' ? 'name' : undefined}
-            aria-invalid={Boolean(error) || undefined}
-          />
-        )}
+        <Input
+          id={id}
+          type={type}
+          inputMode={key === 'nidaNumber' ? 'numeric' : undefined}
+          value={values[key]}
+          onChange={(event) => update(key, event.target.value)}
+          placeholder={placeholder}
+          maxLength={key === 'nidaNumber' ? 20 : undefined}
+          autoComplete={key === 'email' ? 'email' : key === 'ownerName' ? 'name' : undefined}
+          aria-invalid={Boolean(error) || undefined}
+        />
         {error ? <p className="text-xs font-medium text-red-600">{error}</p> : null}
       </div>
     );
@@ -190,63 +165,31 @@ export function VendorApplyForm() {
         Apply from any university or campus. No account or Google sign-in is needed until your
         application has been approved.
       </p>
-      {field('ownerName', 'Owner / manager name', 'Your name')}
-      {field('email', 'Email for Google sign-in after approval', 'you@example.com', {
-        type: 'email',
-      })}
-      {field('phone', 'Business phone number', '+255 712 345 678', { type: 'tel' })}
+      {field('ownerName', 'Vendor owner full name', 'Your full name')}
+      {field('nidaNumber', 'Owner NIDA number', '20-digit NIDA number')}
+      {field('phone', 'Owner reliable phone number', '+255 712 345 678', 'tel')}
+      {field('email', 'Email for Google sign-in after approval', 'you@example.com', 'email')}
+      {field('businessName', 'Cafeteria / vendor name', 'Name of your cafeteria')}
+      {field('universityName', 'Institution name', 'University or institution name')}
+      {field('institutionPhone', 'Institution reliable phone number', '+255 712 345 678', 'tel')}
       <div className="space-y-1.5">
-        <Label htmlFor="vendor-application-applicantRole">Your role in the business</Label>
-        <select
-          id="vendor-application-applicantRole"
-          value={values.applicantRole}
-          onChange={(event) =>
-            update(
-              'applicantRole',
-              event.target.value === 'AUTHORIZED_REPRESENTATIVE'
-                ? 'AUTHORIZED_REPRESENTATIVE'
-                : 'OWNER',
-            )
+        <Label htmlFor="vendor-application-tinDocument">TIN / TRA document</Label>
+        <Input
+          id="vendor-application-tinDocument"
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setTinDocument(event.target.files?.[0] ?? null)
           }
-          className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800"
-        >
-          <option value="OWNER">Owner</option>
-          <option value="AUTHORIZED_REPRESENTATIVE">Authorised representative or manager</option>
-        </select>
-        <p className="text-xs leading-relaxed text-slate-500">
-          If you are applying on behalf of the owner, provide proof that you are authorised to
-          represent the business.
+          aria-invalid={Boolean(errors.tinDocument) || undefined}
+        />
+        <p className="text-xs text-slate-500">
+          Upload a PDF, JPG or PNG (up to 5 MB). Only Kupon administrators can access it for review.
         </p>
+        {errors.tinDocument ? (
+          <p className="text-xs font-medium text-red-600">{errors.tinDocument}</p>
+        ) : null}
       </div>
-      {values.applicantRole === 'AUTHORIZED_REPRESENTATIVE'
-        ? field(
-            'authorizationDocumentUrl',
-            'Proof of authority (secure document link)',
-            'https://…',
-            { type: 'url', maxLength: 500 },
-          )
-        : null}
-      {field('businessName', 'Business name', 'e.g. Campus Kitchen')}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {field('universityName', 'University / campus', 'Enter your institution')}
-        {field('city', 'City / town', 'e.g. Arusha')}
-      </div>
-      {field('physicalAddress', 'Cafeteria location', 'Building, floor, or nearby landmark')}
-      {field('description', 'What will you sell?', 'Describe your food and drinks', {
-        multiline: true,
-        maxLength: 500,
-      })}
-      {field(
-        'businessRegistrationNumber',
-        'Business registration number',
-        'Registration or licence number',
-      )}
-      {field(
-        'registrationDocumentUrl',
-        'Registration document link',
-        'https://…',
-        { type: 'url', maxLength: 500 },
-      )}
 
       <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3">
         <input
@@ -256,7 +199,8 @@ export function VendorApplyForm() {
           className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600"
         />
         <span className="text-xs leading-relaxed text-slate-600">
-          I am authorised to apply for this business and the details are correct.
+          I am the cafeteria owner, these details are correct, and Kupon may review my NIDA and
+          TIN/TRA document for onboarding.
           {errors.confirm ? (
             <span className="mt-1 block font-medium text-red-600">{errors.confirm}</span>
           ) : null}

@@ -35,10 +35,9 @@ export default function VendorApplyPage() {
               Apply to sell on Kupon
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Submit your business and campus details first. The platform team will review your
-              registration documents, your authority to represent the business, and the cafeteria
-              location. Kupon administrators add institutions that are not already listed. Google
-              sign-in comes after approval.
+              Share the owner&apos;s identity and reliable contact details, the cafeteria and
+              institution contacts, and upload the TIN/TRA document for review. Kupon administrators
+              add institutions that are not already listed. Google sign-in comes after approval.
             </p>
           </div>
           <VendorApplyForm />

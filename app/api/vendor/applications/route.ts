@@ -1,52 +1,39 @@
+import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { fail, getClientIp, ok, parseJson } from '@/lib/api';
-import { conflict, tooManyRequests } from '@/lib/errors';
+import { fail, getClientIp, ok } from '@/lib/api';
+import { AppError, conflict, tooManyRequests } from '@/lib/errors';
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import { phoneSchema } from '@/lib/validators';
+import { normalizePhone } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+const institutionPhoneSchema = z
+  .string()
+  .trim()
+  .min(9)
+  .transform(normalizePhone)
+  .refine((value) => /^\+255\d{9}$/.test(value), 'Enter a reliable Tanzanian phone number.');
 const applicationSchema = z.object({
   ownerName: z.string().trim().min(2).max(80),
+  nidaNumber: z.string().regex(/^\d{20}$/, 'Enter the 20-digit NIDA number.'),
   email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
   phone: phoneSchema,
-  applicantRole: z.enum(['OWNER', 'AUTHORIZED_REPRESENTATIVE']),
-  authorizationDocumentUrl: z
-    .string()
-    .trim()
-    .url()
-    .max(500)
-    .refine((value) => value.startsWith('https://'), 'Use a secure HTTPS document link.')
-    .optional()
-    .or(z.literal('')),
   businessName: z.string().trim().min(2).max(80),
   universityName: z.string().trim().min(2).max(120),
-  city: z.string().trim().min(2).max(80),
-  description: z.string().trim().min(10).max(500),
-  businessRegistrationNumber: z.string().trim().min(3).max(80),
-  physicalAddress: z.string().trim().min(8).max(250),
-  registrationDocumentUrl: z
-    .string()
-    .trim()
-    .url()
-    .max(500)
-    .refine((value) => value.startsWith('https://'), 'Use a secure HTTPS document link.'),
-  confirm: z.literal(true),
-}).superRefine((application, context) => {
-  if (
-    application.applicantRole === 'AUTHORIZED_REPRESENTATIVE' &&
-    !application.authorizationDocumentUrl
-  ) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['authorizationDocumentUrl'],
-      message: 'Provide proof that you are authorised to represent this business.',
-    });
-  }
+  institutionPhone: institutionPhoneSchema,
+  confirm: z.literal('true'),
 });
+
+const allowedDocuments = new Map([
+  ['application/pdf', { signature: Buffer.from('%PDF-') }],
+  ['image/jpeg', { signature: Buffer.from([0xff, 0xd8, 0xff]) }],
+  ['image/png', { signature: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) }],
+]);
 
 export async function POST(request: Request) {
   try {
@@ -55,7 +42,38 @@ export async function POST(request: Request) {
       throw tooManyRequests('Too many applications from this network. Try again later.');
     }
 
-    const body = await parseJson(request, applicationSchema);
+    const contentLength = Number(request.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > MAX_DOCUMENT_BYTES + 64 * 1024) {
+      throw new AppError('Keep the TIN/TRA document under 5 MB.', 413, 'FILE_TOO_LARGE');
+    }
+
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      throw new AppError('Submit the application with its TIN/TRA document.', 400, 'INVALID_FORM_DATA');
+    }
+
+    const file = formData.get('tinDocument');
+    if (!(file instanceof File)) throw new AppError('Upload your TIN/TRA document.', 400, 'DOCUMENT_REQUIRED');
+    if (file.size === 0 || file.size > MAX_DOCUMENT_BYTES) {
+      throw new AppError('Keep the TIN/TRA document under 5 MB.', 413, 'FILE_TOO_LARGE');
+    }
+    const documentType = allowedDocuments.get(file.type);
+    if (!documentType) {
+      throw new AppError('Upload a PDF, JPG or PNG TIN/TRA document.', 400, 'UNSUPPORTED_DOCUMENT');
+    }
+    const documentData = Buffer.from(await file.arrayBuffer());
+    if (!documentData.subarray(0, documentType.signature.length).equals(documentType.signature)) {
+      throw new AppError('The selected file does not match its document type.', 400, 'INVALID_DOCUMENT');
+    }
+
+    const rawFields = Object.fromEntries(
+      Array.from(formData.entries()).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    );
+    const body = applicationSchema.parse(rawFields);
     const [existingUser, existingApplication] = await Promise.all([
       prisma.user.findFirst({
         where: { OR: [{ email: body.email }, { phone: body.phone }] },
@@ -80,29 +98,36 @@ export async function POST(request: Request) {
       throw conflict('A request for this email is already being reviewed.');
     }
 
-    const application = await prisma.vendorApplication.create({
-      data: {
-        ownerName: body.ownerName,
-        email: body.email,
-        phone: body.phone,
-        applicantRole: body.applicantRole,
-        authorizationDocumentUrl: body.authorizationDocumentUrl || null,
-        businessName: body.businessName,
-        universityName: body.universityName,
-        city: body.city,
-        description: body.description,
-        businessRegistrationNumber: body.businessRegistrationNumber,
-        physicalAddress: body.physicalAddress,
-        registrationDocumentUrl: body.registrationDocumentUrl,
-      },
-      select: { id: true, createdAt: true },
+    const documentKey = `vendor-tin-${randomUUID()}.private`;
+    const application = await prisma.$transaction(async (tx) => {
+      await tx.storedFile.create({
+        data: {
+          key: documentKey,
+          contentType: file.type,
+          data: documentData,
+          size: documentData.byteLength,
+        },
+      });
+      return tx.vendorApplication.create({
+        data: {
+          ownerName: body.ownerName,
+          nidaNumber: body.nidaNumber,
+          email: body.email,
+          phone: body.phone,
+          businessName: body.businessName,
+          universityName: body.universityName,
+          institutionPhone: body.institutionPhone,
+          tinDocumentKey: documentKey,
+        },
+        select: { id: true, createdAt: true },
+      });
     });
 
     return ok(
       {
         application: { id: application.id, createdAt: application.createdAt.toISOString() },
         message:
-          'Application received. After the platform administrator approves it, continue with Google using this email.',
+          'Application received. The platform administrator will review your details and TIN/TRA document before approval.',
       },
       { status: 201 },
     );

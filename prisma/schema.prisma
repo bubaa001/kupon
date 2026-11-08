@@ -141,26 +141,22 @@ model Vendor {
 }
 
 model VendorApplication {
-  id                         String    @id @default(cuid())
-  ownerName                  String
-  email                      String
-  phone                      String
-  applicantRole              String    @default("OWNER")
-  authorizationDocumentUrl   String?
-  businessName               String
-  universityName             String
-  city                       String
-  description                String
-  businessRegistrationNumber String
-  physicalAddress            String
-  registrationDocumentUrl    String
-  status                     String    @default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED
-  reviewNote                 String?
-  reviewedAt                 DateTime?
-  universityId               String?
-  userId                     String?   @unique
-  createdAt                  DateTime  @default(now())
-  updatedAt                  DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  ownerName        String
+  nidaNumber       String    @default("")
+  email            String
+  phone            String
+  businessName     String
+  universityName   String
+  institutionPhone String    @default("")
+  tinDocumentKey   String?
+  status           String    @default("PENDING") // PENDING | APPROVED | REJECTED | COMPLETED
+  reviewNote       String?
+  reviewedAt       DateTime?
+  universityId     String?
+  userId           String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
   user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)

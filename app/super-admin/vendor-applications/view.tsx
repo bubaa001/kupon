@@ -29,17 +29,13 @@ type VendorApplication = {
 type VendorRequest = {
   id: string;
   ownerName: string;
+  nidaNumber: string;
   email: string;
   phone: string;
-  applicantRole: 'OWNER' | 'AUTHORIZED_REPRESENTATIVE';
-  authorizationDocumentUrl: string | null;
   businessName: string;
   universityName: string;
-  city: string;
-  description: string;
-  businessRegistrationNumber: string;
-  physicalAddress: string;
-  registrationDocumentUrl: string;
+  institutionPhone: string;
+  tinDocumentKey: string | null;
   createdAt: string;
 };
 
@@ -166,18 +162,17 @@ export function VendorApplicationsView() {
               </h2>
               {requests.map((application) => {
                 const documentsComplete = Boolean(
-                  application.businessRegistrationNumber &&
-                    application.physicalAddress &&
-                    application.registrationDocumentUrl.startsWith('https://') &&
-                    (application.applicantRole === 'OWNER' ||
-                      application.authorizationDocumentUrl?.startsWith('https://')),
+                  /^\d{20}$/.test(application.nidaNumber) &&
+                    application.tinDocumentKey &&
+                    /^\+255[67]\d{8}$/.test(application.phone) &&
+                    /^\+255\d{9}$/.test(application.institutionPhone),
                 );
                 return (
                   <Card key={application.id} className="space-y-4 p-4 sm:p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="warning">Needs review</Badge>
                       <Badge variant="neutral">
-                        Requested: {application.universityName} · {application.city}
+                        Institution: {application.universityName}
                       </Badge>
                       <span className="text-[11px] text-slate-400">
                         Submitted {formatDateTime(application.createdAt)}
@@ -187,61 +182,27 @@ export function VendorApplicationsView() {
                       <h3 className="text-base font-semibold text-slate-900">
                         {application.businessName}
                       </h3>
-                      <p className="mt-1 text-sm text-slate-600">{application.description}</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Applicant: {application.ownerName} ·{' '}
-                        {application.applicantRole === 'OWNER' ? 'Owner' : 'Authorised representative'} ·{' '}
-                        {application.phone} · {application.email}
-                      </p>
-                    </div>
-                    {application.applicantRole === 'AUTHORIZED_REPRESENTATIVE' ? (
-                      application.authorizationDocumentUrl?.startsWith('https://') ? (
-                        <a
-                          href={application.authorizationDocumentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex text-xs font-semibold text-primary-700 underline-offset-2 hover:underline"
-                        >
-                          Open proof of authority
-                        </a>
-                      ) : (
-                        <Alert variant="warning">
-                          Proof that the applicant is authorised to represent this business is missing.
-                        </Alert>
-                      )
-                    ) : null}
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                          Business registration
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">
-                          {application.businessRegistrationNumber || 'Missing'}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                          Physical cafeteria location
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-slate-800">
-                          {application.physicalAddress || 'Missing'}
-                        </p>
+                      <div className="mt-2 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                        <p>Owner: {application.ownerName}</p>
+                        <p>Owner phone: {application.phone}</p>
+                        <p>Owner NIDA: {application.nidaNumber || 'Missing'}</p>
+                        <p>Google email: {application.email}</p>
+                        <p>Institution phone: {application.institutionPhone || 'Missing'}</p>
                       </div>
                     </div>
-                    {application.registrationDocumentUrl.startsWith('https://') ? (
+                    {application.tinDocumentKey ? (
                       <a
-                        href={application.registrationDocumentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={`/api/super-admin/vendor-requests/${encodeURIComponent(application.id)}/tin-document`}
                         className="inline-flex text-xs font-semibold text-primary-700 underline-offset-2 hover:underline"
                       >
-                        Open registration document
+                        Download TIN/TRA document
                       </a>
-                    ) : (
+                    ) : null}
+                    {!application.tinDocumentKey ? (
                       <Alert variant="warning">
-                        This application has no secure registration document link.
+                        This application has no TIN/TRA document uploaded.
                       </Alert>
-                    )}
+                    ) : null}
                     <div className="space-y-1.5">
                       <label
                         htmlFor={`campus-${application.id}`}

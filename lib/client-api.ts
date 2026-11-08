@@ -24,10 +24,11 @@ type Envelope<T> =
   | { ok: false; error: { message: string; code: string; details?: unknown } };
 
 export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const response = await fetch(url, {
     ...init,
     headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
     cache: 'no-store',

@@ -20,7 +20,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/verify-otp` | public | `{ phone, code, universityId }` → sets cookie |
 | POST | `/api/auth/vendor-login` | public | `{ code, pin }` → sets cookie |
 | POST | `/api/auth/vendor-password-login` | public | `{ phone, password }` → vendor session cookie |
-| POST | `/api/vendor/applications` | public, rate-limited | `{ ownerName, email, phone, applicantRole, authorizationDocumentUrl?, businessName, universityName, city, description, businessRegistrationNumber, physicalAddress, registrationDocumentUrl, confirm:true }` → pending application; representatives must include proof of authority; no account or Google sign-in is required yet |
+| POST | `/api/vendor/applications` | public, rate-limited | multipart form with `{ ownerName, nidaNumber, email, phone, businessName, universityName, institutionPhone, confirm:true, tinDocument }` → pending application; accepts a PDF/JPG/PNG TIN/TRA document up to 5 MB; no external document links or pre-approval Google sign-in |
 | POST | `/api/auth/vendor-activate` | Google-approved-application ticket | `{ password }` → creates the approved vendor account and session |
 | POST | `/api/auth/staff-login` | public | `{ phone, password }` → sets cookie |
 | POST | `/api/auth/bootstrap-super-admin` | public, one-time | Requires configured `SUPER_ADMIN_SETUP_TOKEN`; creates the first super-admin and signs it in |
@@ -33,6 +33,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates student profile + session cookie |
 | GET | `/api/super-admin/vendor-applications` | SUPER_ADMIN | `{ applications, requests, universities }` → pending legacy vendor accounts, new pre-auth applications, and available campuses |
 | PATCH | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | `{ decision, universityId?, physicalSiteVerified?, note? }` → approves/rejects application; approval assigns the campus and enables Google activation. Platform admins provision new institutions under `/super-admin/tenants` before assigning them. |
+| GET | `/api/super-admin/vendor-requests/:id/tin-document` | SUPER_ADMIN | Downloads the applicant's private TIN/TRA document; never served from the public food-image route |
 
 ## Student (role STUDENT)
 
