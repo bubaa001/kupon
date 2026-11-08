@@ -3,10 +3,11 @@ import { auditLog } from '@/lib/audit';
 import { conflict, notFound } from '@/lib/errors';
 import { LEDGER_ACCOUNTS, postJournal } from '@/lib/ledger';
 import { randomReference, safeJson } from '@/lib/utils';
+import { TEST_PAYMENT_TTL_MS } from './payment-ttl';
 
 /**
- * Confirms a direct mobile-money order only after the payment rail reports
- * success. The transaction claim makes repeated callbacks harmless.
+ * Confirms a test order only after receipt is recorded and before its
+ * one-minute request window closes. The transaction claim makes retries safe.
  */
 export async function settleOrderCheckout(input: {
   reference: string;
@@ -45,6 +46,7 @@ export async function settleOrderCheckout(input: {
         type: 'PAYMENT',
         status: 'PENDING',
         isTest: true,
+        createdAt: { gt: new Date(Date.now() - TEST_PAYMENT_TTL_MS) },
       },
       data: {
         status: 'SETTLED',

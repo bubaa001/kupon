@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit';
 import { failOrderCheckout, settleOrderCheckout } from '@/lib/orders/settle-checkout';
 import { safeJson } from '@/lib/utils';
+import { TEST_PAYMENT_TTL_MS } from '@/lib/orders/payment-ttl';
 
 export type TestPaymentStage = 'RECEIVED' | 'CONFIRMED' | 'FAILED' | 'EXPIRED';
 
@@ -25,6 +26,15 @@ export async function advanceKuponTestPayment(input: {
   if (!payment.isTest) throw conflict('This transaction is not a Kupon test payment.');
 
   const currentStage = payment.paymentEvents[0]?.stage;
+  if (payment.status === 'PENDING' && Date.now() - payment.createdAt.getTime() >= TEST_PAYMENT_TTL_MS) {
+    await failOrderCheckout({
+      reference: input.reference,
+      reason: 'The test payment request expired after one minute.',
+      stage: 'EXPIRED',
+      actorId: input.actorId,
+    });
+    return { advanced: true, stage: 'EXPIRED' as const };
+  }
   if (currentStage === input.stage) {
     return { advanced: false, stage: currentStage };
   }

@@ -45,6 +45,7 @@ import type {
   StudentOrdersData,
   VendorMenuData,
 } from '@/lib/orders/types';
+import { testPaymentSecondsRemaining } from '@/lib/orders/payment-ttl';
 import { parseVendorQr } from '@/lib/orders/qr-payload';
 import type { StudentCheckoutData, StudentDashboardData } from '../_lib/types';
 import { ErrorState } from '../_components/error-state';
@@ -130,6 +131,8 @@ export default function PayPage() {
 
   // Paid coupons waiting for the vendor live on the scan screen as a card deck.
   const [pendingOrders, setPendingOrders] = useState<OrderView[]>([]);
+  const [pendingPaymentOrders, setPendingPaymentOrders] = useState<OrderView[]>([]);
+  const [clockNow, setClockNow] = useState(Date.now());
   const [pendingLoading, setPendingLoading] = useState(true);
   const [pendingError, setPendingError] = useState<string | null>(null);
 
@@ -143,17 +146,14 @@ export default function PayPage() {
       setCampusVendors(data.vendors);
       setVendorLoadError(data.vendorLoadError);
       const pending = data.orders.filter((entry) => entry.status === 'PENDING');
-      const paymentWaiting = data.orders.find((entry) => entry.status === 'PAYMENT_PENDING');
+      const paymentWaiting = data.orders.filter((entry) => entry.status === 'PAYMENT_PENDING');
       setPendingOrders(pending);
+      setPendingPaymentOrders(paymentWaiting);
       setPendingError(null);
       setPendingLoading(false);
 
-      // Open an outstanding payment first; otherwise show a single ready coupon.
-      if (paymentWaiting) {
-        setOrder(paymentWaiting);
-        setPaymentMessage('Tunasubiri uthibitisho wa malipo kwenye simu yako.');
-        setPhase('payment');
-      } else if (pending.length === 1) {
+      // A pending test payment never blocks scanning or placing another order.
+      if (pending.length === 1 && paymentWaiting.length === 0) {
         setOrder(pending[0]);
         setPhase('coupon');
       } else {
@@ -179,11 +179,12 @@ export default function PayPage() {
     void loadBoot();
   }, [loadBoot]);
 
-  const refreshPending = useCallback(async () => {
-    setPendingLoading(true);
+  const refreshPending = useCallback(async (silent = false) => {
+    if (!silent) setPendingLoading(true);
     try {
-      const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=PENDING');
+      const data = await apiFetch<StudentOrdersData>('/api/student/orders?status=ALL');
       setPendingOrders(data.orders.filter((entry) => entry.status === 'PENDING'));
+      setPendingPaymentOrders(data.orders.filter((entry) => entry.status === 'PAYMENT_PENDING'));
       setPendingError(null);
     } catch (err) {
       setPendingError(
@@ -192,9 +193,21 @@ export default function PayPage() {
           : 'Imeshindikana kupakia coupons zako. Jaribu tena.',
       );
     } finally {
-      setPendingLoading(false);
+      if (!silent) setPendingLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (phase !== 'payment' && pendingPaymentOrders.length === 0) return;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [phase, pendingPaymentOrders.length]);
+
+  useEffect(() => {
+    if (phase !== 'scan' || pendingPaymentOrders.length === 0) return;
+    const timer = window.setInterval(() => void refreshPending(true), 3000);
+    return () => window.clearInterval(timer);
+  }, [phase, pendingPaymentOrders.length, refreshPending]);
 
   const openCoupon = useCallback((next: OrderView) => {
     setOrder(next);
@@ -337,6 +350,11 @@ export default function PayPage() {
           result.order,
           ...previous.filter((entry) => entry.id !== result.order.id),
         ]);
+      } else {
+        setPendingPaymentOrders((previous) => [
+          result.order,
+          ...previous.filter((entry) => entry.id !== result.order.id),
+        ]);
       }
       setReviewOpen(false);
       setCart({});
@@ -388,6 +406,13 @@ export default function PayPage() {
         if (next) {
           setOrder(next);
           if (next.status === 'PAYMENT_FAILED') {
+            setPendingPaymentOrders((previous) => previous.filter((entry) => entry.id !== next.id));
+            if (testPaymentSecondsRemaining(next.createdAt) === 0) {
+              setOrder(null);
+              setPhase('scan');
+              toast.info('Payment request expired. You can place another order.');
+              return;
+            }
             setPhase('payment-failed');
             toast.error('Malipo hayakuthibitishwa.', {
               description:
@@ -396,6 +421,7 @@ export default function PayPage() {
             return;
           }
           if (next.status === 'PENDING' && waitingForPayment) {
+            setPendingPaymentOrders((previous) => previous.filter((entry) => entry.id !== next.id));
             setPendingOrders((previous) => [
               next,
               ...previous.filter((entry) => entry.id !== next.id),
@@ -455,6 +481,17 @@ export default function PayPage() {
             Test environment: orders do not charge a phone or move real money. A coupon is issued
             only after Finance confirms the test payment.
           </Alert>
+
+          {pendingPaymentOrders.map((pendingPayment) => {
+            const seconds = testPaymentSecondsRemaining(pendingPayment.createdAt, clockNow);
+            return (
+              <Alert key={pendingPayment.id} variant="warning" title="Test payment request pending">
+                {pendingPayment.vendor.name} · {formatTZS(pendingPayment.total)}. This request
+                expires after one minute ({seconds > 0 ? `${seconds}s remaining` : 'expiring'}).
+                You can place another order now.
+              </Alert>
+            );
+          })}
 
           {bootError ? <ErrorState message={bootError} onRetry={() => void loadBoot()} /> : null}
 
@@ -778,10 +815,19 @@ export default function PayPage() {
               <Loader2 className="mt-1 h-4 w-4 shrink-0 animate-spin text-primary-600" aria-hidden />
             </div>
             <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-              Keep this page open while the test payment is reviewed. Kupon will show your coupon
-              once Finance confirms the test transaction.
+              This request expires one minute after it starts. It will not stop you from placing
+              another order while you wait.
+            </p>
+            <p className="mt-3 text-center text-xs font-semibold tabular text-amber-700">
+              {testPaymentSecondsRemaining(order.createdAt, clockNow) > 0
+                ? `Expires in ${testPaymentSecondsRemaining(order.createdAt, clockNow)} seconds`
+                : 'Expiring now'}
             </p>
           </Card>
+          <Button type="button" className="w-full" onClick={resetToScan}>
+            <ScanLine aria-hidden />
+            Continue shopping
+          </Button>
           <Button asChild variant="outline" className="w-full">
             <Link href="/student/history">View payment history</Link>
           </Button>

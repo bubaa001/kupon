@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { student } = await getStudentContext();
+    const { user, student } = await getStudentContext();
     const now = new Date();
     const todayStart = startOfDay(now);
     const weekStart = startOfDay(subDays(now, 6));
@@ -66,7 +66,7 @@ export async function GET() {
           orderBy: { createdAt: 'desc' },
           take: 6,
         }),
-        getStudentActiveOrders(student.id),
+        getStudentActiveOrders(student.id, user.id),
       ]);
 
     if (!profile) throw notFound('Student profile not found.');

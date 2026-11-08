@@ -5,6 +5,7 @@ import { randomReference } from '@/lib/utils';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
 import type { PlaceOrderInput } from './types';
+import { expireStaleTestPayments } from './expire-test-payments';
 
 const MAX_ITEMS = 20;
 const MAX_QUANTITY = 10;
@@ -76,6 +77,7 @@ export async function placeOrder(input: {
   if (student.university.status !== 'ACTIVE') {
     throw conflict('Your university is suspended. Orders are paused.');
   }
+  await expireStaleTestPayments({ studentId: student.id, actorId: input.actorId });
 
   const vendor = await prisma.vendor.findUnique({
     where: { id: input.payload.vendorId },

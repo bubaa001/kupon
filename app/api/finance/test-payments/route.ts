@@ -1,13 +1,15 @@
 import { prisma } from '@/lib/db';
 import { fail, ok } from '@/lib/api';
 import { requireApiUser } from '@/lib/auth';
+import { expireStaleTestPayments } from '@/lib/orders/expire-test-payments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await requireApiUser(['FINANCE']);
+    const user = await requireApiUser(['FINANCE']);
+    await expireStaleTestPayments({ actorId: user.id });
     const transactions = await prisma.transaction.findMany({
       where: { isTest: true, type: 'PAYMENT' },
       include: {

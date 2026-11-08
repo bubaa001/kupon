@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { fail, ok, searchParams } from '@/lib/api';
 import { TX_STATUSES, TX_TYPES } from '@/lib/constants';
 import type { TransactionsData } from '@/app/student/_lib/types';
+import { expireStaleTestPayments } from '@/lib/orders/expire-test-payments';
 import { getStudentContext, serializeTransaction } from '../_lib/student';
 
 export const runtime = 'nodejs';
@@ -31,7 +32,8 @@ function rangeStart(range: 'today' | 'week' | 'month', now: Date): Date {
  */
 export async function GET(request: Request) {
   try {
-    const { student } = await getStudentContext();
+    const { user, student } = await getStudentContext();
+    await expireStaleTestPayments({ studentId: student.id, actorId: user.id });
     const params = searchParams(request);
     const rawType = params.get('type');
     const rawStatus = params.get('status');
@@ -46,6 +48,11 @@ export async function GET(request: Request) {
     const baseWhere = {
       studentId: student.id,
       createdAt: { gte: start },
+      NOT: {
+        isTest: true,
+        type: 'PAYMENT',
+        paymentEvents: { some: { stage: 'EXPIRED' } },
+      },
       ...(query.type ? { type: query.type } : {}),
     };
 

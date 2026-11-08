@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { signCouponToken } from '@/lib/orders/coupon';
 import { orderInclude, serializeOrder } from '@/lib/orders/serialize';
 import { placeOrder } from '@/lib/orders/place-order';
+import { expireStaleTestPayments } from '@/lib/orders/expire-test-payments';
 import { placeOrderSchema } from '@/lib/validators';
 
 export const runtime = 'nodejs';
@@ -68,6 +69,7 @@ export async function GET(request: Request) {
       id: params.get('id') ?? undefined,
       status: params.get('status')?.toUpperCase() ?? undefined,
     });
+    await expireStaleTestPayments({ studentId: student.id, actorId: user.id });
 
     if (query.id) {
       const order = await prisma.order.findFirst({
