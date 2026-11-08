@@ -31,6 +31,8 @@ export default async function VendorActivatePage() {
       userId: null,
     },
     select: {
+      ownerName: true,
+      phone: true,
       businessName: true,
       university: { select: { name: true, status: true } },
     },
@@ -60,8 +62,10 @@ export default async function VendorActivatePage() {
             Finish setting up your account
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            Google verified {ticket.email}. Create a password for your {application.businessName}{' '}
-            account at {application.university.name}.
+            Google verified {ticket.email}. You are setting the password for your{' '}
+            {application.businessName} vendor account at {application.university.name}. You choose
+            this password; it will be used with the owner phone number on your application (
+            {application.phone}) for manual sign-in.
           </p>
           <div className="mt-6">
             <VendorActivationForm />

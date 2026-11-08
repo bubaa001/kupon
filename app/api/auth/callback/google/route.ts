@@ -274,7 +274,7 @@ export async function GET(request: NextRequest) {
 
     if (state.role === 'vendor') {
       if (user.role !== 'VENDOR') {
-        return clearState(loginError(request, 'google_role_conflict', 'vendor'));
+        return clearState(loginError(request, 'google_vendor_account_exists', 'vendor'));
       }
       if (!user.vendor) {
         return clearState(loginError(request, 'google_vendor_missing', 'vendor'));

@@ -41,7 +41,7 @@ export const vendorLoginSchema = z.object({
 
 export const vendorPasswordLoginSchema = z.object({
   phone: phoneSchema,
-  password: z.string().min(12).max(128),
+  password: z.string().min(8).max(128),
 });
 
 export const staffLoginSchema = z.object({

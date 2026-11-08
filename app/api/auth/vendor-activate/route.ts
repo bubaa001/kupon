@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const activationSchema = z.object({
-  password: z.string().min(12).max(128).regex(/[a-z]/).regex(/[A-Z]/).regex(/\d/),
+  password: z.string().min(8).max(128),
 });
 
 export async function POST(request: NextRequest) {
@@ -50,12 +50,23 @@ export async function POST(request: NextRequest) {
       throw forbidden('This campus is not active. Contact the platform administrator.');
     }
 
-    const [emailOwner, phoneOwner] = await Promise.all([
-      prisma.user.findUnique({ where: { email: ticket.email }, select: { id: true } }),
-      prisma.user.findUnique({ where: { phone: application.phone }, select: { id: true } }),
-    ]);
-    if (emailOwner || phoneOwner) {
-      throw conflict('These details already belong to a Kupon account. Contact the platform administrator.');
+    const emailOwner = await prisma.user.findUnique({
+      where: { email: ticket.email },
+      select: { id: true },
+    });
+    if (emailOwner) {
+      throw conflict(
+        'This Google email is already linked to a Kupon account. Contact the Platform Admin to link your approved vendor application.',
+      );
+    }
+    const phoneOwner = await prisma.user.findUnique({
+      where: { phone: application.phone },
+      select: { id: true },
+    });
+    if (phoneOwner) {
+      throw conflict(
+        'The phone number on your application is already linked to a Kupon account. If it is your account, contact the Platform Admin to link your approved vendor application; otherwise ask them to correct the application phone number.',
+      );
     }
 
     const passwordHash = await bcrypt.hash(body.password, 12);
@@ -157,7 +168,11 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return fail(conflict('This Google account or phone number is already linked to Kupon.'));
+      return fail(
+        conflict(
+          'The Google email or application phone number was linked to a Kupon account during setup. Contact the Platform Admin to resolve the account link.',
+        ),
+      );
     }
     return fail(error);
   }

@@ -47,12 +47,12 @@ export function VendorActivationForm() {
           autoComplete="new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          minLength={12}
+          minLength={8}
           maxLength={128}
           required
         />
         <p className="text-xs text-slate-500">
-          At least 12 characters with lowercase, uppercase, and a number.
+          Use at least 8 characters. You choose this password for your vendor account.
         </p>
       </div>
       <Button type="submit" className="w-full" loading={saving} disabled={saving}>

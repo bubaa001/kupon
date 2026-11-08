@@ -40,6 +40,8 @@ export function VendorAccessForm() {
       setError(
         params.get('error') === 'google_vendor_suspended'
           ? 'This cafeteria account is suspended. Contact Kupon support.'
+          : params.get('error') === 'google_vendor_account_exists'
+            ? 'This Google email already belongs to a Kupon account under another role. Contact the Platform Admin to link your approved vendor application.'
           : params.get('error') === 'google_vendor_not_approved'
             ? 'No approved application matches this Google account. If you have applied, wait for review; otherwise submit an application first.'
             : params.get('error') === 'google_vendor_activation_expired'
