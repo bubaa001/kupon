@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, RefreshCw, X } from 'lucide-react';
+import { Check, RefreshCw, Trash2, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
-import { ApiClientError, apiFetch, patchJson } from '@/lib/client-api';
+import { ApiClientError, apiFetch, deleteJson, patchJson } from '@/lib/client-api';
 import { formatDateTime } from '@/lib/utils';
 
 type VendorApplication = {
@@ -140,6 +140,52 @@ export function VendorApplicationsView() {
     } catch (caught) {
       toast.error(
         caught instanceof ApiClientError ? caught.message : 'Could not review this application.',
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function reopenRejected(id: string, type: 'application' | 'request') {
+    setBusy(id);
+    try {
+      const url =
+        type === 'application'
+          ? `/api/super-admin/vendor-applications/${encodeURIComponent(id)}`
+          : `/api/super-admin/vendor-requests/${encodeURIComponent(id)}`;
+      const result = await patchJson<{ message: string }>(url, { decision: 'REOPEN' });
+      toast.success(result.message);
+      await load();
+    } catch (caught) {
+      toast.error(
+        caught instanceof ApiClientError ? caught.message : 'Could not reopen this application.',
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteRejected(id: string, type: 'application' | 'request') {
+    if (
+      !window.confirm(
+        'Permanently delete this rejected record? This cannot be undone. Accounts with operational history cannot be deleted.',
+      )
+    ) {
+      return;
+    }
+
+    setBusy(id);
+    try {
+      const url =
+        type === 'application'
+          ? `/api/super-admin/vendor-applications/${encodeURIComponent(id)}`
+          : `/api/super-admin/vendor-requests/${encodeURIComponent(id)}`;
+      const result = await deleteJson<{ message: string }>(url);
+      toast.success(result.message);
+      await load();
+    } catch (caught) {
+      toast.error(
+        caught instanceof ApiClientError ? caught.message : 'Could not delete this application.',
       );
     } finally {
       setBusy(null);
@@ -444,7 +490,7 @@ export function VendorApplicationsView() {
                 Rejected applications ({rejectedRequests.length + rejectedApplications.length})
               </h2>
               <p className="mt-1 text-xs text-slate-500">
-                Review notes are saved here. Kupon does not automatically email rejected applicants.
+                Reopen an application to review it again. Permanent deletion removes the application or vendor account; accounts with operational records are protected.
               </p>
             </div>
             {!rejectedRequests.length && !rejectedApplications.length ? (
@@ -479,6 +525,25 @@ export function VendorApplicationsView() {
                   <Alert variant="warning" title="Feedback saved (not emailed)">
                     {application.reviewNote || 'No review note was saved.'}
                   </Alert>
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy === application.id}
+                      onClick={() => void deleteRejected(application.id, 'request')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete permanently
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={busy === application.id}
+                      onClick={() => void reopenRejected(application.id, 'request')}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Reopen for review
+                    </Button>
+                  </div>
                 </Card>
               );
             })}
@@ -517,6 +582,25 @@ export function VendorApplicationsView() {
                   <Alert variant="warning" title="Feedback saved (not emailed)">
                     {application.applicationReviewNote || 'No review note was saved.'}
                   </Alert>
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy === application.id}
+                      onClick={() => void deleteRejected(application.id, 'application')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete permanently
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={busy === application.id}
+                      onClick={() => void reopenRejected(application.id, 'application')}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Reopen for review
+                    </Button>
+                  </div>
                 </Card>
               );
             })}

@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const reviewSchema = z.object({
-  decision: z.enum(['APPROVE', 'REJECT']),
+  decision: z.enum(['APPROVE', 'REJECT', 'REOPEN']),
   universityId: z.string().min(1).optional(),
   physicalSiteVerified: z.boolean().optional(),
   note: z.string().trim().max(500).optional(),
@@ -27,7 +27,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const user = await requireApiUser(['SUPER_ADMIN']);
     const body = await parseJson(request, reviewSchema);
     const application = await prisma.vendorApplication.findFirst({
-      where: { id: params.id, status: 'PENDING' },
+      where: {
+        id: params.id,
+        status: body.decision === 'REOPEN' ? 'REJECTED' : 'PENDING',
+      },
       select: {
         id: true,
         email: true,
@@ -70,19 +73,27 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       });
       if (!university) throw badRequest('Choose an active Kupon campus.');
       universityId = university.id;
-    } else if (!body.note || body.note.length < 5) {
+    } else if (body.decision === 'REJECT' && (!body.note || body.note.length < 5)) {
       throw badRequest('Add a short reason so the applicant knows what to correct.');
     }
 
     const now = new Date();
     await prisma.$transaction(async (tx) => {
       const updated = await tx.vendorApplication.updateMany({
-        where: { id: application.id, status: 'PENDING' },
+        where: {
+          id: application.id,
+          status: body.decision === 'REOPEN' ? 'REJECTED' : 'PENDING',
+        },
         data: {
-          status: body.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-          universityId,
-          reviewNote: body.note ?? null,
-          reviewedAt: now,
+          status:
+            body.decision === 'REOPEN'
+              ? 'PENDING'
+              : body.decision === 'APPROVE'
+                ? 'APPROVED'
+                : 'REJECTED',
+          universityId: body.decision === 'REOPEN' ? null : universityId,
+          reviewNote: body.decision === 'REOPEN' ? null : body.note ?? null,
+          reviewedAt: body.decision === 'REOPEN' ? null : now,
         },
       });
       if (!updated.count) throw conflict('This application was just reviewed.');
@@ -91,7 +102,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           actorId: user.id,
           universityId,
           action:
-            body.decision === 'APPROVE'
+            body.decision === 'REOPEN'
+              ? 'VENDOR_REQUEST_REOPENED'
+              : body.decision === 'APPROVE'
               ? 'VENDOR_REQUEST_APPROVED'
               : 'VENDOR_REQUEST_REJECTED',
           entity: 'VendorApplication',
@@ -109,12 +122,90 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     });
 
     return ok({
-      status: body.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+      status:
+        body.decision === 'REOPEN'
+          ? 'PENDING'
+          : body.decision === 'APPROVE'
+            ? 'APPROVED'
+            : 'REJECTED',
       message:
-        body.decision === 'APPROVE'
-          ? 'Application approved. The owner can now continue with Google sign-in.'
-        : 'Application rejected. Feedback is saved in Rejected applications; no email is sent.',
+        body.decision === 'REOPEN'
+          ? 'Application returned to the review queue.'
+          : body.decision === 'APPROVE'
+            ? 'Application approved. The owner can now continue with Google sign-in.'
+            : 'Application rejected. Feedback is saved in Rejected applications; no email is sent.',
     });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const user = await requireApiUser(['SUPER_ADMIN']);
+    const vendor = await prisma.vendor.findFirst({
+      where: { id: params.id, status: 'PENDING', applicationRejectedAt: { not: null } },
+      select: {
+        id: true,
+        userId: true,
+        code: true,
+        name: true,
+        universityId: true,
+        applicationReviewNote: true,
+        _count: {
+          select: {
+            transactions: true,
+            orders: true,
+            settlements: true,
+            cafeteriaCredits: true,
+            creditRequests: true,
+            supportTickets: true,
+            teamMembers: true,
+          },
+        },
+      },
+    });
+    if (!vendor) throw notFound('Rejected vendor account not found.');
+    const hasOperationalData = Object.values(vendor._count).some((count) => count > 0);
+    if (hasOperationalData) {
+      throw conflict(
+        'This vendor has staff or operational records and cannot be permanently deleted. Reopen it for review instead.',
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const stillRejected = await tx.vendor.findFirst({
+        where: {
+          id: vendor.id,
+          status: 'PENDING',
+          applicationRejectedAt: { not: null },
+        },
+        select: { id: true },
+      });
+      if (!stillRejected) throw conflict('This vendor account was just changed.');
+
+      await auditLog(
+        {
+          actorId: user.id,
+          universityId: vendor.universityId,
+          action: 'VENDOR_APPLICATION_DELETED',
+          entity: 'Vendor',
+          entityId: vendor.id,
+        },
+        tx,
+      );
+      await tx.auditLog.updateMany({
+        where: { actorId: vendor.userId },
+        data: { actorId: null },
+      });
+      await tx.auditLog.updateMany({
+        where: { entity: 'Vendor', entityId: vendor.id },
+        data: { metadata: null },
+      });
+      await tx.user.delete({ where: { id: vendor.userId } });
+    });
+
+    return ok({ message: 'Rejected vendor account permanently deleted.' });
   } catch (error) {
     return fail(error);
   }

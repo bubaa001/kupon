@@ -32,7 +32,8 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | GET | `/api/auth/callback/google` | public | Verifies state + code. Students can sign up; vendors must have an approved application matching their verified Google email; staff must match an existing account |
 | POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates student profile + session cookie |
 | GET | `/api/super-admin/vendor-applications` | SUPER_ADMIN | `{ applications, requests, rejectedApplications, rejectedRequests, universities }` → pending and rejected vendor applications plus available campuses; rejection notes are stored for review and are not emailed automatically |
-| PATCH | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | `{ decision, universityId?, physicalSiteVerified?, note? }` → approves/rejects application; approval assigns the campus and enables Google activation. Platform admins provision new institutions under `/super-admin/tenants` before assigning them. |
+| PATCH | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | `{ decision:'APPROVE'\|'REJECT'\|'REOPEN', universityId?, physicalSiteVerified?, note? }` → approves/rejects or returns a rejected application to the review queue; approval assigns the campus and enables Google activation. Platform admins provision new institutions under `/super-admin/tenants` before assigning them. |
+| DELETE | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | Permanently deletes a rejected application and its private TIN/TRA upload; writes an audit record |
 | GET | `/api/super-admin/vendor-requests/:id/tin-document` | SUPER_ADMIN | Downloads the applicant's private TIN/TRA document; never served from the public food-image route |
 
 ## Student (role STUDENT)
@@ -149,7 +150,8 @@ Base path `/api/super-admin`.
 | GET | `/finance-users` | `{ vendors:[{id,name,code,university}] }` active vendor choices for team account creation |
 | POST | `/finance-users` | `{ name, phone, password, role:'FINANCE'\|'STAFF', vendorId? }` creates a scoped account; STAFF requires an active vendor; FINANCE may be platform-wide |
 | GET | `/vendor-applications` | Pending applications with owner, university and registration-document details |
-| PATCH | `/vendor-applications/[id]` | `{ decision:'APPROVE'\|'REJECT', physicalSiteVerified?, note? }`; approval requires complete documents and physical-site confirmation; rejection requires a note so the owner can resubmit |
+| PATCH | `/vendor-applications/[id]` | `{ decision:'APPROVE'\|'REJECT'\|'REOPEN', physicalSiteVerified?, note? }`; reopening returns a rejected legacy vendor account to the review queue; approval requires complete documents and physical-site confirmation; rejection requires a note |
+| DELETE | `/vendor-applications/[id]` | Permanently deletes a rejected legacy vendor account and records the action; blocked if the account has staff or operational records |
 | GET | `/revenue` | `{ grossVolume, transactionFees, platformNet, saasRevenue, aggregatorCosts, universityRevenue, series, perTenant }` |
 | GET | `/health` | `{ uptimePercent, successRate, avgLatencyMs, ledgerBalanced, failedToday, pendingRefunds, services[], incidents[] }` |
 
