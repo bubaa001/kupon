@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Check, CircleDollarSign, Clock3, RefreshCw, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Check, CircleDollarSign, Clock3, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
+import { apiFetch } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 
 type TestPayment = {
@@ -35,47 +35,36 @@ const STAGE_STYLE: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> 
 export default function FinanceTestPaymentsPage() {
   const [transactions, setTransactions] = useState<TestPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyReference, setBusyReference] = useState<string | null>(null);
+  const pollErrorShown = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const result = await apiFetch<{ transactions: TestPayment[] }>('/api/finance/test-payments');
       setTransactions(result.transactions);
+      pollErrorShown.current = false;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load test payments.');
+      if (!silent || !pollErrorShown.current) {
+        toast.error(error instanceof Error ? error.message : 'Could not load test payments.');
+      }
+      pollErrorShown.current = true;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void load();
+    const interval = window.setInterval(() => void load(true), 2500);
+    return () => window.clearInterval(interval);
   }, [load]);
-
-  async function advance(payment: TestPayment, stage: 'RECEIVED' | 'CONFIRMED' | 'FAILED' | 'EXPIRED') {
-    setBusyReference(payment.reference);
-    try {
-      await postJson(`/api/finance/test-payments/${encodeURIComponent(payment.reference)}`, {
-        stage,
-      });
-      toast.success(`Test payment marked ${stage.toLowerCase()}.`);
-      await load();
-    } catch (error) {
-      toast.error(
-        error instanceof ApiClientError ? error.message : 'Could not update this test payment.',
-      );
-    } finally {
-      setBusyReference(null);
-    }
-  }
 
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Kupon internal API"
-        title="Test payments"
-        description="Advance test order payments through their auditable lifecycle. No external gateway or money movement is involved."
+        eyebrow="Kupon test gateway"
+        title="Payment activity"
+        description="Read-only view of the lifecycle automatically recorded by Kupon's test gateway."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -85,8 +74,8 @@ export default function FinanceTestPaymentsPage() {
       />
 
       <Alert variant="warning">
-        These are test transactions only. Confirming one makes its coupon available, but does not
-        mean a student paid real money.
+        These test transactions do not charge a phone or represent cash received. Kupon advances
+        each payment automatically; Finance cannot confirm or reject a student checkout.
       </Alert>
 
       {loading && transactions.length === 0 ? (
@@ -96,14 +85,12 @@ export default function FinanceTestPaymentsPage() {
           <CircleDollarSign className="mx-auto h-8 w-8 text-slate-300" />
           <p className="mt-3 text-sm font-semibold text-slate-900">No test payments yet</p>
           <p className="mt-1 text-xs text-slate-500">
-            A student order creates an initiated payment here.
+            A student checkout creates an initiated payment. Kupon advances it automatically.
           </p>
         </Card>
       ) : (
         <div className="space-y-3">
           {transactions.map((payment) => {
-            const busy = busyReference === payment.reference;
-            const final = ['CONFIRMED', 'FAILED', 'EXPIRED'].includes(payment.stage);
             return (
               <Card key={payment.reference} className="p-4 sm:p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -117,9 +104,7 @@ export default function FinanceTestPaymentsPage() {
                       </Badge>
                       <Badge variant="neutral">TEST ONLY</Badge>
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                      {formatTZS(payment.amount)}
-                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{formatTZS(payment.amount)}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       {payment.student.user.name} · {payment.student.studentId} ·{' '}
                       {payment.vendor?.name ?? 'Cafeteria'} · {payment.university.name}
@@ -130,7 +115,7 @@ export default function FinanceTestPaymentsPage() {
                     </p>
 
                     <ol className="mt-4 flex flex-wrap gap-2">
-                      {payment.events.map((event, index) => (
+                      {payment.events.map((event) => (
                         <li
                           key={`${event.stage}-${event.createdAt}`}
                           className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-[10px] text-slate-600"
@@ -142,57 +127,10 @@ export default function FinanceTestPaymentsPage() {
                           )}
                           <span>{event.stage}</span>
                           <span className="text-slate-400">{formatDateTime(event.createdAt)}</span>
-                          {index < payment.events.length - 1 ? null : null}
                         </li>
                       ))}
                     </ol>
                   </div>
-
-                  {!final ? (
-                    <div className="flex flex-wrap gap-2 lg:justify-end">
-                      {payment.stage === 'INITIATED' ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => void advance(payment, 'RECEIVED')}
-                        >
-                          <Check className="h-4 w-4" />
-                          Record received
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={busy}
-                          onClick={() => void advance(payment, 'CONFIRMED')}
-                        >
-                          <Check className="h-4 w-4" />
-                          Confirm test payment
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => void advance(payment, 'FAILED')}
-                      >
-                        <X className="h-4 w-4" />
-                        Fail
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => void advance(payment, 'EXPIRED')}
-                      >
-                        Expire
-                      </Button>
-                    </div>
-                  ) : null}
                 </div>
               </Card>
             );

@@ -7,7 +7,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { signCouponToken } from '@/lib/orders/coupon';
 import { orderInclude, serializeOrder } from '@/lib/orders/serialize';
 import { placeOrder } from '@/lib/orders/place-order';
-import { expireStaleTestPayments } from '@/lib/orders/expire-test-payments';
+import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
 import { placeOrderSchema } from '@/lib/validators';
 
 export const runtime = 'nodejs';
@@ -57,8 +57,8 @@ async function withCoupon<
  * intents do not include coupon details until the gateway confirms payment.
  *
  * POST /api/student/orders
- * Starts an internal test-payment from a vendor menu. The coupon is issued only
- * after Finance records a test confirmation.
+ * Starts an internal test payment from a vendor menu. Kupon's test gateway
+ * automatically simulates receipt and confirmation before issuing the coupon.
  */
 export async function GET(request: Request) {
   try {
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       id: params.get('id') ?? undefined,
       status: params.get('status')?.toUpperCase() ?? undefined,
     });
-    await expireStaleTestPayments({ studentId: student.id, actorId: user.id });
+    await processKuponTestGatewayPayments({ studentId: student.id });
 
     if (query.id) {
       const order = await prisma.order.findFirst({

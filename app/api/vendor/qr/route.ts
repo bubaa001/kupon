@@ -1,5 +1,5 @@
 import { fail, ok } from '@/lib/api';
-import { requireApiUser } from '@/lib/auth';
+import { requireApiUser, requireOperationalVendor } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { forbidden, notFound } from '@/lib/errors';
 import { vendorQrValue } from '@/lib/orders/qr-payload';
@@ -15,32 +15,32 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET() {
   try {
-    const user = await requireApiUser(['VENDOR']);
-    if (!user.vendor || !user.universityId || !user.university) {
+    const user = await requireApiUser(['VENDOR', 'STAFF']);
+    const vendor = requireOperationalVendor(user);
+    if (!user.universityId || !user.university) {
       throw forbidden('Vendor account is not linked to a university.');
     }
-    if (user.vendor.status !== 'ACTIVE') throw forbidden('Vendor account is suspended.');
 
     const vendorRecord = await prisma.vendor.findUnique({
-      where: { id: user.vendor.id },
+      where: { id: vendor.id },
       select: { description: true },
     });
     if (!vendorRecord) throw notFound('Vendor not found.');
 
     // Short pointer, not a JWT: a 20-character QR is much easier for a phone
     // camera to resolve than a 250+ character signed token.
-    const payload = vendorQrValue(user.vendor.code);
+    const payload = vendorQrValue(vendor.code);
 
     return ok({
       payload,
       vendor: {
-        id: user.vendor.id,
-        name: user.vendor.name,
-        code: user.vendor.code,
+        id: vendor.id,
+        name: vendor.name,
+        code: vendor.code,
         description: vendorRecord.description,
       },
       university: { name: user.university.name, code: user.university.code },
-      menuHint: 'Scan to see today’s approved menu and pay from your wallet.',
+      menuHint: 'Scan to see today’s menu. Checkout is simulated in this build; no money moves.',
     });
   } catch (error) {
     return fail(error);

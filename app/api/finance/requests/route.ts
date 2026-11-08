@@ -7,9 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await requireApiUser(['FINANCE']);
+    const user = await requireApiUser(['FINANCE']);
+    const vendorScope = user.managedVendor ? { vendorId: user.managedVendor.id } : {};
     const [creditRequests, supportTickets] = await Promise.all([
       prisma.creditRequest.findMany({
+        where: vendorScope,
         include: {
           order: { select: { reference: true, status: true, expiresAt: true } },
           student: { select: { studentId: true, user: { select: { name: true } } } },
@@ -21,6 +23,7 @@ export async function GET() {
         take: 100,
       }),
       prisma.supportTicket.findMany({
+        where: vendorScope,
         include: {
           order: { select: { reference: true, total: true } },
           student: { select: { studentId: true, user: { select: { name: true } } } },

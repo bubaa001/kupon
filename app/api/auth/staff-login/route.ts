@@ -26,16 +26,28 @@ export async function POST(request: Request) {
       where: { phone: body.phone },
       include: {
         university: { select: { id: true, name: true, code: true, status: true } },
+        managedVendor: { select: { id: true, status: true, universityId: true } },
       },
     });
 
     const hash = user?.passwordHash ?? '$2a$10$jvPplD9ywuj93bbTBoZL7Ovo1NdNQ.Zhm60O8kFZ64m9i4z4aCPFG';
     const validPassword = await bcrypt.compare(body.password, hash);
-    if (!user || !validPassword || !['ADMIN', 'SUPER_ADMIN', 'FINANCE'].includes(user.role)) {
+    if (!user || !validPassword || !['ADMIN', 'SUPER_ADMIN', 'FINANCE', 'STAFF'].includes(user.role)) {
       throw unauthorized('Phone number or password is incorrect.');
     }
     if (user.role === 'ADMIN' && user.university?.status !== 'ACTIVE') {
       throw unauthorized('This university is suspended on Kupon.');
+    }
+    if (user.role === 'STAFF' && user.managedVendorId === null) {
+      throw unauthorized('This staff account is not linked to a cafeteria.');
+    }
+    if (
+      user.managedVendor &&
+      (user.managedVendor.status !== 'ACTIVE' ||
+        user.managedVendor.universityId !== user.universityId ||
+        user.university?.status !== 'ACTIVE')
+    ) {
+      throw unauthorized('This cafeteria account is not active on Kupon.');
     }
 
     await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

@@ -66,7 +66,7 @@ export async function GET() {
           orderBy: { createdAt: 'desc' },
           take: 6,
         }),
-        getStudentActiveOrders(student.id, user.id),
+        getStudentActiveOrders(student.id),
       ]);
 
     if (!profile) throw notFound('Student profile not found.');

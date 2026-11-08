@@ -64,6 +64,12 @@ type PlaceOrderResponse = {
 
 type MenuItem = VendorMenuData['items'][number];
 
+const PAYMENT_STAGES = [
+  { id: 'INITIATED', label: 'Request created' },
+  { id: 'RECEIVED', label: 'Payment received' },
+  { id: 'CONFIRMED', label: 'Payment confirmed' },
+] as const;
+
 function vibrate(pattern: number | number[]) {
   if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
     navigator.vibrate(pattern);
@@ -93,9 +99,10 @@ function PayingPanel() {
           <UtensilsCrossed className="h-7 w-7" aria-hidden />
         </span>
       </span>
-      <p className="mt-4 text-base font-semibold text-slate-900">Tunaandaa test payment…</p>
+      <p className="mt-4 text-base font-semibold text-slate-900">Kupon test gateway inachakata…</p>
       <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-slate-500">
-        Finance itarekodi hatua za payment kwenye Kupon API. Hakuna pesa halisi inayohamishwa.
+        Gateway itaandika malipo yamepokelewa na kuthibitishwa kiotomatiki. Hakuna pesa halisi
+        inayokusanywa.
       </p>
       <p className="mt-4 flex items-center gap-2 text-[11px] text-slate-400">
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -369,7 +376,7 @@ export default function PayPage() {
               : 'Order ya majaribio imethibitishwa. Hakuna pesa halisi iliyohamishwa.',
         });
       } else {
-        toast.info('Test payment imeanzishwa. Finance ataendelea na hatua zinazofuata.', {
+        toast.info('Test payment imeanzishwa. Kupon itaendelea kiotomatiki.', {
           description: `${menu.vendor.name} • ${formatTZS(result.order.total)}`,
         });
       }
@@ -416,7 +423,7 @@ export default function PayPage() {
             setPhase('payment-failed');
             toast.error('Malipo hayakuthibitishwa.', {
               description:
-                'Coupon haijatolewa. Angalia taarifa za simu yako; wasiliana na Kupon ikiwa fedha zimekatwa.',
+                'Coupon haijatolewa. Hii ilikuwa test payment; hakuna pesa halisi iliyokusanywa.',
             });
             return;
           }
@@ -448,10 +455,10 @@ export default function PayPage() {
       } catch {
         // Transient network errors: keep polling while the coupon is on screen.
       }
-      timer = setTimeout(poll, 3000);
+      timer = setTimeout(poll, 1000);
     };
 
-    timer = setTimeout(poll, 3000);
+    timer = setTimeout(poll, 1000);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
@@ -469,7 +476,7 @@ export default function PayPage() {
           <PageHeader
             eyebrow="Meals on campus"
             title="Find your lunch"
-            description="Scan a cafeteria QR to see today's menu. This test environment records payment events through Kupon's internal API."
+            description="Scan a cafeteria QR to see today's menu. Kupon's test gateway automatically simulates payment confirmation."
             actions={
               <Button asChild variant="outline" size="sm">
                 <Link href="/student/history">Historia</Link>
@@ -478,14 +485,14 @@ export default function PayPage() {
           />
 
           <Alert variant="warning">
-            Test environment: orders do not charge a phone or move real money. A coupon is issued
-            only after Finance confirms the test payment.
+            Kupon test gateway: payment stages advance automatically and issue a test coupon.
+            Nothing is charged to a phone or collected as real money.
           </Alert>
 
           {pendingPaymentOrders.map((pendingPayment) => {
             const seconds = testPaymentSecondsRemaining(pendingPayment.createdAt, clockNow);
             return (
-              <Alert key={pendingPayment.id} variant="warning" title="Test payment request pending">
+              <Alert key={pendingPayment.id} variant="warning" title="Test gateway processing">
                 {pendingPayment.vendor.name} · {formatTZS(pendingPayment.total)}. This request
                 expires after one minute ({seconds > 0 ? `${seconds}s remaining` : 'expiring'}).
                 You can place another order now.
@@ -795,9 +802,9 @@ export default function PayPage() {
       {phase === 'payment' && order ? (
         <section className="mx-auto w-full max-w-lg space-y-4">
           <PageHeader
-            eyebrow="Kupon internal test API"
-            title="Test payment pending"
-            description="Finance records receipt and confirmation through Kupon's API. No mobile-money request is sent."
+            eyebrow="Kupon test gateway"
+            title="Payment is processing"
+            description="Kupon automatically records the test payment lifecycle. No mobile-money request is sent."
           />
           <Card className="p-5">
             <div className="flex items-start gap-3">
@@ -806,7 +813,7 @@ export default function PayPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">
-                  {paymentMessage || 'A payment request is waiting for your approval.'}
+                  {paymentMessage || 'Kupon is processing this test payment.'}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {order.vendor.name} · {formatTZS(order.total)}
@@ -815,9 +822,37 @@ export default function PayPage() {
               <Loader2 className="mt-1 h-4 w-4 shrink-0 animate-spin text-primary-600" aria-hidden />
             </div>
             <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-              This request expires one minute after it starts. It will not stop you from placing
-              another order while you wait.
+              Kupon will record receipt and confirmation automatically. This test does not charge
+              or hold real money, and it will not stop you from placing another order.
             </p>
+            <ol className="mt-4 space-y-2" aria-label="Test payment progress">
+              {PAYMENT_STAGES.map((stage, index) => {
+                const currentIndex = PAYMENT_STAGES.findIndex(
+                  (entry) => entry.id === order.paymentStage,
+                );
+                const complete = currentIndex >= index;
+                return (
+                  <li
+                    key={stage.id}
+                    className={cn(
+                      'flex items-center gap-2 text-xs',
+                      complete ? 'font-semibold text-primary-700' : 'text-slate-400',
+                    )}
+                  >
+                    <CheckCircle2
+                      className={cn('h-4 w-4', complete ? 'text-emerald-600' : 'text-slate-300')}
+                      aria-hidden
+                    />
+                    {stage.label}
+                    {stage.id === order.paymentStage ? (
+                      <span className="ml-auto rounded-full bg-primary-50 px-2 py-0.5 text-[10px] uppercase">
+                        Current
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ol>
             <p className="mt-3 text-center text-xs font-semibold tabular text-amber-700">
               {testPaymentSecondsRemaining(order.createdAt, clockNow) > 0
                 ? `Expires in ${testPaymentSecondsRemaining(order.createdAt, clockNow)} seconds`
@@ -839,13 +874,13 @@ export default function PayPage() {
           <PageHeader
             eyebrow="Payment not confirmed"
             title="No coupon was issued"
-            description="The internal test payment was not confirmed. No real money was collected and no coupon was issued."
+            description="The test gateway did not confirm this payment. No real money was collected and no coupon was issued."
           />
           <Card className="p-5">
             <p className="text-sm font-semibold text-slate-900">{order.vendor.name}</p>
             <p className="mt-1 text-sm tabular text-slate-600">{formatTZS(order.total)}</p>
             <p className="mt-3 text-xs leading-relaxed text-slate-500">
-              The test transaction did not reach a confirmed state. The order cannot be collected.
+              The simulated transaction did not reach a confirmed state. The order cannot be collected.
             </p>
           </Card>
           <Button onClick={resetToScan} className="w-full">
@@ -864,7 +899,8 @@ export default function PayPage() {
           />
           {order.paymentTest ? (
             <Alert variant="warning">
-              Test payment confirmed by Kupon Finance. No real money was collected.
+              Test payment automatically confirmed by Kupon&apos;s gateway. No real money was
+              collected.
             </Alert>
           ) : null}
           <FoodCoupon order={order} onNewOrder={resetToScan} />
@@ -978,8 +1014,9 @@ export default function PayPage() {
               </div>
 
               <Alert variant="warning">
-                Test order only. No mobile-money request will be sent and no money will be
-                collected.
+                Kupon test gateway only. It simulates payment receipt and confirmation, then issues
+                the coupon automatically. No mobile-money request is sent and no real money is held
+                or collected.
               </Alert>
 
               <div className="space-y-1.5">

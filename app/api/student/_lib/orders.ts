@@ -2,10 +2,10 @@ import { prisma } from '@/lib/db';
 import { signCouponToken } from '@/lib/orders/coupon';
 import { orderInclude, serializeOrder } from '@/lib/orders/serialize';
 import type { OrderView } from '@/lib/orders/types';
-import { expireStaleTestPayments } from '@/lib/orders/expire-test-payments';
+import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
 
-export async function getStudentActiveOrders(studentId: string, actorId: string): Promise<OrderView[]> {
-  await expireStaleTestPayments({ studentId, actorId });
+export async function getStudentActiveOrders(studentId: string): Promise<OrderView[]> {
+  await processKuponTestGatewayPayments({ studentId });
 
   const orders = await prisma.order.findMany({
     where: {

@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: { absolute: 'Kupon | Clear, trusted cafeteria sales' },
   description:
-    'Kupon replaces paper cafeteria records with searchable orders, direct mobile-money payments and meal coupons issued after payment is confirmed.',
+    'Kupon replaces paper cafeteria records with searchable orders, payment records and meal coupons issued after gateway confirmation. Payments in this test build are simulated.',
 };
 
 const CHECKOUT_STEPS = [
@@ -34,8 +34,8 @@ const CHECKOUT_STEPS = [
   },
   {
     icon: CreditCard,
-    title: 'Pay by mobile money',
-    body: 'Pay straight from mobile money at checkout.',
+    title: 'Pay through Kupon',
+    body: 'Kupon records each payment stage and confirms the order automatically in this test build.',
   },
   {
     icon: TicketCheck,
@@ -151,9 +151,9 @@ function Hero() {
             </span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-            Replace handwritten sales books with searchable orders. Students pay directly by
-            mobile money instead of leaving cash with the cafeteria; meal coupons appear only
-            after payment is confirmed.
+            Replace handwritten sales books with searchable orders. Kupon is designed for direct
+            mobile-money checkout, with coupons issued after gateway confirmation. This test build
+            simulates payment events and does not charge a phone.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="h-12 w-full rounded-full px-6 sm:w-auto">
@@ -172,7 +172,7 @@ function Hero() {
             </Button>
           </div>
           <p className="mt-5 text-xs leading-relaxed text-slate-500">
-            For students, cafeteria teams and campus food businesses.
+            Test gateway only · no real money is collected.
           </p>
         </div>
 
@@ -275,7 +275,7 @@ function CafeteriaSection() {
     {
       label: 'For students',
       title: 'Pay for what you choose.',
-      body: 'Browse today’s available food, pay directly by mobile money, then show the coupon issued for your confirmed order.',
+      body: 'Browse today’s available food, then show the coupon Kupon issues after its test gateway confirms your order.',
     },
     {
       label: 'For cafeteria teams',
@@ -342,7 +342,7 @@ function CafeteriaSection() {
 
 function TrustSection() {
   const checks = [
-    'Payment confirmation comes from the payment gateway.',
+    'The Kupon test gateway records payment stages automatically.',
     'A meal coupon becomes redeemable only after successful payment.',
     'Staff scan the coupon before handing over the meal.',
     'Students pay at checkout, so no funds need to be held at the cafeteria.',

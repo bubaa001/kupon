@@ -6,12 +6,12 @@ import { randomReference, safeJson } from '@/lib/utils';
 import { TEST_PAYMENT_TTL_MS } from './payment-ttl';
 
 /**
- * Confirms a test order only after receipt is recorded and before its
- * one-minute request window closes. The transaction claim makes retries safe.
+ * Confirms a test order only after the Kupon test gateway records receipt and
+ * before its one-minute request window closes. The transaction claim makes
+ * retries safe.
  */
 export async function settleOrderCheckout(input: {
   reference: string;
-  actorId: string;
 }) {
   const payment = await prisma.transaction.findUnique({
     where: { reference: input.reference },
@@ -100,18 +100,20 @@ export async function settleOrderCheckout(input: {
         transactionId: payment.id,
         sequence: (payment.paymentEvents[0]?.sequence ?? 0) + 1,
         stage: 'CONFIRMED',
-        source: 'KUPO_TEST_API',
-        actorId: input.actorId,
+        source: 'KUPO_TEST_GATEWAY',
       },
     });
     await auditLog(
       {
-        actorId: input.actorId,
         universityId: payment.universityId,
         action: 'TEST_PAYMENT_CONFIRMED',
         entity: 'Transaction',
         entityId: payment.id,
-        metadata: { reference: payment.reference, amount: payment.amount },
+        metadata: {
+          reference: payment.reference,
+          amount: payment.amount,
+          source: 'KUPO_TEST_GATEWAY',
+        },
       },
       tx,
     );
@@ -124,7 +126,6 @@ export async function failOrderCheckout(input: {
   reference: string;
   reason: string;
   stage: 'FAILED' | 'EXPIRED';
-  actorId: string;
 }) {
   const payment = await prisma.transaction.findUnique({
     where: { reference: input.reference },
@@ -187,7 +188,7 @@ export async function failOrderCheckout(input: {
           kind: 'RESTORE',
           amount: order.creditApplied,
           balanceAfter: account.balance,
-          createdById: input.actorId,
+          createdById: null,
         },
       });
     }
@@ -197,19 +198,21 @@ export async function failOrderCheckout(input: {
         transactionId: payment.id,
         sequence: (payment.paymentEvents[0]?.sequence ?? 0) + 1,
         stage: input.stage,
-        source: 'KUPO_TEST_API',
-        actorId: input.actorId,
+        source: 'KUPO_TEST_GATEWAY',
         note: input.reason,
       },
     });
     await auditLog(
       {
-        actorId: input.actorId,
         universityId: payment.universityId,
         action: `TEST_PAYMENT_${input.stage}`,
         entity: 'Transaction',
         entityId: payment.id,
-        metadata: { reference: payment.reference, reason: input.reason },
+        metadata: {
+          reference: payment.reference,
+          reason: input.reason,
+          source: 'KUPO_TEST_GATEWAY',
+        },
       },
       tx,
     );

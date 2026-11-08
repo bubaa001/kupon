@@ -117,7 +117,7 @@ export default function StudentCreditRequestsPage() {
       <PageHeader
         eyebrow="Cafeteria support"
         title="Credit & support"
-        description="Ask the cafeteria to resolve an unfulfilled order with credit, then escalate for Finance review if needed."
+        description="Ask the cafeteria to resolve an unfulfilled order. Approved credit appears here and can be used at that cafeteria."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -131,21 +131,37 @@ export default function StudentCreditRequestsPage() {
         there is no cash refund or mobile-money collection.
       </Alert>
 
-      {data?.credits.length ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {data.credits.map((credit) => (
-            <Card key={credit.vendorId} className="flex items-center gap-3 p-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-                <CircleDollarSign className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-900">{credit.vendor.name}</p>
-                <p className="text-[11px] text-slate-500">Usable only at this cafeteria</p>
-              </div>
-              <p className="text-sm font-bold tabular text-slate-900">{formatTZS(credit.balance)}</p>
+      {data ? (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Your cafeteria credit</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Credit approved by a cafeteria owner appears here. It is not cash and can only be
+              used at the cafeteria that issued it.
+            </p>
+          </div>
+          {data.credits.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {data.credits.map((credit) => (
+                <Card key={credit.vendorId} className="flex items-center gap-3 p-4">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                    <CircleDollarSign className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{credit.vendor.name}</p>
+                    <p className="text-[11px] text-slate-500">Only usable at this cafeteria</p>
+                  </div>
+                  <p className="text-sm font-bold tabular text-slate-900">{formatTZS(credit.balance)}</p>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="p-4 text-sm text-slate-500">
+              No cafeteria credit is available yet. If a cafeteria owner approves a request, the
+              balance will appear here.
             </Card>
-          ))}
-        </div>
+          )}
+        </section>
       ) : null}
 
       <Card className="p-4 sm:p-5">

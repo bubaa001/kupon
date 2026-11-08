@@ -2,7 +2,7 @@
 
 **Trusted cafeteria orders, coupons and sales records for Tanzanian universities.**
 
-Kupon replaces unreliable notebooks with QR-based menu ordering, traceable coupons and searchable transaction records. The current checkout is an internal test system: it does not collect mobile money or move cash. Students have no Kupon wallet; test cafeteria credit is limited to the cafeteria that issued it.
+Kupon replaces unreliable notebooks with QR-based menu ordering, traceable coupons and searchable transaction records. Checkout currently uses Kupon's own test gateway: it automatically records simulated payment receipt and confirmation, but does not collect or hold real money. Students have no Kupon wallet; test cafeteria credit is limited to the cafeteria that issued it.
 
 Built with Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui patterns, Prisma + PostgreSQL, Recharts, `qrcode.react` and `html5-qrcode`.
 
@@ -57,7 +57,7 @@ Captured from the running app with real seeded data at 375px and desktop widths
 | --- | --- |
 | Paper records fill up, disappear or are difficult to search | Append-only transaction and coupon records with audit history |
 | A change of notebook or staff makes a customer's claim hard to verify | A consistent record for every order and credit decision; the problem is record reliability, not assumed dishonesty |
-| Students may need to find cash or leave money with the cafeteria | Direct mobile-money checkout is the planned live flow; this build only records test payment states and holds no student wallet |
+| Students may need to find cash or leave money with the cafeteria | Direct mobile-money checkout is the planned live flow; this test gateway records payment states without moving real money or creating a student wallet |
 | Cafeterias lack dependable sales visibility | Database-backed transaction and menu analytics for transparency and decisions |
 | The system must grow beyond one cafeteria | Vendor-scoped data and role boundaries are designed to support multiple outlets |
 
@@ -68,10 +68,11 @@ Captured from the running app with real seeded data at 375px and desktop widths
 ### Student (mobile-first, installable PWA)
 
 - **Google sign-in** for students and vendors. Vendors submit an application for platform review; there is no student wallet or top-up flow.
-- **Scan the cafeteria counter QR**, browse the available menu, choose meals and submit an order. The order creates an auditable internal test-payment record; Finance advances it through receipt, confirmation, failure or expiry.
+- **Scan the cafeteria counter QR**, browse the available menu, choose meals and submit an order. Kupon's test gateway automatically records an auditable `INITIATED → RECEIVED → CONFIRMED` lifecycle; Finance has no checkout approval step.
 - A **meal coupon** with items, order ID, fallback code, QR and status appears only after the test transaction is confirmed. It animates to **VERIFIED** when cafeteria staff redeem it.
 - Transaction history with Today / Week / Month tabs, type/status filters and totals.
 - Credit request for an unfulfilled, active coupon; an accepted credit is restricted to that cafeteria. A further-review ticket records a TZS 1,500 test-only vendor charge; no cash refund or fee movement occurs.
+- Approved cafeteria credits are shown to students with their cafeteria name and current available amount.
 - Profile, university, student ID, PWA install hint and logout.
 
 ### Vendor (mobile-first POS)
@@ -82,8 +83,15 @@ Captured from the running app with real seeded data at 375px and desktop widths
 - **Coupon verification:** scan the student's coupon QR or enter the 6-digit code shown on their phone. Single-use conditional status transition plus a celebratory verified screen; the student coupon updates live.
 - Menu management with a live student preview, real photo uploads, prices, categories and availability. Vendors upload their own dish photos; there is no emoji fallback. Food is vendor-owned and goes live immediately; the university admin vets the vendor, not each dish.
 - Menu availability, order history and cafeteria-scoped credit decisions.
+- Team access: cafeteria owners create scoped staff and Finance accounts. Staff can verify coupons and mark menu items available/unavailable; Finance can review assigned credit/support cases and view payment events only.
 - Sales analytics exclude internal test payments from real-money totals.
 - Vendor never sees another vendor's or university's orders or sales.
+
+### Cafeteria staff
+
+- The cafeteria owner creates each staff account; platform admins can also create accounts.
+- Staff sign in at `/staff/login`, see only their assigned cafeteria, verify its coupons and update daily menu availability.
+- Staff cannot edit prices, view settlements, manage accounts or approve/confirm payments.
 
 ### University admin (responsive dashboard)
 
@@ -95,7 +103,7 @@ Captured from the running app with real seeded data at 375px and desktop widths
 - Vendor onboarding, suspension, per-vendor sales.
 - Student search and audit history.
 - Vendor vetting: add, view sales, suspend or reactivate a vendor. Admins do not approve individual dishes.
-- Vendor onboarding and support oversight; Finance reviews cafeteria credit and escalation requests.
+- Vendor onboarding and support oversight; cafeteria vendors review student credit requests.
 - University profile, **Lipa Namba** routing code, SaaS billing invoices, ledger health, audit trail.
 - Daily/weekly/monthly profit & loss, fee waterfall, revenue leakage and top vendors.
 
@@ -107,11 +115,12 @@ Captured from the running app with real seeded data at 375px and desktop widths
 - Platform revenue: GMV, transaction fees, university share, aggregator cost, SaaS revenue, net.
 - System health: transaction status, ledger balance check, mock uptime/latency and service status.
 
-### Finance (platform-wide)
+### Finance
 
-- Review internal test-payment records and advance their auditable lifecycle.
-- Review closing-time credit requests and escalated support tickets.
-- Finance actions are recorded separately from vendor/cashier input; they do not represent actual collection or payout.
+- Cafeteria-created Finance accounts are scoped to that cafeteria; platform admins may create scoped accounts or platform-wide Finance accounts.
+- Inspect internal test-payment records and their automatically recorded lifecycle (read-only).
+- Review assigned closing-time credit requests and escalated support tickets.
+- Finance cannot approve a student checkout. Test records do not represent actual collection or payout.
 
 ### USSD — paused
 
@@ -131,7 +140,7 @@ USSD/offline payments are **not supported in this build**. The legacy wallet-bas
 | Auth | `jose` HS256 JWT in an httpOnly, SameSite=Lax cookie; bcrypt for staff credentials; Google OAuth 2.0 for student sign-in/signup and vendor sign-in/application |
 | Validation | Zod on every mutation + query filter |
 | Database | Prisma 6 + PostgreSQL (Supabase) |
-| Payments | Internal, Finance-operated test-payment API; no live provider integration |
+| Payments | Internal Kupon test gateway; no live provider integration or real-money custody |
 | SMS | Mock SMS logger; legacy wallet-based USSD flow is disabled |
 | PWA | Web manifest, maskable icons, offline fallback, service worker (never caches API/HTML) |
 | Deploy | Vercel-compatible Next app; use Postgres for persistent serverless data (see below) |
@@ -279,14 +288,14 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 ## Five-minute demo script
 
 1. **Student:** sign in at `/login` with Google. Student accounts do not have a Kupon wallet.
-2. **Order:** open the student order screen, scan/select a cafeteria, choose available meals and place an order. This creates a pending internal test-payment record; it does not collect money.
-3. **Finance:** a Super Admin creates a Finance account under **Finance Users**. Sign in at `/finance/test-payments`, record `RECEIVED`, then `CONFIRMED` for the order reference. This is a test status transition only.
-4. **Coupon:** after confirmation the student receives a QR and fallback code. The coupon disappears from active orders when it expires.
+2. **Order:** open the student order screen, scan/select a cafeteria, choose available meals and place an order. Kupon's test gateway records `INITIATED`, then automatically advances to `RECEIVED` and `CONFIRMED`; no money is collected.
+3. **Payment activity:** a Finance user may inspect the read-only timeline at `/finance/test-payments`. Finance cannot accept, reject or confirm student payments.
+4. **Coupon:** Kupon issues a QR and fallback code after automatic confirmation. The coupon disappears from active orders when it expires.
 5. **Vendor:** open the vendor order desk and verify the student's coupon by QR or fallback code.
 6. **Credit flow:** from an active coupon, submit an unfulfilled-order request. The cafeteria can accept it; the resulting test credit is limited to that cafeteria and can be applied to a later test order.
 7. **Escalation:** the student may open a further-review ticket. The TZS 1,500 vendor charge is a test ledger entry only; Finance review does not issue a cash refund.
 8. **Tenant isolation:** sign in as a different university admin. Cross-tenant records remain inaccessible.
-9. **Super Admin:** manage platform-wide tenants and create Finance accounts.
+9. **Super Admin:** manage platform-wide tenants and Finance access.
 
 
 ---
@@ -294,9 +303,11 @@ Then sign out and choose **Continue with Google**. The seed already includes uni
 ## Internal test-payment lifecycle
 
 Order payments move through auditable states: `INITIATED → RECEIVED → CONFIRMED`, or
-`FAILED` / `EXPIRED`. Only Finance can record these transitions. Confirmation issues the
-coupon and records test-ledger entries; it does **not** debit a student's wallet, collect
-mobile money, settle real vendor earnings or trigger a payout.
+`EXPIRED`. Kupon's test gateway records these transitions automatically as the student
+checkout is polled; Finance has read-only visibility and cannot approve a payment.
+Confirmation issues the coupon and records test-ledger entries; it does **not** debit a
+student's wallet, collect mobile money, hold real cash, settle real vendor earnings or
+trigger a payout.
 
 Unfulfilled-order credits are stored separately from any future live-credit account and are
 restricted to the issuing student/cafeteria pair. Failed or expired test payments restore
@@ -373,13 +384,13 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 
 - **RBAC on every API route:** `requireApiUser(['STUDENT'])`, `['VENDOR']`, `['ADMIN','SUPER_ADMIN']`, `['SUPER_ADMIN']`.
 - **Google OAuth fallback:** state-cookie-protected authorization-code flow; server-side code exchange; `email_verified` required. Existing student accounts sign in only when the Google email is pre-linked. New students receive a signed 15-minute signup ticket.
-- **Meal coupons:** camera-friendly short QR (`KPN:C:<6-digit code>`) plus the visible 6-digit fallback. A coupon is available only after a Finance-confirmed internal test payment; vendor verification requires the coupon to belong to the signed-in vendor and university, and a conditional update prevents double redemption.
+- **Meal coupons:** camera-friendly short QR (`KPN:C:<6-digit code>`) plus the visible 6-digit fallback. A coupon is available only after automatic test-gateway confirmation; vendor verification requires the coupon to belong to the signed-in vendor and university, and a conditional update prevents double redemption.
 - **QR production settings:** payloads are short pointers (`KPN:V:<vendor code>`) rather than JWTs; 224 px (196 px compact), error correction Q, 4-module quiet zone, black on white. This avoids the 60–77 module QR grids that phone cameras could not resolve.
 - **Tenant isolation:** admin queries use `resolveTenantScope()`; students/vendors are derived from the session, never from a client-supplied ID. `assertTenant()` blocks cross-university reads/writes.
 - **Session rehydration:** the JWT is verified, then the user is reloaded from the DB so suspended vendors/universities lose access immediately. Suspended university kills every tenant role.
-- **Internal test payments:** Finance-only state transitions are recorded as ordered payment events. Test transactions and test credits are isolated from real-money reporting and wallet refunds.
+- **Internal test payments:** the test gateway records ordered payment events automatically; Finance can only inspect them. Test transactions and test credits are isolated from real-money reporting and wallet refunds.
 - **Zod validation** on every body/query mutation; stable `{ok,error}` envelope with human messages and no stack traces.
-- **Rate limiting** (in-memory mock): OTP request/verify, vendor/staff login, payment-state transitions and credit/support actions. **Swap for Upstash Redis/KV before production** — the helper is `lib/rate-limit.ts`.
+- **Rate limiting** (in-memory mock): OTP request/verify, vendor/staff login, checkout and credit/support actions. **Swap for Upstash Redis/KV before production** — the helper is `lib/rate-limit.ts`.
 - **Audit log** for payment-state changes, cafeteria credit, support tickets, vendor onboarding/suspension and coupon verification.
 - **Double-entry ledger invariant** checked when writing and exposed in Settings / Super-admin health.
 - Security headers (`X-Frame-Options`, `nosniff`, Referrer-Policy, camera-only Permissions-Policy).
@@ -457,7 +468,7 @@ pnpm build                      # production build
 pnpm db:reset                   # deterministic seed + ledger check
 
 # With the app running on :3000 and a disposable seeded DB:
-pnpm smoke                      # Creates a Finance account and test-only orders
+pnpm smoke                      # Creates a Finance observer and test-only orders
 pnpm audit:mobile               # every route at 375px: horizontal-overflow audit
 pnpm screenshots                # 19 mobile + desktop screenshots
 pnpm screenshots:flow           # food/menu, vendor apply, Google signup and staff login states
@@ -465,7 +476,7 @@ pnpm screenshots:flow           # food/menu, vendor apply, Google signup and sta
 
 The repository also includes:
 
-- `scripts/smoke-test.mjs` — exercises the Finance-confirmed test-payment and coupon flow, tenant isolation, disabled wallet endpoints, dashboard and ledger. It creates test-only orders and a Finance account; use only a disposable seeded database.
+- `scripts/smoke-test.mjs` — exercises automatic test-gateway confirmation, the read-only Finance timeline, tenant isolation, disabled wallet endpoints, dashboard and ledger. It creates test-only orders and a Finance account; use only a disposable seeded database.
 - `scripts/audit-mobile.mjs` — opens every authenticated route at 375px and fails loudly if `scrollWidth > clientWidth`.
 - `scripts/screenshots.mjs` — captures the main 20-screenshot set in `screenshots/`.
 - `scripts/screenshots-flow.mjs` — captures the interactive design states (student food menu/cart, vendor add-dish dialog, student preview, Google signup, vendor application and the staff entrance).
@@ -473,7 +484,7 @@ The repository also includes:
 Manual checks worth doing before a real pilot:
 
 - Two concurrent scans with the same QR: second must fail with “already used”.
-- A pending test payment has no coupon; only Finance `CONFIRMED` issues one.
+- A pending test payment has no coupon; the Kupon test gateway issues it after automatic `CONFIRMED`.
 - UDSM admin requesting a MUST student ID: `403`.
 - Test-only order refunds cannot create live wallet value.
 - Failed or expired test payments restore reserved test credit exactly once.

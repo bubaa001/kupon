@@ -8,14 +8,14 @@ export default function FinancePage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Platform-wide operations"
+        eyebrow="Finance operations"
         title="Finance workspace"
-        description="Review cafeteria credit requests and escalations, and advance internal test-payment events."
+        description="Review payment activity and assigned cafeteria credit cases. Payment confirmation is automatic."
       />
 
       <Alert variant="warning">
-        Kupon is currently using an internal test API. Test confirmations do not collect mobile
-        money or represent cash received.
+        Kupon&apos;s test gateway simulates payment events for development. It does not collect or
+        hold real money, and Finance cannot approve a student&apos;s checkout.
       </Alert>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -23,10 +23,10 @@ export default function FinancePage() {
           <Card className="h-full p-5 transition-colors hover:border-primary-300">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Test payment lifecycle</p>
+                <p className="text-sm font-semibold text-slate-900">Payment activity · view only</p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Record initiated, received, confirmed, failed, and expired events through
-                  Kupon&apos;s API.
+                  Inspect the initiated, received and confirmed events recorded automatically by
+                  Kupon&apos;s test gateway.
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1" />
@@ -38,7 +38,7 @@ export default function FinancePage() {
           <Card className="h-full p-5 transition-colors hover:border-primary-300">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Credit & support cases</p>
+                <p className="text-sm font-semibold text-slate-900">Assigned credit & support cases</p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   Review finance-approved cafeteria credits and escalated support tickets.
                 </p>

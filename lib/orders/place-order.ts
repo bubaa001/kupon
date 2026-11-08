@@ -5,7 +5,7 @@ import { randomReference } from '@/lib/utils';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
 import type { PlaceOrderInput } from './types';
-import { expireStaleTestPayments } from './expire-test-payments';
+import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
 
 const MAX_ITEMS = 20;
 const MAX_QUANTITY = 10;
@@ -25,15 +25,15 @@ async function uniqueCouponCode(): Promise<string> {
 }
 
 /**
- * Starts a meal order and requests payment from the student's mobile-money
- * account through Kupon's internal test-payment API. A coupon is returned only
- * after Finance confirms the test payment; no mobile-money collection occurs.
+ * Starts a meal order and simulates a mobile-money payment through Kupon's
+ * internal test gateway. The gateway automatically records receipt and
+ * confirmation; no mobile-money collection occurs.
  *
  * The money path for the student-scans-vendor flow:
  *   validate tenant + menu availability + quantities
  *   → create a payment-pending order and transaction
  *   → create a test payment intent
- *   → Finance records received and confirmed events through the internal API
+ *   → Kupon's test gateway records received and confirmed events automatically
  *   → issue the coupon and book the vendor settlement
  *
  * The vendor later verifies the coupon; verification is an operational step and
@@ -77,7 +77,7 @@ export async function placeOrder(input: {
   if (student.university.status !== 'ACTIVE') {
     throw conflict('Your university is suspended. Orders are paused.');
   }
-  await expireStaleTestPayments({ studentId: student.id, actorId: input.actorId });
+  await processKuponTestGatewayPayments({ studentId: student.id });
 
   const vendor = await prisma.vendor.findUnique({
     where: { id: input.payload.vendorId },
@@ -178,7 +178,7 @@ export async function placeOrder(input: {
                 price: item.price,
               })),
               creditApplied,
-              provider: 'kupon-internal-test-api',
+              provider: 'kupon-test-gateway',
               stage: 'INITIATED',
             }),
           },
@@ -191,7 +191,7 @@ export async function placeOrder(input: {
           transactionId: transaction.id,
           sequence: 1,
           stage: 'INITIATED',
-          source: 'KUPO_TEST_API',
+          source: 'KUPO_TEST_GATEWAY',
         },
       });
     }
@@ -263,7 +263,7 @@ export async function placeOrder(input: {
     payment: {
       status: created.paymentReference ? 'PENDING' : 'SETTLED',
       message: created.paymentReference
-        ? `Test payment created for ${total - created.order.creditApplied} TZS. Finance must record receipt and confirm it; no money was collected.`
+        ? `Kupon test gateway is simulating payment of ${total - created.order.creditApplied} TZS. No real money is collected.`
         : 'Order paid with cafeteria credit. No new money was collected.',
       demo: true,
     },

@@ -22,6 +22,7 @@ if (fs.existsSync(envFile)) {
 const BASE = process.env.SMOKE_BASE_URL ?? 'http://localhost:3000';
 let passed = 0;
 let failed = 0;
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const failures = [];
 
 function check(name, condition, detail = '') {
@@ -196,7 +197,7 @@ async function main() {
     cookie: student.cookie,
   });
   check('order placement succeeds', placed.status === 201, JSON.stringify(placed.json?.error));
-  check('order waits for test-payment confirmation', placed.json?.data?.order?.status === 'PAYMENT_PENDING');
+  check('order waits for automatic test-gateway confirmation', placed.json?.data?.order?.status === 'PAYMENT_PENDING');
   check('coupon is withheld while payment is pending', !placed.json?.data?.order?.couponToken);
   check('order payment is explicitly test-only', placed.json?.data?.payment?.demo === true);
   check(
@@ -204,7 +205,7 @@ async function main() {
     placed.json?.data?.order?.total === chosen?.price,
   );
 
-  console.log('\nFinance test-payment flow');
+  console.log('\nKupon test-gateway flow');
   const superAdmin = await loginStaff('+255745000000', 'super1234');
   const financePhone = `+2557${Date.now().toString().slice(-8)}`;
   const financePassword = 'FinanceSmoke123A';
@@ -216,25 +217,42 @@ async function main() {
   check('super admin can create a Finance account', financeCreated.status === 201);
   const finance = await loginStaff(financePhone, financePassword);
   const financeQueue = await request('/api/finance/test-payments', { cookie: finance.cookie });
-  check('Finance can view test payments', financeQueue.status === 200);
+  check('Finance can view payment activity', financeQueue.status === 200);
   check(
-    'student is blocked from Finance test payments',
+    'student is blocked from Finance payment activity',
     (await request('/api/finance/test-payments', { cookie: student.cookie })).status === 403,
   );
   const paymentReference = placed.json?.data?.transactionId;
-  for (const stage of ['RECEIVED', 'CONFIRMED']) {
-    const transition = await request(
-      `/api/finance/test-payments/${encodeURIComponent(paymentReference)}`,
-      { method: 'POST', body: { stage, note: 'Smoke-test transition' }, cookie: finance.cookie },
-    );
-    check(`Finance records ${stage}`, transition.status === 200, JSON.stringify(transition.json?.error));
-  }
-  const confirmedOrder = await request(
-    `/api/student/orders?id=${encodeURIComponent(placed.json?.data?.order?.id)}`,
-    { cookie: student.cookie },
+  const manualTransition = await request(
+    `/api/finance/test-payments/${encodeURIComponent(paymentReference)}`,
+    { method: 'POST', body: { stage: 'CONFIRMED' }, cookie: finance.cookie },
   );
-  check('confirmed test payment issues the coupon', confirmedOrder.json?.data?.orders?.[0]?.status === 'PENDING');
+  check('Finance cannot manually confirm payment', manualTransition.status === 410);
+
+  let confirmedOrder;
+  const confirmationDeadline = Date.now() + 10_000;
+  while (Date.now() < confirmationDeadline) {
+    await wait(1_000);
+    confirmedOrder = await request(
+      `/api/student/orders?id=${encodeURIComponent(placed.json?.data?.order?.id)}`,
+      { cookie: student.cookie },
+    );
+    if (confirmedOrder.json?.data?.orders?.[0]?.status === 'PENDING') break;
+  }
+  check(
+    'Kupon test gateway automatically confirms payment',
+    confirmedOrder.json?.data?.orders?.[0]?.status === 'PENDING',
+  );
   check('issued coupon has a QR token', Boolean(confirmedOrder.json?.data?.orders?.[0]?.couponToken));
+  const paymentActivity = await request('/api/finance/test-payments', { cookie: finance.cookie });
+  const lifecycle = paymentActivity.json?.data?.transactions?.find(
+    (payment) => payment.reference === paymentReference,
+  )?.events.map((event) => event.stage);
+  check(
+    'test gateway records initiated, received and confirmed events',
+    JSON.stringify(lifecycle) === JSON.stringify(['INITIATED', 'RECEIVED', 'CONFIRMED']),
+    JSON.stringify(lifecycle),
+  );
 
   const incoming = await request('/api/vendor/orders?status=PENDING', { cookie: vendor.cookie });
   check(

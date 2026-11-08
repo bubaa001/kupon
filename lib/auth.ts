@@ -41,6 +41,13 @@ export type AuthUser = SessionPayload & {
     status: string;
     pendingBalance: number;
   } | null;
+  managedVendor: {
+    id: string;
+    name: string;
+    code: string;
+    status: string;
+    universityId: string;
+  } | null;
 };
 
 export async function signSession(payload: SessionPayload): Promise<string> {
@@ -119,16 +126,39 @@ export async function getAuthUser(): Promise<AuthUser | null> {
           pendingBalance: true,
         },
       },
+      managedVendor: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          status: true,
+          universityId: true,
+        },
+      },
     },
   });
 
   if (!user) return null;
-  if (user.vendor?.status === 'SUSPENDED') return null;
+  if (
+    (user.role === 'STAFF' || user.role === 'FINANCE') &&
+    user.managedVendorId &&
+    !user.managedVendor
+  ) {
+    return null;
+  }
+  if (user.role === 'STAFF' && !user.managedVendorId) return null;
+  if (
+    user.vendor?.status === 'SUSPENDED' ||
+    (user.managedVendor && user.managedVendor.status !== 'ACTIVE')
+  ) {
+    return null;
+  }
+  if (user.managedVendor && user.universityId !== user.managedVendor.universityId) return null;
   // A suspended university cuts off all tenant roles immediately, even if their
   // JWT has not expired yet.
   if (
     user.role !== 'SUPER_ADMIN' &&
-    user.role !== 'FINANCE' &&
+    !(user.role === 'FINANCE' && !user.managedVendorId) &&
     user.university?.status !== 'ACTIVE'
   ) {
     return null;
@@ -151,6 +181,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       : null,
     student: user.student,
     vendor: user.vendor,
+    managedVendor: user.managedVendor,
   };
 }
 
@@ -172,17 +203,7 @@ export async function requirePageUser(
   const user = await getAuthUser();
   if (!user) redirect(loginPath);
   if (roles && !roles.includes(user.role)) {
-    const home =
-      user.role === 'STUDENT'
-        ? '/student'
-        : user.role === 'VENDOR'
-          ? '/vendor'
-          : user.role === 'ADMIN'
-            ? '/admin'
-              : user.role === 'FINANCE'
-                ? '/finance'
-                : '/super-admin';
-    redirect(home);
+    redirect(roleHome(user.role));
   }
   return user;
 }
@@ -210,6 +231,27 @@ export function requireVendor(user: AuthUser) {
     throw forbidden('This vendor account is suspended. Contact your cafeteria manager.');
   }
   return user.vendor;
+}
+
+export function requireManagedVendor(user: AuthUser) {
+  if (!['STAFF', 'FINANCE'].includes(user.role) || !user.managedVendor) {
+    throw forbidden('A cafeteria team account is required for this action.');
+  }
+  if (user.managedVendor.status !== 'ACTIVE') {
+    throw forbidden('This cafeteria account is suspended. Contact the cafeteria owner.');
+  }
+  return user.managedVendor;
+}
+
+export function requireOperationalVendor(user: AuthUser) {
+  if (user.role === 'VENDOR') return requireVendor(user);
+  if (user.role === 'STAFF' && user.managedVendor) {
+    if (user.managedVendor.status !== 'ACTIVE') {
+      throw forbidden('This cafeteria account is suspended. Contact the cafeteria owner.');
+    }
+    return user.managedVendor;
+  }
+  throw forbidden('A vendor or cafeteria staff account is required for this action.');
 }
 
 export function setSessionCookie(response: NextResponse, token: string) {
@@ -248,6 +290,8 @@ export function roleHome(role: Role): string {
       return '/admin';
     case 'FINANCE':
       return '/finance';
+    case 'STAFF':
+      return '/staff';
     default:
       return '/super-admin';
   }

@@ -11,7 +11,7 @@ export async function GET() {
   try {
     const { user, student } = await getStudentContext();
     const [ordersResult, vendorsResult] = await Promise.allSettled([
-      getStudentActiveOrders(student.id, user.id),
+      getStudentActiveOrders(student.id),
       prisma.vendor.findMany({
         where: { universityId: user.universityId ?? '', status: 'ACTIVE' },
         select: { id: true, code: true, name: true, description: true },

@@ -68,6 +68,8 @@ Base path `/api/vendor`. Vendor identity comes from the session, not a query par
 | POST | `/charge` | `{ token?, code?, amount, note? }` | `{ transaction:{ id, reference, amount, status, createdAt }, balance, studentName, studentNumber, vendor }` — uses `chargeWithToken()` |
 | GET | `/sales` | `range=today\|week\|month` | `{ summary:{ gross, transactions, average, netSettlement, fees }, topItems, payments: [] }` |
 | GET | `/menu` | — | `{ items: MenuItem[], summary:{ total, available, hidden } }` |
+| GET | `/team` | — | `{ accounts:[{id,name,phone,role,createdAt}] }` — only this vendor's STAFF/FINANCE accounts |
+| POST | `/team` | `{ name, phone, password, role:'STAFF'\|'FINANCE' }` | Creates a bcrypt-hashed account scoped to the signed-in vendor; owner-only |
 | POST | `/menu` | multipart upload then `{ name, price, category, description?, imageUrl, available? }` | `{ item }` — imageUrl is required; live immediately (`approvalStatus: 'APPROVED'`); admins vet vendors, not dishes |
 | POST | `/menu/upload` | multipart `file` (JPG/PNG/WebP, ≤5 MB; client resizes phone photos first) | `{ url, size, type }` — returns `/api/uploads/food/<filename>`; local disk in MVP, object storage in production |
 | GET | `/api/uploads/food/[filename]` | public | Streams an uploaded food photo with an immutable cache header; required because runtime writes are not in Next's public static manifest |
@@ -75,6 +77,24 @@ Base path `/api/vendor`. Vendor identity comes from the session, not a query par
 | DELETE | `/menu/[id]` | — | `{ deleted: true }` |
 | GET | `/settlement` | — | `{ pendingBalance, totalSettled, payouts: [], recentPayments: [] }` |
 | POST | `/settlement` | `{ amount? }` | mock payout request → `{ settlement, pendingBalance }` (only if >0) |
+
+Vendor owners may create team accounts only for their own cafeteria. Finance accounts created this way can
+review that cafeteria's credit/support cases and view its test-payment timeline; they cannot confirm
+payments. Vendor staff can verify coupons and change item availability, but cannot edit prices or access
+vendor money/account controls.
+
+## Cafeteria staff (role STAFF)
+
+Staff accounts are created by the cafeteria owner or platform admin and are linked to exactly one active
+vendor. Login is at `/staff/login`.
+
+| Method | Route | Body / Query | Data |
+| --- | --- | --- | --- |
+| GET | `/api/vendor/orders` | `?status=PENDING\|VERIFIED\|ALL` | Assigned cafeteria's orders only |
+| POST | `/api/vendor/orders/[id]/verify` | `{ token? , code? }` | Single-use coupon verification for the assigned cafeteria |
+| POST | `/api/vendor/orders/scan/verify` | `{ token? , code? }` | Scan-first coupon verification for the assigned cafeteria |
+| GET | `/api/staff/menu` | — | `{ items:[{id,name,category,emoji,available}] }` |
+| PATCH | `/api/staff/menu/[id]` | `{ available:boolean }` | Changes availability only; price and menu details are owner-managed |
 
 ## Admin (roles ADMIN, SUPER_ADMIN)
 
@@ -112,14 +132,16 @@ Base path `/api/super-admin`.
 | GET | `/overview` | `{ universities:[{id,name,code,routeCode,students,vendors,revenueToday,monthlyRevenue,status,saasFee,lastInvoice}], platform:{...}, chart }` |
 | GET/POST | `/tenants` | list / onboard `universitySchema` (creates University + ADMIN user + first SaaS invoice) |
 | PATCH | `/tenants/[id]` | `{ status?, paymentRouteCode?, saasFee? }` audit |
+| GET | `/finance-users` | — | `{ vendors:[{id,name,code,university}] }` active vendor choices for team account creation |
+| POST | `/finance-users` | `{ name, phone, password, role:'FINANCE'\|'STAFF', vendorId? }` | Creates a scoped team account; STAFF requires an active vendor; FINANCE may be platform-wide |
 | GET | `/revenue` | `{ grossVolume, transactionFees, platformNet, saasRevenue, aggregatorCosts, universityRevenue, series, perTenant }` |
 | GET | `/health` | `{ uptimePercent, successRate, avgLatencyMs, ledgerBalanced, failedToday, pendingRefunds, services[], incidents[] }` |
 
 ## Meal orders / coupons (student-scans-vendor flow)
 
 The primary purchase flow is: student scans the vendor's counter QR → sees the approved
-available menu → chooses meals → pays directly by mobile money → receives a meal coupon
-only after gateway confirmation. The vendor sees the incoming order and verifies the coupon
+available menu → chooses meals → checks out through Kupon's internal test gateway → receives a meal coupon
+only after automatic test confirmation. This build does not contact a mobile-money provider. The vendor sees the incoming order and verifies the coupon
 (QR scan or fallback code); the student coupon polls and updates to VERIFIED.
 
 Shared DTOs live in `lib/orders/types.ts`. The signed coupon QR is returned only to the
@@ -128,34 +150,37 @@ is a redemption step; it does not initiate or collect payment.
 
 | Method | Route | Role | Body / Query | Data |
 | --- | --- | --- | --- | --- |
-| GET | `/api/vendor/qr` | VENDOR | — | `{ payload, vendor:{id,name,code,description}, university:{name,code}, menuHint }` |
+| GET | `/api/vendor/qr` | VENDOR, STAFF | — | `{ payload, vendor:{id,name,code,description}, university:{name,code}, menuHint }`, scoped to the account's cafeteria |
 | POST | `/api/student/vendor-scan` | STUDENT | `{ token?, code? }` | `{ vendor:{id,name,code,description,universityId,universityName}, student:{name,studentId,cafeteriaCreditBalance}, items: MenuItem[] }` |
 | GET | `/api/student/vendors` | STUDENT | — | `{ vendors:[{ id, code, name, description }] }` — active vendors in the student's university, used by the scanner fallback |
 | POST | `/api/student/orders` | STUDENT | `{ vendorId, items:[{menuItemId,quantity}], useCredit?, note? }` | `{ order: OrderView, transactionId, payment:{ status, message, demo:true } }` (201); no provider is contacted |
 | GET | `/api/student/orders` | STUDENT | `?id=` or `?status=PENDING\|VERIFIED\|ALL` | `{ orders: OrderView[], active: OrderView \| null }` |
-| GET | `/api/vendor/orders` | VENDOR | `?status=PENDING\|VERIFIED\|ALL` | `{ orders: OrderView[], counts:{pending,verified,today} }` |
-| POST | `/api/vendor/orders/[id]/verify` | VENDOR | `{ token? , code? }` (one required) | `{ order: OrderView, message }` |
-| POST | `/api/vendor/orders/scan/verify` | VENDOR | `{ token? , code? }` (one required) | Scan-first coupon verification; `KPN:C:<code>` or legacy signed token |
+| GET | `/api/vendor/orders` | VENDOR, STAFF | `?status=PENDING\|VERIFIED\|ALL` | `{ orders: OrderView[], counts:{pending,verified,today} }`, scoped to the account's cafeteria |
+| POST | `/api/vendor/orders/[id]/verify` | VENDOR, STAFF | `{ token? , code? }` (one required) | `{ order: OrderView, message }`, scoped to the account's cafeteria |
+| POST | `/api/vendor/orders/scan/verify` | VENDOR, STAFF | `{ token? , code? }` (one required) | Scan-first coupon verification; `KPN:C:<code>` or legacy signed token, scoped to the account's cafeteria |
 | POST | `/api/vendor/charge` | VENDOR | — | Disabled (`WALLET_DISABLED`). Use order coupon verification, not student-wallet charges. |
 
 **QR payloads.** New QR codes are short pointers, not signed JWTs: vendor `KPN:V:V-UDSM-001`, coupon `KPN:C:123456`. They render at 224 px (vendor compact 196 px), level Q, with a 4-module quiet zone. Legacy signed QR tokens remain accepted by the scan endpoints. The server still enforces vendor, tenant, expiry and single-use status.
 
-`OrderView` includes `id, reference, status: PAYMENT_PENDING|PAYMENT_FAILED|PENDING|VERIFIED|CANCELLED, total, itemCount,
-couponCode, couponToken, note, createdAt, verifiedAt, expiresAt, vendor, student, items`.
+`OrderView` includes `id, reference, status: PAYMENT_PENDING|PAYMENT_FAILED|PENDING|VERIFIED|CANCELLED,
+total, itemCount, couponCode, couponToken, paymentTest, paymentStage, creditApplied, note, createdAt,
+verifiedAt, expiresAt, vendor, student, items`.
 `items` are snapshots `{ id, name, price, quantity, emoji, imageUrl }`.
 
-Order placement starts a payment-pending, test-only transaction. Finance advances its recorded
-state through the internal Kupon test API; this does not contact a mobile-money provider, collect
-cash, or increase real vendor balances. Test cafeteria credit is held in an account separate from
-any future live credit and can only be used by test orders. Test-only orders cannot be refunded
-into the legacy wallet. The coupon is issued only after a Finance user records a test confirmation.
-Vendor verification uses a conditional status transition, so a coupon can only be redeemed once.
+Order placement starts a payment-pending, test-only transaction. Kupon's internal test gateway
+automatically records `INITIATED → RECEIVED → CONFIRMED` while the student checkout is active;
+Finance has read-only access and cannot approve a payment. This does not contact a mobile-money
+provider, collect or hold cash, or increase real vendor balances. Test cafeteria credit is held in
+an account separate from any future live credit and can only be used by test orders. Test-only
+orders cannot be refunded into the legacy wallet. The coupon is issued only after the test
+gateway confirms the transaction. Vendor verification uses a conditional status transition, so a
+coupon can only be redeemed once.
 
 | Method | Route | Role | Data |
 | --- | --- | --- | --- |
-| GET | `/api/finance/test-payments` | FINANCE | Recent test-only payment transactions with ordered lifecycle events |
-| POST | `/api/finance/test-payments/[reference]` | FINANCE | `{ stage:'RECEIVED'\|'CONFIRMED'\|'FAILED'\|'EXPIRED', note? }` — records an auditable test transition |
-| GET/POST | `/api/student/credit-requests` | STUDENT | Cafeteria-scoped credit balances, cases and tickets; POST `{ orderId, reason }` for an unfulfilled active coupon |
+| GET | `/api/finance/test-payments` | FINANCE | Read-only test-only payment events; vendor-created Finance users are scoped to their cafeteria |
+| POST | `/api/finance/test-payments/[reference]` | FINANCE | Disabled (`410 PAYMENT_GATEWAY_AUTOMATIC`); test payment transitions are automatic |
+| GET/POST | `/api/student/credit-requests` | STUDENT | Cafeteria-scoped credit balances, cases and tickets; students can see approved credit balances; POST `{ orderId, reason }` for an unfulfilled active coupon |
 | GET/POST | `/api/vendor/credit-requests` | VENDOR | Cafeteria cases; POST `{ orderId, reason }` for closing-time review |
 | PATCH | `/api/vendor/credit-requests/[id]` | VENDOR | `{ decision:'ACCEPT'\|'REJECT', note? }` — approved credit is scoped to its source order's test or live ledger |
 | GET | `/api/finance/requests` | FINANCE | Pending cafeteria-credit cases and escalation tickets |

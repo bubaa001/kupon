@@ -2,7 +2,7 @@ import { startOfDay } from 'date-fns';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { fail, ok, searchParams } from '@/lib/api';
-import { requireApiUser, requireVendor } from '@/lib/auth';
+import { requireApiUser, requireOperationalVendor } from '@/lib/auth';
 import { forbidden } from '@/lib/errors';
 import { orderInclude, serializeVendorOrder } from '@/lib/orders/serialize';
 
@@ -20,8 +20,8 @@ const querySchema = z.object({
  */
 export async function GET(request: Request) {
   try {
-    const user = await requireApiUser(['VENDOR']);
-    const vendor = requireVendor(user);
+    const user = await requireApiUser(['VENDOR', 'STAFF']);
+    const vendor = requireOperationalVendor(user);
     if (!user.universityId) throw forbidden('Vendor is not linked to a university.');
 
     const params = searchParams(request);

@@ -102,9 +102,9 @@ export default function FinanceRequestsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Platform-wide review"
+        eyebrow="Finance review"
         title="Credit & support cases"
-        description="Review closing-time credit requests and escalated student cases across Kupon."
+        description="Review closing-time credit requests and escalated cases within your permitted cafeteria scope."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />

@@ -1,5 +1,5 @@
 import { fail, ok, parseJson } from '@/lib/api';
-import { requireApiUser, requireVendor } from '@/lib/auth';
+import { requireApiUser, requireOperationalVendor } from '@/lib/auth';
 import { forbidden, tooManyRequests } from '@/lib/errors';
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyOrderCoupon } from '@/lib/orders/verify';
@@ -18,8 +18,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: Request) {
   try {
-    const user = await requireApiUser(['VENDOR']);
-    const vendor = requireVendor(user);
+    const user = await requireApiUser(['VENDOR', 'STAFF']);
+    const vendor = requireOperationalVendor(user);
     if (!user.universityId) throw forbidden('Vendor is not linked to a university.');
 
     const limit = rateLimit(`vendor:verify-coupon:${vendor.id}`, 30, 60_000);

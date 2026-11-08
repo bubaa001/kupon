@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { fail, ok, searchParams } from '@/lib/api';
 import { TX_STATUSES, TX_TYPES } from '@/lib/constants';
 import type { TransactionsData } from '@/app/student/_lib/types';
-import { expireStaleTestPayments } from '@/lib/orders/expire-test-payments';
+import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
 import { getStudentContext, serializeTransaction } from '../_lib/student';
 
 export const runtime = 'nodejs';
@@ -33,7 +33,7 @@ function rangeStart(range: 'today' | 'week' | 'month', now: Date): Date {
 export async function GET(request: Request) {
   try {
     const { user, student } = await getStudentContext();
-    await expireStaleTestPayments({ studentId: student.id, actorId: user.id });
+    await processKuponTestGatewayPayments({ studentId: student.id });
     const params = searchParams(request);
     const rawType = params.get('type');
     const rawStatus = params.get('status');

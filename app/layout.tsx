@@ -9,11 +9,11 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: 'Kupon | Cafeteria orders and payments',
+    default: 'Kupon | Trusted cafeteria orders',
     template: '%s • Kupon',
   },
   description:
-    'Kupon records cafeteria orders, collects direct mobile-money payments and issues verified meal coupons for Tanzanian universities.',
+    'Kupon records cafeteria orders and issues verified meal coupons after payment confirmation. Payments in this test build are simulated; no real money is collected.',
   applicationName: 'Kupon',
   keywords: [
     'Tanzania',
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
   },
   openGraph: {
-    title: 'Kupon | Cafeteria orders and payments',
+    title: 'Kupon | Trusted cafeteria orders',
     description:
-      'Pay for cafeteria meals directly with mobile money. Coupons appear after payment confirmation, and sales are recorded.',
+      'Kupon records orders and payment stages before issuing meal coupons. Payments in this test build are simulated; no real money is collected.',
     type: 'website',
     locale: 'sw_TZ',
     siteName: 'Kupon',
@@ -50,15 +50,15 @@ export const metadata: Metadata = {
         url: '/og-kupon.jpg',
         width: 1200,
         height: 630,
-        alt: 'Kupon cafeteria orders, direct mobile-money checkout and verified meal coupons',
+        alt: 'Kupon cafeteria orders, test gateway payment tracking and verified meal coupons',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Kupon | Cafeteria orders and payments',
+    title: 'Kupon | Trusted cafeteria orders',
     description:
-      'Direct mobile-money checkout and verified meal coupons for Tanzanian university cafeterias.',
+      'Trusted cafeteria orders and verified meal coupons. Test gateway payments are simulated.',
     images: ['/og-kupon.jpg'],
   },
   robots: { index: true, follow: true },

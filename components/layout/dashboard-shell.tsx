@@ -74,7 +74,7 @@ const SUPER_NAV: NavGroup[] = [
       { href: '/super-admin/tenants', label: 'Universities', icon: Building2 },
       { href: '/super-admin/revenue', label: 'Platform revenue', icon: TrendingUp },
       { href: '/super-admin/health', label: 'System health', icon: Activity },
-      { href: '/super-admin/finance-users', label: 'Finance access', icon: Users },
+      { href: '/super-admin/finance-users', label: 'Team accounts', icon: Users },
     ],
   },
 ];
@@ -84,7 +84,7 @@ const FINANCE_NAV: NavGroup[] = [
     title: 'Finance',
     items: [
       { href: '/finance', label: 'Overview', icon: LayoutDashboard },
-      { href: '/finance/test-payments', label: 'Test payments', icon: ArrowLeftRight },
+      { href: '/finance/test-payments', label: 'Payment activity', icon: ArrowLeftRight },
       { href: '/finance/requests', label: 'Credit & support', icon: RotateCcw },
     ],
   },

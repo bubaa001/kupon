@@ -1,4 +1,4 @@
-export const ROLES = ['STUDENT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'FINANCE'] as const;
+export const ROLES = ['STUDENT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'FINANCE', 'STAFF'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const TX_TYPES = [
@@ -119,6 +119,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'University admin',
   SUPER_ADMIN: 'Platform admin',
   FINANCE: 'Finance',
+  STAFF: 'Cafeteria staff',
 };
 
 export const DEFAULT_FEES = {

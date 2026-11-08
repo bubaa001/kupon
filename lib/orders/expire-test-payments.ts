@@ -3,7 +3,6 @@ import { failOrderCheckout } from '@/lib/orders/settle-checkout';
 import { TEST_PAYMENT_TTL_MS } from './payment-ttl';
 
 export async function expireStaleTestPayments(input: {
-  actorId: string;
   studentId?: string;
 }): Promise<void> {
   const payments = await prisma.transaction.findMany({
@@ -29,7 +28,6 @@ export async function expireStaleTestPayments(input: {
       reference: payment.reference,
       reason: 'The test payment request expired after one minute.',
       stage: 'EXPIRED',
-      actorId: input.actorId,
     });
   }
 }

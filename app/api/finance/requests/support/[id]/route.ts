@@ -20,8 +20,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const limit = rateLimit(`finance:support-review:${user.id}`, 30, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many review actions. Try again shortly.');
     const body = await parseJson(request, decisionSchema);
-    const existing = await prisma.supportTicket.findUnique({
-      where: { id: params.id },
+    const existing = await prisma.supportTicket.findFirst({
+      where: {
+        id: params.id,
+        ...(user.managedVendor ? { vendorId: user.managedVendor.id } : {}),
+      },
       select: { id: true, reference: true, status: true, universityId: true },
     });
     if (!existing) throw notFound('Support ticket not found.');

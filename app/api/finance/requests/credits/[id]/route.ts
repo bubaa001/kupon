@@ -22,7 +22,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!limit.allowed) throw tooManyRequests('Too many review actions. Try again shortly.');
     const body = await parseJson(request, decisionSchema);
     const creditRequest = await prisma.creditRequest.findFirst({
-      where: { id: params.id, kind: 'VENDOR_CLOSING' },
+      where: {
+        id: params.id,
+        kind: 'VENDOR_CLOSING',
+        ...(user.managedVendor ? { vendorId: user.managedVendor.id } : {}),
+      },
     });
     if (!creditRequest) throw notFound('Closing-time credit request not found.');
     if (creditRequest.status !== 'PENDING_FINANCE') {

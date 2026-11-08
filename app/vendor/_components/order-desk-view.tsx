@@ -36,7 +36,7 @@ type VerifyTarget = { order: OrderView | null; mode: VerifyMode };
 const POLL_MS = 3000;
 const HIGHLIGHT_MS = 8000;
 
-export function OrderDeskView() {
+export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
   const [data, setData] = useState<VendorOrdersData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -207,7 +207,7 @@ export function OrderDeskView() {
       action={
         tab !== 'VERIFIED' ? (
           <Button asChild variant="outline" size="sm">
-            <Link href="/vendor">
+            <Link href={basePath}>
               <QrCode className="h-4 w-4" />
               Show menu QR
             </Link>

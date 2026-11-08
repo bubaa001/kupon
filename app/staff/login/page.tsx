@@ -8,7 +8,7 @@ import { LoginForm } from '@/app/login/login-form';
 
 export const metadata: Metadata = {
   title: 'Staff access',
-  description: 'Kupon staff access for university bursars and platform operators.',
+  description: 'Secure sign-in for cafeteria staff, Finance and platform administrators.',
   robots: { index: false, follow: false },
 };
 
@@ -17,11 +17,8 @@ export const dynamic = 'force-dynamic';
 /**
  * Separate staff entrance.
  *
- * The public /login page is intentionally student/vendor only: staff accounts
- * have elevated privileges (tenant-wide money movement, refunds, vendor
- * approval), so their credentials must not be advertised on the marketing
- * funnel. This route reuses the exact same staff form and API, but renders no
- * public tabs or role switcher.
+ * The public /login page is intentionally student/vendor only. Staff accounts
+ * use this dedicated sign-in and do not appear in the public role switcher.
  */
 export default async function StaffLoginPage() {
   const sessionUser = await getAuthUser();
@@ -55,8 +52,8 @@ export default async function StaffLoginPage() {
               Staff sign in
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              For university bursars and Bubaa Comp platform operators. Student and vendor accounts
-              must use the wallet login.
+              For cafeteria teams, Finance and platform administrators. Student and vendor accounts
+              should use their regular sign-in.
             </p>
           </div>
 
@@ -68,11 +65,11 @@ export default async function StaffLoginPage() {
             href="/login"
             className="text-xs font-semibold text-slate-300 underline-offset-4 hover:text-white hover:underline"
           >
-            Student or vendor? Go to wallet login
+            Student or vendor? Go to regular sign-in
           </Link>
           <p className="text-[10px] leading-relaxed text-slate-500">
             Staff sign-in is not exposed on the public landing page. Share this URL only with
-            authorised university and platform staff.
+            authorised cafeteria or platform team members.
           </p>
         </div>
       </div>

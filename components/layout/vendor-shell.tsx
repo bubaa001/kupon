@@ -13,6 +13,7 @@ import {
   QrCode,
   Store,
   UserRound,
+  UsersRound,
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
@@ -35,8 +36,10 @@ const NAV = [
   { href: '/vendor/scan', label: 'Orders', icon: ClipboardCheck, primary: true },
   { href: '/vendor/credit-requests', label: 'Credit cases', icon: LifeBuoy },
   { href: '/vendor/menu', label: 'Menu', icon: UtensilsCrossed },
+  { href: '/vendor/team', label: 'Team', icon: UsersRound },
   { href: '/vendor/settlement', label: 'Settlement', icon: Wallet },
 ];
+const MOBILE_NAV = NAV.filter((item) => item.href !== '/vendor/sales');
 
 export type VendorShellUser = {
   name: string;
@@ -280,8 +283,8 @@ export function VendorShell({
           className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
           aria-label="Vendor navigation"
         >
-          <div className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-center px-1">
-            {NAV.map((item) => {
+          <div className="mx-auto grid h-[68px] max-w-md grid-cols-6 items-center px-1">
+            {MOBILE_NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
               if (item.primary) {
