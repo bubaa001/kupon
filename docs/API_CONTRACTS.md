@@ -21,7 +21,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/vendor-login` | public | `{ code, pin }` → sets cookie |
 | POST | `/api/auth/vendor-password-login` | public | `{ phone, password }` (vendor passwords are at least 8 characters) → vendor session cookie |
 | POST | `/api/vendor/applications` | public, rate-limited | multipart form with `{ ownerName, nidaNumber, email, phone, businessName, universityName, institutionPhone, confirm:true, tinDocument }` → pending application; accepts a PDF/JPG/PNG TIN/TRA document up to 5 MB; no external document links or pre-approval Google sign-in |
-| POST | `/api/auth/vendor-activate` | Google-approved-application ticket | `{ password }` (at least 8 characters, chosen by the vendor owner) → creates the approved vendor account and session; an email or phone already linked to another Kupon account must be resolved by the Platform Admin |
+| POST | `/api/auth/vendor-activate` | Google-approved-application ticket | `{ password }` (at least 8 characters, chosen by the vendor owner) → creates the approved vendor account and session; an email or phone already linked to another Kupon account must be resolved with the Platform Admin |
 | POST | `/api/auth/staff-login` | public | `{ identifier, password }` (or legacy `{ phone, password }`) → sets cookie; identifier accepts a username or Tanzanian phone number |
 | POST | `/api/auth/bootstrap-super-admin` | public, one-time | Requires configured `SUPER_ADMIN_SETUP_TOKEN`; creates the first super-admin and signs it in |
 | GET | `/api/auth/staff-invites/:token` | public, token-bound | Returns non-secret invitation details if the invite is active |

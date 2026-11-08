@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     });
     if (emailOwner) {
       throw conflict(
-        'This Google email is already linked to a Kupon account. Contact the Platform Admin to link your approved vendor application.',
+        'This Google email is already linked to a Kupon account. Contact the Platform Admin to resolve the conflict with your approved vendor application.',
       );
     }
     const phoneOwner = await prisma.user.findUnique({
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     });
     if (phoneOwner) {
       throw conflict(
-        'The phone number on your application is already linked to a Kupon account. If it is your account, contact the Platform Admin to link your approved vendor application; otherwise ask them to correct the application phone number.',
+        'The phone number on your application is already linked to a Kupon account. If it is yours, contact the Platform Admin to resolve the conflict; otherwise ask them to correct the application phone number.',
       );
     }
 
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return fail(
         conflict(
-          'The Google email or application phone number was linked to a Kupon account during setup. Contact the Platform Admin to resolve the account link.',
+          'The Google email or application phone number was linked to a Kupon account during setup. Contact the Platform Admin to resolve this account conflict.',
         ),
       );
     }
