@@ -19,7 +19,7 @@ import { signOut } from '@/lib/logout';
 const NAV = [
   { href: '/student', label: 'Nyumbani', icon: Home },
   { href: '/student/history', label: 'Historia', icon: Clock3 },
-  { href: '/student/credit-requests', label: 'Credit', icon: CircleDollarSign },
+  { href: '/student/credit-requests', label: 'Msaada', icon: CircleDollarSign },
   { href: '/student/pay', label: 'Agiza', icon: ScanLine, primary: true },
   { href: '/student/profile', label: 'Wasifu', icon: UserRound },
 ];
@@ -146,56 +146,44 @@ export function StudentShell({
 
         {/* Mobile bottom navigation */}
         <nav
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
           aria-label="Urambazaji wa mwanafunzi"
         >
-          <div className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-center px-1">
+          <div className="mx-auto grid h-[72px] max-w-md grid-cols-5 items-center gap-1 px-2">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
-              if (item.primary) {
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex h-full flex-col items-center justify-center"
-                  >
-                    <span
-                      className={cn(
-                        'flex h-12 w-12 -translate-y-3 items-center justify-center rounded-2xl border-4 border-white text-white shadow-lg shadow-emerald-500/30 transition-transform active:scale-95',
-                        active ? 'bg-primary-600' : 'bg-primary-500',
-                      )}
-                    >
-                      <Icon className="h-5 w-5" strokeWidth={2.4} />
-                    </span>
-                    <span
-                      className={cn(
-                        '-mt-2 text-[10px] font-semibold',
-                        active ? 'text-primary-700' : 'text-slate-500',
-                      )}
-                    >
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              }
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex h-full flex-col items-center justify-center gap-1"
+                  aria-label={item.label}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-slate-500 transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+                    item.primary
+                      ? 'text-primary-700'
+                      : active
+                        ? 'bg-primary-50 text-primary-800'
+                        : 'hover:bg-slate-50',
+                  )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-[21px] w-[21px] transition-colors',
-                      active ? 'text-primary-600' : 'text-slate-400',
-                    )}
-                    strokeWidth={active ? 2.4 : 2}
-                  />
                   <span
                     className={cn(
-                      'text-[10px] font-medium',
-                      active ? 'text-primary-700' : 'text-slate-500',
+                      'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                      item.primary
+                        ? 'bg-primary-600 text-white shadow-sm shadow-emerald-900/15'
+                        : active
+                          ? 'text-primary-700'
+                          : 'text-slate-400',
+                    )}
+                  >
+                    <Icon className="h-5 w-5" strokeWidth={active ? 2.3 : 1.9} />
+                  </span>
+                  <span
+                    className={cn(
+                      'whitespace-nowrap text-[9px] leading-none',
+                      active || item.primary ? 'font-semibold' : 'font-medium',
                     )}
                   >
                     {item.label}
