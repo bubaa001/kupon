@@ -45,6 +45,10 @@ export function StudentShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const activeMobileIndex = Math.max(
+    0,
+    NAV.findIndex((item) => isActive(pathname, item.href)),
+  );
 
   return (
     <div className="min-h-dvh bg-canvas">
@@ -149,7 +153,16 @@ export function StudentShell({
           className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl lg:hidden"
           aria-label="Urambazaji wa mwanafunzi"
         >
-          <div className="mx-auto grid h-[72px] max-w-md grid-cols-5 items-center gap-1 px-2">
+          <div className="relative mx-auto grid h-[72px] max-w-md grid-cols-5 items-center px-2">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-2 top-2 h-14 rounded-2xl bg-primary-50 transition-transform duration-200 motion-reduce:transition-none"
+              style={{
+                width: 'calc((100% - 1rem) / 5)',
+                transform: `translateX(${activeMobileIndex * 100}%)`,
+                transitionTimingFunction: 'cubic-bezier(0.77, 0, 0.175, 1)',
+              }}
+            />
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
@@ -160,17 +173,17 @@ export function StudentShell({
                   aria-label={item.label}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-slate-500 transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+                    'relative z-10 flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-slate-500 transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
                     item.primary
                       ? 'text-primary-700'
                       : active
-                        ? 'bg-primary-50 text-primary-800'
+                        ? 'text-primary-800'
                         : 'hover:bg-slate-50',
                   )}
                 >
                   <span
                     className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                      'flex h-9 w-9 items-center justify-center rounded-xl transition-colors duration-200',
                       item.primary
                         ? 'bg-primary-600 text-white shadow-sm shadow-emerald-900/15'
                         : active
@@ -178,7 +191,13 @@ export function StudentShell({
                           : 'text-slate-400',
                     )}
                   >
-                    <Icon className="h-5 w-5" strokeWidth={active ? 2.3 : 1.9} />
+                    <Icon
+                      className={cn(
+                        'h-5 w-5 transition-transform duration-200 motion-reduce:transition-none',
+                        active && 'scale-105 motion-reduce:transform-none',
+                      )}
+                      strokeWidth={active ? 2.3 : 1.9}
+                    />
                   </span>
                   <span
                     className={cn(
