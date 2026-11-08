@@ -1,9 +1,7 @@
 'use client';
 
-import { useId } from 'react';
-import { EyeOff, Flame, Loader2, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, EyeOff, Flame, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { cn, formatNumber } from '@/lib/utils';
 import { FOOD_QUANTITY_MAX } from './food-data';
 import { FoodImage } from './food-image';
@@ -21,7 +19,7 @@ export type FoodProduct = {
   category?: string | null;
   imageUrl?: string | null;
   available?: boolean;
-  /** Kept for API compatibility; dishes are live immediately in the UI. */
+  /** Approval state retained for consumers that still expose it. */
   approvalStatus?: string | null;
   updatedAt?: string | null;
 };
@@ -39,8 +37,6 @@ export type FoodProductCardProps = {
   /** Vendor: row actions. */
   onEdit?: () => void;
   onDelete?: () => void;
-  onToggleAvailability?: () => void;
-  availabilityBusy?: boolean;
   className?: string;
   /** Eager-load the hero (first row of a menu). */
   priority?: boolean;
@@ -274,13 +270,10 @@ function VendorCard({
   item,
   onEdit,
   onDelete,
-  onToggleAvailability,
-  availabilityBusy,
   priority,
   revealIndex,
   className,
 }: FoodProductCardProps) {
-  const switchId = useId();
   const available = item.available !== false;
 
   return (
@@ -337,12 +330,12 @@ function VendorCard({
             {available ? (
               <>
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden />
-                Available
+                In stock
               </>
             ) : (
               <>
                 <EyeOff className="h-2.5 w-2.5" aria-hidden />
-                Hidden
+                Not in stock
               </>
             )}
           </span>
@@ -360,36 +353,23 @@ function VendorCard({
           </p>
         </div>
 
-        {availabilityBusy ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/35 backdrop-blur-[1px]">
-            <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden />
-          </div>
-        ) : null}
       </div>
 
       <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-[#1D1810] px-2.5 py-1.5 text-white">
-        <label
-          htmlFor={switchId}
-          className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-md px-1"
-          title={`${available ? 'Hide' : 'Show'} ${item.name} from students`}
+        <span
+          className={cn(
+            'inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-1 text-[11px] font-semibold',
+            available ? 'text-emerald-300' : 'text-white/55',
+          )}
+          aria-label={`Staff marked ${item.name} ${available ? 'in stock' : 'not in stock'}`}
         >
-          <Switch
-            id={switchId}
-            checked={available}
-            disabled={availabilityBusy || !onToggleAvailability}
-            onCheckedChange={() => onToggleAvailability?.()}
-            aria-label={`${available ? 'Hide' : 'Show'} ${item.name} from students`}
-            className="h-5 w-9 data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-white/20 [&>span]:h-4 [&>span]:w-4 data-[state=checked]:[&>span]:translate-x-4"
-          />
-          <span
-            className={cn(
-              'text-[11px] font-semibold',
-              available ? 'text-emerald-300' : 'text-white/45',
-            )}
-          >
-            {available ? 'Selling today' : 'Hidden'}
-          </span>
-        </label>
+          {available ? (
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <EyeOff className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {available ? 'Staff: in stock' : 'Staff: not in stock'}
+        </span>
 
         <div className="flex items-center gap-0.5">
           <Button
@@ -428,11 +408,8 @@ function CompactCard({
   maxQuantity,
   onEdit,
   onDelete,
-  onToggleAvailability,
-  availabilityBusy,
   className,
 }: FoodProductCardProps & { maxQuantity: number }) {
-  const switchId = useId();
   const available = item.available !== false;
 
   return (
@@ -466,28 +443,15 @@ function CompactCard({
         <div className="mt-1.5 flex min-h-[32px] items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <CategoryChip category={item.category} tone="light" />
-            {onToggleAvailability ? (
-              <label
-                htmlFor={switchId}
-                className="flex min-h-[32px] cursor-pointer items-center gap-1.5"
+            {!onAdd && (onEdit || onDelete) ? (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 text-[10px] font-semibold',
+                  available ? 'text-emerald-700' : 'text-slate-400',
+                )}
               >
-                <Switch
-                  id={switchId}
-                  checked={available}
-                  disabled={availabilityBusy}
-                  onCheckedChange={() => onToggleAvailability()}
-                  aria-label={`${available ? 'Hide' : 'Show'} ${item.name} from students`}
-                  className="h-4 w-7 data-[state=checked]:bg-emerald-500 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-3"
-                />
-                <span
-                  className={cn(
-                    'text-[10px] font-semibold',
-                    available ? 'text-emerald-700' : 'text-slate-400',
-                  )}
-                >
-                  {available ? 'Selling' : 'Hidden'}
-                </span>
-              </label>
+                {available ? 'Staff: in stock' : 'Staff: not in stock'}
+              </span>
             ) : null}
           </div>
 
@@ -538,7 +502,7 @@ function CompactCard({
  * overlaid name/description/price and an unmistakable order action.
  *
  * - `student` — photo-led menu card with add/quantity controls (student menu).
- * - `vendor`  — the same card plus availability state and row actions.
+ * - `vendor`  — catalog card with staff-reported stock state and owner actions.
  * - `compact` — horizontal row for list mode, carts and mobile previews.
  */
 export function FoodProductCard({

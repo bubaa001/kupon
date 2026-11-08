@@ -38,8 +38,8 @@ export async function GET() {
 
 /**
  * POST /api/vendor/menu
- * Food is owned by the vendor. New dishes go live immediately; the university
- * admin controls the vendor account (onboarding, suspension), not each dish.
+ * The owner manages the catalog and prices. New dishes start unavailable until
+ * cafeteria staff confirm they are in stock for the day.
  */
 export async function POST(request: Request) {
   try {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
           category: body.category,
           description: body.description,
           imageUrl: body.imageUrl,
-          available: body.available,
+          available: false,
           autoAccept: body.autoAccept,
           approvalStatus: 'APPROVED',
         },

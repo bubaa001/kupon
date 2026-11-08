@@ -12,10 +12,8 @@ export const dynamic = 'force-dynamic';
 /**
  * PATCH /api/vendor/menu/[id]
  *
- * Vendors can edit only their own items. Foods are vendor-owned and go live
- * immediately; `approvalStatus` in the request body is ignored so a vendor can
- * never spoof a status transition, but the university admin no longer reviews
- * individual dishes (it vets the vendor itself).
+ * Vendors can edit the catalog details for their own items. Daily availability
+ * belongs to cafeteria staff, and `approvalStatus` cannot be changed here.
  */
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -27,9 +25,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const body = await parseJson(request, menuPatchSchema);
-    const { approvalStatus: _ignored, ...rest } = body;
     const updates = Object.fromEntries(
-      Object.entries(rest).filter(([, value]) => value !== undefined),
+      Object.entries(body).filter(([, value]) => value !== undefined),
     );
 
     if (Object.keys(updates).length === 0) {

@@ -76,14 +76,14 @@ Base path `/api/vendor`. Vendor identity comes from the session, not a query par
 | POST | `/scan` | `{ token?, code? }` | `{ student:{ name, studentNumber, course, walletBalance, university }, token:{ code, expiresAt }, expiresIn }` |
 | POST | `/charge` | `{ token?, code?, amount, note? }` | `{ transaction:{ id, reference, amount, status, createdAt }, balance, studentName, studentNumber, vendor }` — uses `chargeWithToken()` |
 | GET | `/sales` | `range=today\|week\|month` | `{ summary:{ gross, transactions, average, netSettlement, fees }, topItems, payments: [] }` |
-| GET | `/menu` | — | `{ items: MenuItem[], summary:{ total, available, hidden } }` |
+| GET | `/menu` | — | `{ items: MenuItem[], summary:{ total, available, hidden } }`; owner views catalog and current staff-reported availability |
 | GET | `/team` | — | `{ accounts:[...], invites:[...] }` — only this vendor's STAFF/FINANCE accounts and pending invites |
 | POST | `/team` | `{ name, email, phone, role:'STAFF'\|'FINANCE' }` | Creates a one-time, seven-day invitation scoped to the signed-in vendor; returns the link once |
 | PATCH | `/application` | Rejected vendor session | Resubmits required business details; clears the rejection and returns the application to platform review |
-| POST | `/menu` | multipart upload then `{ name, price, category, description?, imageUrl, available? }` | `{ item }` — imageUrl is required; live immediately (`approvalStatus: 'APPROVED'`); admins vet vendors, not dishes |
+| POST | `/menu` | multipart upload then `{ name, price, category, description?, imageUrl, autoAccept? }` | `{ item }` — imageUrl is required; new dishes start unavailable until staff mark them in stock |
 | POST | `/menu/upload` | multipart `file` (JPG/PNG/WebP, ≤5 MB; client resizes phone photos first) | `{ url, size, type }` — returns `/api/uploads/food/<filename>`; local disk in MVP, object storage in production |
 | GET | `/api/uploads/food/[filename]` | public | Streams an uploaded food photo with an immutable cache header; required because runtime writes are not in Next's public static manifest |
-| PATCH | `/menu/[id]` | partial item fields incl. `available`/`imageUrl` | `{ item }` — cannot edit another vendor's item |
+| PATCH | `/menu/[id]` | `{ name?, price?, category?, description?, imageUrl?, autoAccept? }` | `{ item }` — owner edits catalog details; daily availability is staff-only |
 | DELETE | `/menu/[id]` | — | `{ deleted: true }` |
 | GET | `/settlement` | — | `{ pendingBalance, totalSettled, payouts: [], recentPayments: [] }` |
 | POST | `/settlement` | `{ amount? }` | mock payout request → `{ settlement, pendingBalance }` (only if >0) |
@@ -91,8 +91,9 @@ Base path `/api/vendor`. Vendor identity comes from the session, not a query par
 Vendor owners may invite STAFF and FINANCE accounts for their own cafeteria. Platform admins can also
 issue scoped invitations. Invitees set a password when accepting; Google sign-in is available only
 when the verified Google email matches the invited email. Finance users can view test-payment events and support cases but cannot approve
-cafeteria credit or confirm payments. Vendor staff can verify coupons and change item availability, but
-cannot edit prices or access vendor money/account controls.
+cafeteria credit or confirm payments. Owners manage the menu catalog, prices and staff remotely;
+staff manage daily availability, handle orders and verify coupons, but cannot edit dishes, prices or
+access vendor money/account controls.
 
 ## Cafeteria staff (role STAFF)
 

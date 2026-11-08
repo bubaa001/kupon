@@ -61,10 +61,11 @@ export default function StaffMenuPage() {
       <PageHeader
         eyebrow="Daily operations"
         title="Today’s menu"
-        description="Hide items that are unavailable today. The cafeteria owner controls menu names and prices."
+        description="Set which of the owner’s menu items are in stock today. The owner manages dishes and prices."
       />
       <Alert variant="info">
-        Availability changes take effect immediately for students. Staff accounts cannot change
+        You are responsible for today’s availability: mark dishes available or unavailable as the
+        kitchen changes. Updates take effect immediately for students. Staff cannot change dishes,
         prices or payment records.
       </Alert>
       {loading ? (
@@ -99,7 +100,7 @@ export default function StaffMenuPage() {
                       : 'mt-1 text-[10px] font-semibold text-slate-500'
                   }
                 >
-                  {item.available ? 'Available to students' : 'Hidden from students'}
+                  {item.available ? 'In stock for students' : 'Not available to students today'}
                 </p>
               </div>
               <Button

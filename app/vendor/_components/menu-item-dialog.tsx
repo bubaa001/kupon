@@ -64,7 +64,6 @@ export function MenuItemDialog({
   const [categoryMode, setCategoryMode] = useState<'preset' | 'custom'>('preset');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [available, setAvailable] = useState(true);
   const [autoAccept, setAutoAccept] = useState(false);
   const [previewQty, setPreviewQty] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -90,7 +89,6 @@ export function MenuItemDialog({
     setCategoryMode(!itemCategory || categoryIsPreset ? 'preset' : 'custom');
     setDescription(item?.description ?? '');
     setImageUrl(item?.imageUrl ?? '');
-    setAvailable(item?.available ?? true);
     setAutoAccept(item?.autoAccept ?? false);
     setPreviewQty(0);
     setSaving(false);
@@ -132,7 +130,7 @@ export function MenuItemDialog({
     price: priceValid ? parsedPrice : 0,
     category: categoryValue || DEFAULT_CATEGORY,
     imageUrl: trimmedImageUrl || null,
-    available,
+    available: item?.available ?? false,
   };
 
   function markTouched(field: string) {
@@ -198,15 +196,14 @@ export function MenuItemDialog({
         category: categoryValue,
         description: description.trim(),
         imageUrl: trimmedImageUrl || null,
-        available,
       };
 
       if (item) {
         await patchJson(`/api/vendor/menu/${item.id}`, payload);
-        onSaved('Dish updated — students see the change immediately.');
+        onSaved('Dish details updated. Staff still control today’s availability.');
       } else {
         await postJson('/api/vendor/menu', payload);
-        onSaved('Dish added to your menu — it is live for students now.');
+        onSaved('Dish added. It will be available to students after staff mark it in stock.');
       }
       onOpenChange(false);
     } catch (cause) {
@@ -239,8 +236,8 @@ export function MenuItemDialog({
           </DialogTitle>
           <DialogDescription className="mt-0.5 text-[11px] leading-relaxed sm:text-xs">
             {item
-              ? 'Change anything below. The student menu updates the moment you save.'
-              : 'Name, price and a photo — that is all you need. A busy vendor can add a dish in under 30 seconds.'}
+              ? 'Update the dish details here. Staff manage its availability each day.'
+              : 'Add the dish details here. Staff will mark it in stock when it is available to serve.'}
           </DialogDescription>
 
           <DialogClose asChild>
@@ -484,7 +481,7 @@ export function MenuItemDialog({
               />
             </FormSection>
 
-            <FormSection icon={CalendarDays} title="Details & selling today" hint="Optional">
+            <FormSection icon={CalendarDays} title="Dish details" hint="Optional">
               <div className="space-y-1.5">
                 <Label htmlFor="menu-description">
                   Description{' '}
@@ -503,24 +500,6 @@ export function MenuItemDialog({
                 <p className="text-[10px] text-slate-400">
                   One short line is enough. It shows under the dish name on the menu.
                 </p>
-              </div>
-
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-900/10 bg-[#FBF6EA]/80 p-3.5">
-                <div className="min-w-0">
-                  <Label htmlFor="menu-available" className="cursor-pointer">
-                    Available today
-                  </Label>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-                    Sold out? Switch it off — the dish stays on your menu but students cannot order
-                    it.
-                  </p>
-                </div>
-                <Switch
-                  id="menu-available"
-                  checked={available}
-                  onCheckedChange={setAvailable}
-                  className="mt-0.5"
-                />
               </div>
 
               <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-3.5">
@@ -544,10 +523,10 @@ export function MenuItemDialog({
               <div className="flex gap-2.5 rounded-xl border border-emerald-200/70 bg-emerald-50/70 p-3">
                 <Zap className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
                 <div className="text-[11px] leading-relaxed text-emerald-900">
-                  <p className="font-semibold">Goes live immediately</p>
+                  <p className="font-semibold">Staff controls daily availability</p>
                   <p className="mt-0.5 text-emerald-800/80">
-                    Save and students can order this dish right away. Switch availability off any
-                    time it is sold out.
+                    Your dish and price are saved to the cafeteria menu. Staff mark it available
+                    when it is in stock and unavailable when it is not.
                   </p>
                 </div>
               </div>

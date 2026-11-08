@@ -156,13 +156,10 @@ export const menuItemSchema = z.object({
     .min(1, 'Upload a food photo')
     .max(500)
     .transform((value) => value),
-  available: z.boolean().optional().default(true),
   autoAccept: z.boolean().optional().default(false),
-});
+}).strict();
 
-export const menuPatchSchema = menuItemSchema.partial().extend({
-  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
-});
+export const menuPatchSchema = menuItemSchema.partial().strict();
 
 export const adminAdjustmentSchema = z.object({
   studentProfileId: z.string().min(1),

@@ -31,7 +31,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FoodProductCard } from '@/components/food';
-import { deleteJson, patchJson } from '@/lib/client-api';
+import { deleteJson } from '@/lib/client-api';
 import { cn, formatTZS } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useApiData } from '../_lib/use-api';
@@ -58,7 +58,6 @@ export function MenuView() {
   const [editing, setEditing] = useState<MenuItemRow | null>(null);
   const [deleting, setDeleting] = useState<MenuItemRow | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const items = useMemo(() => data?.items ?? [], [data]);
   const summary = data?.summary ?? {
@@ -67,7 +66,7 @@ export function MenuView() {
     pendingApproval: 0,
     rejected: 0,
   };
-  const hiddenCount = summary.total - summary.available;
+  const soldOutCount = summary.total - summary.available;
   const averagePrice = items.length
     ? Math.round(items.reduce((total, item) => total + item.price, 0) / items.length)
     : 0;
@@ -90,9 +89,7 @@ export function MenuView() {
 
   const filtersActive = filter !== 'ALL' || category !== ALL_CATEGORIES || search.trim() !== '';
 
-  // The terminal is a live app: no manual refresh button. Menu and availability
-  // change under the vendor, so poll while visible and refetch when the tab
-  // regains focus.
+  // Keep the owner's catalog and staff-reported stock state current.
   useEffect(() => {
     const refresh = () => {
       if (document.visibilityState === 'visible') reload();
@@ -109,8 +106,8 @@ export function MenuView() {
 
   const filterOptions: { value: MenuFilter; label: string; count: number }[] = [
     { value: 'ALL', label: 'All', count: summary.total },
-    { value: 'AVAILABLE', label: 'Available', count: summary.available },
-    { value: 'HIDDEN', label: 'Hidden', count: hiddenCount },
+    { value: 'AVAILABLE', label: 'In stock', count: summary.available },
+    { value: 'HIDDEN', label: 'Not in stock', count: soldOutCount },
   ];
 
   function openCreate() {
@@ -127,27 +124,6 @@ export function MenuView() {
     setFilter('ALL');
     setCategory(ALL_CATEGORIES);
     setSearch('');
-  }
-
-  async function toggleAvailability(item: MenuItemRow) {
-    if (togglingId) return;
-    setTogglingId(item.id);
-    try {
-      await patchJson(`/api/vendor/menu/${item.id}`, { available: !item.available });
-      toast.success(
-        item.available ? `${item.name} hidden from students` : `${item.name} is available again`,
-        { description: 'Students see the change immediately.' },
-      );
-      reload();
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error && cause.message
-          ? cause.message
-          : 'Could not update availability. Try again.',
-      );
-    } finally {
-      setTogglingId(null);
-    }
   }
 
   async function confirmDelete() {
@@ -176,8 +152,8 @@ export function MenuView() {
         title={mode === 'preview' ? 'Student preview' : 'Your menu'}
         description={
           mode === 'preview'
-            ? 'Exactly what a student sees after scanning your counter QR — every dish you have switched on, with the same photos, prices and categories.'
-            : 'Everything students can order from your kitchen. Add a dish in seconds, keep prices fresh and switch off what is sold out.'
+            ? 'Exactly what a student sees after scanning your counter QR — dishes staff have marked in stock, with their photos, prices and categories.'
+            : 'Manage your cafeteria’s dishes, photos and prices from anywhere. Your staff update what is in stock each day.'
         }
         actions={
           mode === 'preview' ? undefined : (
@@ -204,7 +180,7 @@ export function MenuView() {
           <MenuBoardHero
             total={summary.total}
             available={summary.available}
-            hiddenCount={hiddenCount}
+            hiddenCount={soldOutCount}
             averagePrice={averagePrice}
             refreshing={loading}
             onPreview={() => setMode('preview')}
@@ -336,8 +312,6 @@ export function MenuView() {
                         revealIndex={index}
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDeleting(item)}
-                        onToggleAvailability={() => void toggleAvailability(item)}
-                        availabilityBusy={togglingId === item.id}
                       />
                     </li>
                   ))}
@@ -355,8 +329,6 @@ export function MenuView() {
                         priority={index < 4}
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDeleting(item)}
-                        onToggleAvailability={() => void toggleAvailability(item)}
-                        availabilityBusy={togglingId === item.id}
                       />
                     </li>
                   ))}
@@ -413,8 +385,8 @@ export function MenuView() {
               <Trash2 className="h-4 w-4" aria-hidden />
             </span>
             <p className="text-[11px] leading-relaxed text-red-700">
-              This cannot be undone. If you only want to stop selling it for now, switch it off
-              instead — the dish stays on your menu.
+              This cannot be undone. To stop selling it temporarily, ask staff to mark it
+              unavailable; the dish will stay on your menu.
             </p>
           </div>
           <DialogFooter>
@@ -448,8 +420,8 @@ function MenuBoardHero({
 }) {
   const stats = [
     { label: 'Dishes', value: String(total), Icon: UtensilsCrossed },
-    { label: 'Available', value: String(available), Icon: CheckCircle2 },
-    { label: 'Hidden', value: String(hiddenCount), Icon: EyeOff },
+    { label: 'In stock', value: String(available), Icon: CheckCircle2 },
+    { label: 'Not in stock', value: String(hiddenCount), Icon: EyeOff },
     { label: 'Avg price', value: averagePrice > 0 ? formatTZS(averagePrice) : '—', Icon: Wallet },
   ];
 
@@ -478,12 +450,12 @@ function MenuBoardHero({
             Menu board
           </p>
           <h2 className="mt-1.5 text-lg font-semibold tracking-tight sm:text-xl">
-            What&apos;s cooking today?
+            Menu at a glance
           </h2>
           <p className="mt-1 max-w-md text-[11px] leading-relaxed text-emerald-100/65">
             {available > 0
-              ? `${available} ${available === 1 ? 'dish is' : 'dishes are'} available to students right now.`
-              : 'Nothing is available yet — switch a dish on to start selling.'}
+              ? `Staff have marked ${available} ${available === 1 ? 'dish' : 'dishes'} in stock for students right now.`
+              : 'No dishes are marked in stock. Staff can update availability from their menu.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -608,7 +580,7 @@ function AddDishTile({ onClick }: { onClick: () => void }) {
       </span>
       <span className="text-sm font-semibold text-slate-800">Add a dish</span>
       <span className="max-w-[15rem] text-[11px] leading-relaxed text-slate-500">
-        Name, price and a photo — under 30 seconds. It goes live on your menu immediately.
+        Name, price and a photo — under 30 seconds. Staff set daily availability.
       </span>
     </button>
   );
@@ -643,8 +615,8 @@ function EmptyMenu({ onCreate }: { onCreate: () => void }) {
       </div>
       <h2 className="relative mt-5 text-base font-semibold text-slate-900">Your menu is empty</h2>
       <p className="relative mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-slate-500">
-        Add your first dish so students know what they can buy at your till. It appears on the
-        student menu as soon as you save it.
+        Add your first dish so students know what your cafeteria serves. Staff will mark it in stock
+        before students can order it.
       </p>
       <Button className="relative mt-4" onClick={onCreate}>
         <Plus className="h-4 w-4" aria-hidden />
@@ -662,8 +634,8 @@ function InfoNote() {
     <div className="flex items-start gap-2 rounded-xl border border-amber-900/10 bg-[#FFFDF7]/80 p-3 text-[10.5px] leading-relaxed text-slate-500">
       <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700/60" aria-hidden />
       <p>
-        Students see every dish you keep switched on. Changes save instantly, prices are in Tanzanian
-        shillings and include all taxes.
+        You manage dishes and prices remotely. Staff set daily stock at the cafeteria, and students
+        only see dishes staff mark in stock. Prices are in Tanzanian shillings and include all taxes.
       </p>
     </div>
   );
