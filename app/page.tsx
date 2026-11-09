@@ -6,15 +6,13 @@ import {
   Banknote,
   Check,
   ClipboardCheck,
-  CreditCard,
   ListChecks,
-  ScanLine,
   ShieldCheck,
-  TicketCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { MarketingReveal } from '@/components/marketing/marketing-reveal';
+import { PaymentStory } from '@/components/marketing/payment-story';
 import { getLandingData, type LandingData } from '@/lib/public-data';
 import { formatCompactTZS, formatNumber } from '@/lib/utils';
 
@@ -25,24 +23,6 @@ export const metadata: Metadata = {
   description:
     'Kupon replaces paper cafeteria records with searchable orders, payment records and meal coupons issued after gateway confirmation. Payments in this test build are simulated.',
 };
-
-const CHECKOUT_STEPS = [
-  {
-    icon: ScanLine,
-    title: 'Choose a meal',
-    body: 'Scan the outlet QR and pick from what is available today.',
-  },
-  {
-    icon: CreditCard,
-    title: 'Pay through Kupon',
-    body: 'Kupon records each payment stage and confirms the order automatically in this test build.',
-  },
-  {
-    icon: TicketCheck,
-    title: 'Collect your meal',
-    body: 'Show the coupon issued after payment confirmation.',
-  },
-];
 
 const PROBLEMS = [
   {
@@ -69,9 +49,9 @@ const PROBLEMS = [
 
 function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-canvas/90 backdrop-blur-xl">
+    <header className="landing-nav sticky top-0 z-40 border-b border-slate-200/70 bg-canvas/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:h-[76px] lg:px-8">
-        <Logo />
+        <Logo variant="light" />
         <nav
           aria-label="Main navigation"
           className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex"
@@ -105,13 +85,13 @@ function Metrics({ stats, liveTotalsAvailable }: LandingData) {
   return (
     <section
       aria-label="Live Kupon platform totals"
-      className="border-y border-slate-200 bg-white"
+      className="landing-ledger border-y border-slate-200 bg-white"
     >
       <dl className="mx-auto grid w-full max-w-7xl grid-cols-2 sm:grid-cols-4">
         {values.map((stat, index) => (
           <div
             key={stat.label}
-            className={`px-5 py-6 sm:px-6 lg:px-8 lg:py-8 ${
+            className={`landing-ledger__item px-5 py-6 sm:px-6 lg:px-8 lg:py-8 ${
               index % 2 === 1 ? 'border-l border-slate-200 sm:border-l-0' : ''
             } ${index > 1 ? 'border-t border-slate-200 sm:border-t-0' : ''} ${
               index > 0 ? 'sm:border-l sm:border-slate-200' : ''
@@ -124,7 +104,7 @@ function Metrics({ stats, liveTotalsAvailable }: LandingData) {
           </div>
         ))}
       </dl>
-      <p className="mx-auto max-w-7xl px-5 pb-4 text-[11px] text-slate-400 sm:px-6 lg:px-8">
+      <p className="landing-ledger__caption mx-auto max-w-7xl px-5 pb-4 text-[11px] text-slate-400 sm:px-6 lg:px-8">
         {liveTotalsAvailable
           ? 'Live totals from Kupon records. Meal value includes verified orders only.'
           : 'Live totals are unavailable in this Preview because no Preview database is connected.'}
@@ -135,30 +115,30 @@ function Metrics({ stats, liveTotalsAvailable }: LandingData) {
 
 function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="relative isolate overflow-hidden">
-      <div className="mx-auto grid w-full max-w-7xl items-center gap-14 px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-20 lg:grid-cols-[1.05fr_0.75fr] lg:gap-20 lg:px-8 lg:pb-24 lg:pt-24">
+    <section aria-labelledby="hero-title" className="landing-hero relative isolate overflow-hidden">
+      <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-8 lg:pb-24 lg:pt-20">
         <div className="landing-enter">
-          <p className="eyebrow flex items-center gap-2 text-primary-800">
+          <p className="eyebrow landing-hero__eyebrow flex items-center gap-2">
             <span aria-hidden className="h-2 w-2 rounded-full bg-primary-500" />
             A clearer way to run campus food
           </p>
           <h1
             id="hero-title"
-            className="mt-6 max-w-3xl text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.065em] text-navy sm:text-6xl lg:text-[4.65rem]"
+            className="landing-hero__title mt-6 max-w-3xl text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.065em] text-navy sm:text-6xl lg:text-[4.65rem]"
           >
             Every meal.
             <br />
-            <span className="font-serif font-normal italic tracking-[-0.055em] text-primary-800">
+            <span className="font-normal">
               A record you can trust.
             </span>
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+          <p className="landing-hero__lede mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
             Replace handwritten sales books with searchable orders. Kupon is designed for direct
             mobile-money checkout, with coupons issued after gateway confirmation. This test build
             simulates payment events and does not charge a phone.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button asChild size="lg" className="h-12 w-full rounded-full px-6 sm:w-auto">
+            <Button asChild size="lg" className="landing-hero__primary h-12 w-full rounded-full px-6 sm:w-auto">
               <Link href="/vendor-apply">
                 Apply as a cafeteria
                 <ArrowRight aria-hidden className="h-4 w-4" />
@@ -168,58 +148,16 @@ function Hero() {
               asChild
               size="lg"
               variant="outline"
-              className="h-12 w-full rounded-full border-slate-300 bg-white px-6 sm:w-auto"
+              className="landing-hero__secondary h-12 w-full rounded-full border-slate-300 bg-white px-6 sm:w-auto"
             >
               <Link href="#account-access">Choose your access</Link>
             </Button>
           </div>
-          <p className="mt-5 text-xs leading-relaxed text-slate-500">
-            Test gateway only · no real money is collected.
+          <p className="landing-hero__note mt-5 text-xs leading-relaxed text-slate-500">
+            Test gateway only · simulated payments · no real money is collected.
           </p>
         </div>
-
-        <div className="landing-enter landing-enter-delayed relative rounded-[1.75rem] border border-slate-200 bg-white px-6 py-7 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.35)] sm:px-8 sm:py-9 lg:ml-5">
-          <span
-            aria-hidden
-            className="absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-canvas"
-          />
-          <span
-            aria-hidden
-            className="absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-canvas"
-          />
-          <p className="eyebrow mb-6 text-primary-800">From menu to meal</p>
-          <ol aria-label="The Kupon meal checkout" className="divide-y divide-slate-200">
-            {CHECKOUT_STEPS.map((step, index) => (
-              <li
-                key={step.title}
-                className={`group flex gap-5 py-5 ${
-                  index === 0 ? 'border-t border-slate-200' : ''
-                }`}
-              >
-                <div className="relative flex w-11 shrink-0 justify-center">
-                  <span
-                    aria-hidden
-                    className="absolute top-0 h-11 w-11 rounded-2xl border border-primary-200 bg-primary-50 transition-colors duration-300 group-hover:bg-primary-100"
-                  />
-                  <step.icon
-                    aria-hidden
-                    className="relative mt-3 h-5 w-5 text-primary-800"
-                    strokeWidth={1.7}
-                  />
-                </div>
-                <div className="pt-1">
-                  <h2 className="text-base font-semibold tracking-tight text-navy sm:text-lg">
-                    {step.title}
-                  </h2>
-                  <p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-600">{step.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-1 border-t border-dashed border-slate-300 pt-5 text-xs leading-5 text-slate-500">
-            Your coupon is ready only when your payment is.
-          </p>
-        </div>
+        <PaymentStory />
       </div>
     </section>
   );
