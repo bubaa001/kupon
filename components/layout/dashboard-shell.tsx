@@ -211,13 +211,13 @@ export function DashboardShell({
   const root = kind === 'admin' ? '/admin' : kind === 'finance' ? '/finance' : '/super-admin';
 
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="dashboard-canvas min-h-dvh bg-canvas">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[260px] lg:block">
         <SidebarContent kind={kind} user={user} pathname={pathname} />
       </aside>
 
       <div className="lg:pl-[260px]">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <header className="dashboard-glass-header sticky top-0 z-20 border-b border-slate-200/70">
           <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <Dialog open={open} onOpenChange={setOpen}>

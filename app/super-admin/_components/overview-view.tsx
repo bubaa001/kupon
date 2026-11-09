@@ -195,17 +195,23 @@ export function OverviewView() {
               <Badge variant="outline" className="tabular">
                 {formatTZS(platform.gmv7d)} GMV
               </Badge>
-              <div className="flex flex-col items-end gap-1">
-                <Badge variant={refreshing ? 'outline' : 'success'} dot>
-                  {refreshing ? 'Updating sales…' : 'Auto-updates · 15s'}
-                </Badge>
-                <span className="text-[10px] text-slate-400" aria-live="polite">
+              <div className="flex flex-col items-end gap-1.5">
+                <span
+                  className="live-status"
+                  data-refreshing={refreshing}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="live-status__dot" aria-hidden="true" />
+                  {refreshing ? 'Updating sales…' : 'Live · refreshes every 15s'}
+                </span>
+                <span className="text-[10px] text-slate-400" aria-live="off">
                   Updated {updatedAt}
                 </span>
               </div>
             </div>
           </div>
-          <div className="mt-4">
+          <div className={`refreshing-chart mt-4 ${refreshing ? 'opacity-70' : 'opacity-100'}`}>
             <RevenueAreaChart data={chart} height={260} />
           </div>
           {platform.platformFee7d === 0 ? (
