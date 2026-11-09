@@ -16,7 +16,10 @@ remaining hardening has already shipped.
   to the RLS event-trigger helper, shared rate-limit storage, revoking Data API
   table/sequence access for `anon` and `authenticated`, session-version logout
   revocation, foreign-key indexes, ledger invariants, and the security-posture
-  note.
+  note. On 2026-11-09, migration
+  `20261109080350_revoke_default_public_function_execute` also removed default
+  `EXECUTE` grants to `PUBLIC`, `anon`, `authenticated`, and `service_role` for
+  new functions created by `postgres` in `public`.
 - RLS is enabled on the application tables. The Supabase security advisor reports
   no policies on 26 tables (including `_prisma_migrations`). This is currently
   fail-closed for roles subject to RLS; it is not tenant isolation for the app.
@@ -24,12 +27,31 @@ remaining hardening has already shipped.
   currently bypasses the Data API and uses Prisma over a direct Postgres
   connection.
 
+## Applied live database hardening
+
+Supabase migration `20261109080350_revoke_default_public_function_execute`
+applied this change and the database catalog verified the resulting default ACL
+contains only `postgres` for function execution:
+
+```sql
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated, service_role;
+```
+
+This reduces exposure from accidentally created future public RPC functions. It
+does not remove grants from any existing function or change current application
+behavior.
+
 ## Remaining high-risk gap
 
 The app's database session is `postgres`, which has `BYPASSRLS`, `CREATEROLE`,
 `CREATEDB`, and replication privileges. RLS therefore does not constrain Prisma
 queries. A leak or misuse of the database URL can expose or change all app data
 and database objects available to that role.
+
+The new default-privilege migration did not change existing functions, role
+grants, or the app's current database connection; it only affects future
+functions created by `postgres` in `public`.
 
 The app's authorization checks reduce normal request risk, but they are not a
 database boundary. A tenant policy that trusts an ordinary custom Postgres
