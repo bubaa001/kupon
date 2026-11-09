@@ -21,7 +21,6 @@ export function MotionHeading({
           >
             {word}
           </span>
-          {index < words.length - 1 ? ' ' : null}
         </span>
       ))}
     </h2>

@@ -118,7 +118,7 @@ function Metrics({ stats, liveTotalsAvailable }: LandingData) {
 function Hero() {
   return (
     <section aria-labelledby="hero-title" className="landing-hero relative isolate overflow-hidden">
-      <div className="mx-auto grid w-full max-w-[75rem] items-center gap-12 px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-8 lg:pb-24 lg:pt-20">
+      <div className="mx-auto grid w-full max-w-[75rem] items-center gap-12 px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:px-8 lg:pb-24 lg:pt-20">
         <div className="landing-enter">
           <h1
             id="hero-title"
