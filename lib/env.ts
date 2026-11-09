@@ -14,6 +14,14 @@ const optionalSecret = z.preprocess(
   z.string().min(32).optional(),
 );
 
+// Next.js evaluates server modules during `next build`. A Vercel Preview build
+// should not need production database credentials just to compile. These
+// placeholders are accepted only during that build phase; server/runtime phases
+// still require the real values below.
+const IS_NEXT_BUILD = process.env.NEXT_PHASE === 'phase-production-build';
+const BUILD_ONLY_DATABASE_URL = 'postgresql://build_only:unused@127.0.0.1:1/build_only';
+const BUILD_ONLY_JWT_SECRET = 'build-only-never-use-at-runtime-kupon-placeholder-000000000000000000000000';
+
 const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().min(1, 'DIRECT_URL is required'),
@@ -38,9 +46,9 @@ const EnvSchema = z.object({
 });
 
 const parsed = EnvSchema.safeParse({
-  DATABASE_URL: process.env.DATABASE_URL,
-  DIRECT_URL: process.env.DIRECT_URL,
-  JWT_SECRET: process.env.JWT_SECRET,
+  DATABASE_URL: process.env.DATABASE_URL ?? (IS_NEXT_BUILD ? BUILD_ONLY_DATABASE_URL : undefined),
+  DIRECT_URL: process.env.DIRECT_URL ?? (IS_NEXT_BUILD ? BUILD_ONLY_DATABASE_URL : undefined),
+  JWT_SECRET: process.env.JWT_SECRET ?? (IS_NEXT_BUILD ? BUILD_ONLY_JWT_SECRET : undefined),
   PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
   PLATFORM_FEE_PERCENT: process.env.PLATFORM_FEE_PERCENT,
   AGGREGATOR_FEE_PERCENT: process.env.AGGREGATOR_FEE_PERCENT,
@@ -71,7 +79,11 @@ if (process.env.NODE_ENV === 'production' && env.DEMO_MODE) {
   throw new Error('DEMO_MODE must be false in production.');
 }
 
-if (process.env.NODE_ENV === 'production' && (env.JWT_SECRET.length < 32 || env.JWT_SECRET === EXAMPLE_JWT_SECRET)) {
+if (
+  !IS_NEXT_BUILD &&
+  process.env.NODE_ENV === 'production' &&
+  (env.JWT_SECRET.length < 32 || env.JWT_SECRET === EXAMPLE_JWT_SECRET)
+) {
   throw new Error('Production requires a unique JWT_SECRET with at least 32 characters.');
 }
 

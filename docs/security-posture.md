@@ -90,10 +90,12 @@ identity.
 
 - The latest Vercel deployment is ready, but that only verifies the deployed
   commit's build; it does not prove row-level database authorization.
-- The review branch's Vercel Preview build stopped before compilation because
-  Preview does not have `DIRECT_URL`. The database credentials are currently
-  production-only; they were not copied into Preview. An isolated database
-  branch is required to verify a Preview safely.
+- Vercel Preview initially failed because `DIRECT_URL` was absent. After making
+  Prisma client generation independent of that variable, Next.js reached page
+  data collection and reported missing `DIRECT_URL` and `JWT_SECRET`. The
+  current branch now supplies inert values only during the Next.js build phase;
+  runtime validation still requires real credentials. This latest change is
+  awaiting a fresh Vercel Preview result.
 - TypeScript checking of the local checkout passed during this review.
 - A local Next production build could not complete in this Windows environment:
   it failed with `EPERM` while creating generated `.next` output directories,
