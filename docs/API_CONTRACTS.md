@@ -108,8 +108,10 @@ vendor. Login is at `/staff/login`.
 | POST | `/api/vendor/orders/[id]/unavailable` | `{ reason }` | Declines an unpaid request or sends an eligible paid order to Finance for credit review |
 | POST | `/api/vendor/orders/[id]/verify` | `{ token? , code? }` | Single-use coupon verification for the assigned cafeteria |
 | POST | `/api/vendor/orders/scan/verify` | `{ token? , code? }` | Scan-first coupon verification for the assigned cafeteria |
-| GET | `/api/staff/menu` | — | `{ items:[{id,name,category,emoji,available,autoAccept}] }` |
-| PATCH | `/api/staff/menu/[id]` | `{ available:boolean, autoAccept?:boolean }` | Changes daily availability or per-item auto-accept; price and menu details are owner-managed |
+| GET | `/api/staff/menu` | — | `{ items:[{id,name,category,emoji,price,available,autoAccept}] }` |
+| POST | `/api/staff/menu` | `{ name, price, category?, emoji? }` | Adds a food to the assigned cafeteria's menu and makes it available immediately |
+| PATCH | `/api/staff/menu/[id]` | `{ available:boolean, autoAccept?:boolean }` | Changes daily availability or per-item auto-accept; item details and later price edits remain owner-managed |
+| DELETE | `/api/staff/menu/[id]` | — | Removes a food from the assigned cafeteria's menu; historical order item snapshots remain intact |
 | PATCH | `/api/staff/menu/auto-accept` | `{ enabled:boolean }` | Sets automatic acceptance for incoming requests across the cafeteria's items |
 
 ## Admin (roles ADMIN, SUPER_ADMIN)

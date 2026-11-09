@@ -1,22 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Check, CircleOff, UtensilsCrossed } from 'lucide-react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Check, CircleOff, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { ApiClientError, apiFetch, patchJson } from '@/lib/client-api';
+import { ApiClientError, apiFetch, deleteJson, patchJson, postJson } from '@/lib/client-api';
+import { formatTZS } from '@/lib/utils';
 
 type MenuItem = {
   id: string;
   name: string;
   category: string;
   emoji: string;
+  price: number;
   available: boolean;
   autoAccept: boolean;
 };
@@ -26,6 +38,14 @@ export default function StaffMenuPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [autoAcceptBusy, setAutoAcceptBusy] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [savingItem, setSavingItem] = useState(false);
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState('Main');
+  const [emoji, setEmoji] = useState('🍲');
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removalTarget, setRemovalTarget] = useState<MenuItem | null>(null);
   const autoAcceptAll = items.length > 0 && items.every((item) => item.autoAccept);
 
   const load = useCallback(async () => {
@@ -77,17 +97,66 @@ export default function StaffMenuPage() {
     }
   }
 
+  async function addItem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingItem(true);
+    try {
+      const payload = await postJson<{ item: MenuItem }>('/api/staff/menu', {
+        name,
+        price: Number(price),
+        category,
+        emoji,
+      });
+      setItems((current) =>
+        [...current, payload.item].sort(
+          (left, right) =>
+            left.category.localeCompare(right.category) || left.name.localeCompare(right.name),
+        ),
+      );
+      setName('');
+      setPrice('');
+      setCategory('Main');
+      setEmoji('🍲');
+      setAddOpen(false);
+      toast.success(`${payload.item.name} added and available to students.`);
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : 'Could not add food.');
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function removeItem(item: MenuItem) {
+    setRemovingId(item.id);
+    try {
+      await deleteJson(`/api/staff/menu/${encodeURIComponent(item.id)}`);
+      setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+      setRemovalTarget(null);
+      toast.success(`${item.name} removed from the menu.`);
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : 'Could not remove food.');
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Daily operations"
         title="Today’s menu"
-        description="Set which of the owner’s menu items are in stock today. The owner manages dishes and prices."
+        description="Add foods sold today, remove unavailable items, and keep the student menu current. Owners can review the menu remotely."
+        actions={
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add food
+          </Button>
+        }
       />
       <Alert variant="info">
-        You are responsible for today’s availability: mark dishes available or unavailable as the
-        kitchen changes. Updates take effect immediately for students. Staff cannot change dishes,
-        prices or payment records.
+        You run the food menu on site: add a dish with its price, mark it available or unavailable
+        as stock changes, and remove items that are no longer sold. Students see menu changes
+        immediately. Payment records cannot be changed here.
       </Alert>
       {!loading && items.length > 0 ? (
         <Card className="flex items-center justify-between gap-4 p-4">
@@ -116,7 +185,13 @@ export default function StaffMenuPage() {
         <EmptyState
           icon={UtensilsCrossed}
           title="No menu items yet"
-          description="Ask the cafeteria owner to add menu items before updating availability."
+          description="Add the food being served today. Students can request it as soon as it is listed."
+          action={
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add the first food
+            </Button>
+          }
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -130,7 +205,9 @@ export default function StaffMenuPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
-                <p className="mt-0.5 text-xs text-slate-500">{item.category}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {item.category} · {formatTZS(item.price)}
+                </p>
                 <p
                   className={
                     item.available
@@ -162,10 +239,134 @@ export default function StaffMenuPage() {
                   </>
                 )}
               </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                disabled={removingId === item.id || busyId === item.id}
+                loading={removingId === item.id}
+                aria-label={`Remove ${item.name} from the menu`}
+                onClick={() => setRemovalTarget(item)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </Card>
           ))}
         </div>
       )}
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          if (!savingItem) setAddOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add food to today’s menu</DialogTitle>
+            <DialogDescription>
+              New food is listed as available immediately. Students can request it, and requests
+              still wait for staff approval before payment.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={(event) => void addItem(event)}>
+            <div className="space-y-1.5">
+              <Label htmlFor="staff-menu-name">Food name</Label>
+              <Input
+                id="staff-menu-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                minLength={2}
+                maxLength={80}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="staff-menu-price">Price (TZS)</Label>
+                <Input
+                  id="staff-menu-price"
+                  type="number"
+                  inputMode="numeric"
+                  min={500}
+                  max={100000}
+                  step={100}
+                  value={price}
+                  onChange={(event) => setPrice(event.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="staff-menu-category">Category</Label>
+                <Input
+                  id="staff-menu-category"
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  minLength={2}
+                  maxLength={30}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="staff-menu-emoji">Food icon</Label>
+              <Input
+                id="staff-menu-emoji"
+                value={emoji}
+                onChange={(event) => setEmoji(event.target.value)}
+                maxLength={16}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={savingItem}>
+                <Plus className="h-4 w-4" />
+                Add food
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={removalTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && removingId === null) setRemovalTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove {removalTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              This food will no longer appear on the student menu. Past order records will remain
+              unchanged.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={removingId !== null}
+              onClick={() => setRemovalTarget(null)}
+            >
+              Keep food
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              loading={removingId === removalTarget?.id}
+              disabled={!removalTarget || removingId !== null}
+              onClick={() => {
+                if (removalTarget) void removeItem(removalTarget);
+              }}
+            >
+              Remove food
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

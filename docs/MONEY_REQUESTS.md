@@ -26,11 +26,13 @@ request and can still be changed when resuming an approved order.
 
 ## Roles and responsibilities
 
-- Owners manage the menu catalog, prices, staff accounts, business analytics,
-  transactions, and oversight of credit cases. They do not need to be on site to
-  run daily stock or coupon operations.
-- Cafeteria staff mark items available/unavailable for the day, accept or decline
-  student requests, redeem coupons, and report unavailable paid orders.
+- Owners manage the business remotely: oversee the menu and prices, staff
+  accounts, analytics, transactions, and credit cases. They do not need to be on
+  site to run daily food or coupon operations.
+- Cafeteria staff add foods sold on site, remove foods no longer offered, update
+  availability, accept or decline student requests, redeem coupons, and report
+  unavailable paid orders. Staff-created foods are immediately visible at the
+  submitted price; owners can review and edit menu details and prices remotely.
 - Finance reviews cafeteria credit cases and escalation/support cases for its
   assigned cafeteria. Approval or rejection requires a written note; platform
   admins can see the case, decision, reviewer, and note.

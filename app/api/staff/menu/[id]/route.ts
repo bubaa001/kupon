@@ -32,7 +32,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       const saved = await tx.menuItem.update({
         where: { id: item.id },
         data: body,
-        select: { id: true, name: true, available: true, autoAccept: true },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          emoji: true,
+          price: true,
+          available: true,
+          autoAccept: true,
+        },
       });
 
       await auditLog(
@@ -52,6 +60,40 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     });
 
     return ok({ item: updated });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const user = await requireApiUser(['STAFF']);
+    const vendor = requireManagedVendor(user);
+    const limit = rateLimit(`staff:menu-availability:${vendor.id}`, 60, 60_000);
+    if (!limit.allowed) throw tooManyRequests('Too many menu changes. Wait a minute and try again.');
+
+    const item = await prisma.menuItem.findFirst({
+      where: { id: params.id, vendorId: vendor.id },
+      select: { id: true, universityId: true, name: true, price: true },
+    });
+    if (!item) throw notFound('This menu item does not belong to your cafeteria.');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.menuItem.delete({ where: { id: item.id } });
+      await auditLog(
+        {
+          actorId: user.id,
+          universityId: item.universityId,
+          action: 'STAFF_MENU_ITEM_DELETED',
+          entity: 'MenuItem',
+          entityId: item.id,
+          metadata: { name: item.name, price: item.price, vendorId: vendor.id },
+        },
+        tx,
+      );
+    });
+
+    return ok({ deleted: true as const });
   } catch (error) {
     return fail(error);
   }
