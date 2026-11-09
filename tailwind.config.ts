@@ -55,11 +55,11 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
         navy: {
-          DEFAULT: '#0F172A',
+          DEFAULT: '#0A1730',
           800: '#1e293b',
           700: '#334155',
         },
-        canvas: '#F8FAFC',
+        canvas: '#F2F4F7',
       },
       borderRadius: {
         lg: 'var(--radius)',
