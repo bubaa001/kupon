@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { isSafeImageUpload } from '@/lib/uploads/file-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,9 @@ export async function GET(
   { params }: { params: { filename: string } },
 ) {
   const filename = params.filename;
-  if (!/^[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/i.test(filename)) {
+  const foodImageKeyPattern =
+    /^[A-Za-z0-9]{1,64}-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp)$/i;
+  if (!foodImageKeyPattern.test(filename)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -36,13 +39,25 @@ export async function GET(
     if (!file) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
+    const data = Buffer.from(file.data);
+    if (
+      file.contentType !== contentType ||
+      file.size !== data.byteLength ||
+      data.byteLength === 0 ||
+      data.byteLength > 5 * 1024 * 1024 ||
+      !isSafeImageUpload(data, contentType)
+    ) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
-    return new NextResponse(Buffer.from(file.data), {
+    return new NextResponse(data, {
       status: 200,
       headers: {
         'Content-Type': contentType,
         'Content-Length': String(file.size),
         'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff',
+        'Cross-Origin-Resource-Policy': 'same-site',
       },
     });
   } catch (error) {

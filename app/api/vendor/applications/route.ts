@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import { phoneSchema } from '@/lib/validators';
 import { normalizePhone } from '@/lib/utils';
+import { isSafeVendorDocument } from '@/lib/uploads/file-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,11 +30,7 @@ const applicationSchema = z.object({
   confirm: z.literal('true'),
 });
 
-const allowedDocuments = new Map([
-  ['application/pdf', { signature: Buffer.from('%PDF-') }],
-  ['image/jpeg', { signature: Buffer.from([0xff, 0xd8, 0xff]) }],
-  ['image/png', { signature: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) }],
-]);
+const ALLOWED_DOCUMENT_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 
 export async function POST(request: Request) {
   try {
@@ -59,12 +56,11 @@ export async function POST(request: Request) {
     if (file.size === 0 || file.size > MAX_DOCUMENT_BYTES) {
       throw new AppError('Keep the TIN/TRA document under 5 MB.', 413, 'FILE_TOO_LARGE');
     }
-    const documentType = allowedDocuments.get(file.type);
-    if (!documentType) {
+    if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
       throw new AppError('Upload a PDF, JPG or PNG TIN/TRA document.', 400, 'UNSUPPORTED_DOCUMENT');
     }
     const documentData = Buffer.from(await file.arrayBuffer());
-    if (!documentData.subarray(0, documentType.signature.length).equals(documentType.signature)) {
+    if (!isSafeVendorDocument(documentData, file.type)) {
       throw new AppError('The selected file does not match its document type.', 400, 'INVALID_DOCUMENT');
     }
 

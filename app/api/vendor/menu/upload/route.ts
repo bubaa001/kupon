@@ -3,6 +3,7 @@ import { requireApiUser, requireOperationalVendor } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { AppError, badRequest } from '@/lib/errors';
 import { fail, ok } from '@/lib/api';
+import { isSafeImageUpload } from '@/lib/uploads/file-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,16 +43,19 @@ export async function POST(request: Request) {
     if (!(entry instanceof File)) {
       throw badRequest('Choose a photo to upload.');
     }
-    const ext = ALLOWED_TYPES[entry.type];
-    if (!ext) {
+    if (!Object.hasOwn(ALLOWED_TYPES, entry.type)) {
       throw badRequest('Use a JPG, PNG or WebP photo.');
     }
     if (entry.size <= 0 || entry.size > MAX_BYTES) {
       throw badRequest('Keep the photo under 5 MB.');
     }
 
-    const filename = `${vendor.id}-${randomUUID()}.${ext}`;
     const data = Buffer.from(await entry.arrayBuffer());
+    if (!isSafeImageUpload(data, entry.type)) {
+      throw new AppError('The photo content does not match its file type.', 400, 'INVALID_IMAGE');
+    }
+    const ext = ALLOWED_TYPES[entry.type];
+    const filename = `${vendor.id}-${randomUUID()}.${ext}`;
     await prisma.storedFile.create({
       data: {
         key: filename,

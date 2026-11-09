@@ -42,6 +42,20 @@ This reduces exposure from accidentally created future public RPC functions. It
 does not remove grants from any existing function or change current application
 behavior.
 
+## Upload and file-serving hardening
+
+The current branch validates food photos and private onboarding documents against
+their byte signatures in addition to the client-provided MIME type. It enforces
+the existing 5 MB limit on upload and verifies stored size/type/signature again
+when serving files. The public food-photo route only accepts the generated
+vendor/UUID image-key format and sends `nosniff` plus same-site resource policy
+headers. Vendor TIN/TRA documents remain outside that route; the download route
+requires a `SUPER_ADMIN` session and sends the file as an attachment with
+`private, no-store` caching.
+
+These checks reject mismatched and unsupported formats; they are not antivirus
+scanning or image/document sanitization.
+
 ## Remaining high-risk gap
 
 The app's database session is `postgres`, which has `BYPASSRLS`, `CREATEROLE`,
