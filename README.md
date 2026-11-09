@@ -432,12 +432,13 @@ in the Production environment. Use the Supabase transaction-pooler URL for
 `DATABASE_URL`, the session-pooler URL for `DIRECT_URL`, and set
 `NEXT_PUBLIC_APP_URL` and `GOOGLE_REDIRECT_URI` to the deployed HTTPS domain.
 Register the exact Google callback (`https://<your-domain>/api/auth/callback/google`)
-in Google Cloud Console. Run `pnpm db:migrate:deploy` against the Supabase project
-before the first deployment; the checked-in migrations create the schema.
+in Google Cloud Console. Production builds run the checked-in Prisma migrations
+before building the app, using the Production `DATABASE_URL` and `DIRECT_URL`.
+Keep Preview connected to a separate Supabase project so preview deployments
+cannot apply migrations to production.
 
-Use a separate Supabase project for Vercel Preview deployments so preview builds
-cannot apply migrations to production. Set a strong `JWT_SECRET` and
-`DEMO_MODE=false` in Vercel. Do not copy secrets into GitHub.
+Set a strong `JWT_SECRET` and `DEMO_MODE=false` in Vercel. Do not copy secrets
+into GitHub.
 
 > Vendor-uploaded food photos are stored in PostgreSQL so they persist across
 > serverless deployments. For larger media libraries, move binary files to

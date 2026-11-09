@@ -5,7 +5,7 @@
   "description": "Kupon records cafeteria orders, test-payment events, verified meal coupons and cafeteria credit for Tanzanian universities.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && node scripts/migrate-vercel-production.mjs && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
