@@ -94,7 +94,7 @@ function SiteHeader() {
   );
 }
 
-function Metrics({ stats }: { stats: LandingData['stats'] }) {
+function Metrics({ stats, liveTotalsAvailable }: LandingData) {
   const values = [
     { label: 'Universities', value: formatNumber(stats.universities) },
     { label: 'Active cafeterias', value: formatNumber(stats.vendors) },
@@ -125,7 +125,9 @@ function Metrics({ stats }: { stats: LandingData['stats'] }) {
         ))}
       </dl>
       <p className="mx-auto max-w-7xl px-5 pb-4 text-[11px] text-slate-400 sm:px-6 lg:px-8">
-        Live totals from Kupon records. Meal value includes verified orders only.
+        {liveTotalsAvailable
+          ? 'Live totals from Kupon records. Meal value includes verified orders only.'
+          : 'Live totals are unavailable in this Preview because no Preview database is connected.'}
       </p>
     </section>
   );
@@ -526,14 +528,14 @@ function SiteFooter() {
 }
 
 export default async function HomePage() {
-  const { stats } = await getLandingData();
+  const landingData = await getLandingData();
 
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
       <main className="flex-1">
         <Hero />
-        <Metrics stats={stats} />
+        <Metrics {...landingData} />
         <ProblemSection />
         <CafeteriaSection />
         <TrustSection />
