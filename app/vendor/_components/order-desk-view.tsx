@@ -391,7 +391,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
             <span
               className={cn(
                 'h-1.5 w-1.5 rounded-full',
-                liveState === 'new' ? 'bg-amber-500' : 'animate-pulse bg-emerald-500',
+                liveState === 'new' ? 'bg-amber-500' : 'bg-emerald-500',
               )}
             />
           )}
@@ -463,24 +463,46 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
-              <TabsList className="grid w-full grid-cols-5 sm:w-[38rem]">
-                <TabsTrigger value="REQUESTS" className="gap-1 px-2 text-xs sm:px-3">
-                  Requests
+              <TabsList className="grid h-12 w-full grid-cols-5 p-1 sm:h-11 sm:w-[38rem]">
+                <TabsTrigger
+                  value="REQUESTS"
+                  aria-label={`Requests (${counts.awaitingAcceptance})`}
+                  className="min-h-11 gap-1 px-1.5 text-[11px] sm:px-3 sm:text-xs"
+                >
+                  <span className="sm:hidden">Req</span>
+                  <span className="hidden sm:inline">Requests</span>
                   <TabCount value={counts.awaitingAcceptance} active={tab === 'REQUESTS'} />
                 </TabsTrigger>
-                <TabsTrigger value="AWAITING_PAYMENT" className="gap-1 px-2 text-xs sm:px-3">
+                <TabsTrigger
+                  value="AWAITING_PAYMENT"
+                  aria-label={`Awaiting payment (${counts.awaitingPayment})`}
+                  className="min-h-11 gap-1 px-1.5 text-[11px] sm:px-3 sm:text-xs"
+                >
                   Pay
                   <TabCount value={counts.awaitingPayment} active={tab === 'AWAITING_PAYMENT'} />
                 </TabsTrigger>
-                <TabsTrigger value="PENDING" className="gap-1 px-2 text-xs sm:px-3">
+                <TabsTrigger
+                  value="PENDING"
+                  aria-label={`Ready (${counts.pending})`}
+                  className="min-h-11 gap-1 px-1.5 text-[11px] sm:px-3 sm:text-xs"
+                >
                   Ready
                   <TabCount value={counts.pending} active={tab === 'PENDING'} />
                 </TabsTrigger>
-                <TabsTrigger value="VERIFIED" className="gap-1 px-2 text-xs sm:px-3">
-                  Verified
+                <TabsTrigger
+                  value="VERIFIED"
+                  aria-label={`Verified (${counts.verified})`}
+                  className="min-h-11 gap-1 px-1.5 text-[11px] sm:px-3 sm:text-xs"
+                >
+                  <span className="sm:hidden">Done</span>
+                  <span className="hidden sm:inline">Verified</span>
                   <TabCount value={counts.verified} active={tab === 'VERIFIED'} />
                 </TabsTrigger>
-                <TabsTrigger value="ALL" className="gap-1 px-2 text-xs sm:px-3">
+                <TabsTrigger
+                  value="ALL"
+                  aria-label={`All orders (${data.orders.length})`}
+                  className="min-h-11 gap-1 px-1.5 text-[11px] sm:px-3 sm:text-xs"
+                >
                   All
                   <TabCount value={data.orders.length} active={tab === 'ALL'} />
                 </TabsTrigger>

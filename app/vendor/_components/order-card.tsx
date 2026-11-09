@@ -115,14 +115,20 @@ export function OrderCard({
           </div>
 
           {awaitingAcceptance ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button size="sm" onClick={() => onAcceptRequest(order)} disabled={busy}>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button
+                size="sm"
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
+                onClick={() => onAcceptRequest(order)}
+                disabled={busy}
+              >
                 <Check className="h-3.5 w-3.5" />
                 Accept request
               </Button>
               <Button
                 size="sm"
                 variant="outline"
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                 onClick={() => onReportUnavailable(order)}
                 disabled={busy}
               >
@@ -133,12 +139,17 @@ export function OrderCard({
           ) : null}
 
           {pending ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button size="sm" onClick={() => onEnterCode(order)}>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button size="sm" className="min-h-11 w-full sm:min-h-9 sm:w-auto" onClick={() => onEnterCode(order)}>
                 <KeyRound className="h-3.5 w-3.5" />
                 Enter code
               </Button>
-              <Button size="sm" variant="outline" onClick={() => onScanQr(order)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
+                onClick={() => onScanQr(order)}
+              >
                 <ScanLine className="h-3.5 w-3.5" />
                 Scan QR
               </Button>
