@@ -107,7 +107,7 @@
 .landing-nav > div > a > span:last-child,
 .landing-footer > div > div:first-child > a > span:last-child { color: #f3f5f9; }
 .landing-hero { color: #f3f5f9; background-color: #0a1730; background-image: radial-gradient(ellipse 48% 60% at 82% 42%, rgb(227 195 111 / 0.13), transparent 74%), radial-gradient(ellipse 55% 60% at 2% 100%, rgb(28 138 103 / 0.15), transparent 78%); }
-.landing-hero__title { color: #f3f5f9; font-family: 'Inter Variable', Inter, sans-serif; font-weight: 500; letter-spacing: -0.055em; }
+.landing-hero__title { color: #f3f5f9; font-family: 'Inter Variable', Inter, sans-serif; font-size: clamp(2.7rem, 5.3vw, 3.9rem); font-weight: 500; letter-spacing: -0.055em; }
 .landing-hero__title span { color: #c5cfdf; }
 .landing-hero__lede, .landing-hero__note { color: #a6b2cb; }
 .landing-hero__primary { background: #e3c36f; color: #0a1730; }
