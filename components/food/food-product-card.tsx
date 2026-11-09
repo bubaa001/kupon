@@ -84,7 +84,7 @@ function CategoryChip({
         'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em]',
         tone === 'dark'
           ? 'border-white/25 bg-black/40 text-white backdrop-blur-md'
-          : 'border-amber-900/10 bg-amber-50 text-amber-800/80',
+          : 'border-slate-200 bg-slate-50 text-slate-600',
       )}
     >
       {label.toLowerCase() === 'popular' ? <Flame className="h-2.5 w-2.5" aria-hidden /> : null}
@@ -422,33 +422,33 @@ function CompactCard({
   return (
     <article
       className={cn(
-        'flex min-w-0 flex-col rounded-xl border border-amber-900/10 bg-[#FFFDF7] shadow-[0_1px_2px_rgba(120,80,20,0.05)]',
+        'flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-card transition-colors hover:border-slate-300',
         className,
       )}
       aria-label={item.name}
     >
-      <div className="flex min-w-0 items-center gap-3 p-2.5">
-        <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-lg bg-[#171008] ring-1 ring-black/5">
+      <div className="flex min-w-0 items-center gap-3 p-3">
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 sm:h-[68px] sm:w-[68px]">
           <FoodImage
             src={item.imageUrl}
             name={item.name}
             imageClassName={cn(!available && 'saturate-[0.7]')}
-            fallbackClassName="bg-[#171008]"
+            fallbackClassName="bg-slate-100"
           />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="truncate text-[13.5px] font-semibold tracking-tight text-slate-900">
+              <h3 className="truncate text-sm font-semibold tracking-tight text-slate-900">
                 {item.name}
               </h3>
-              <p className="mt-0.5 line-clamp-1 text-[10.5px] text-slate-500">
+              <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">
                 {item.description?.trim() || item.category?.trim() || 'Campus kitchen'}
               </p>
             </div>
             <FoodPrice price={item.price} />
           </div>
-          <div className="mt-1.5 flex min-h-[32px] items-center justify-between gap-2">
+          <div className="mt-2 flex min-h-9 items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <CategoryChip category={item.category} tone="light" />
               {!availabilityAction && !onAdd && (onEdit || onDelete) ? (
@@ -482,7 +482,7 @@ function CompactCard({
                   onClick={onEdit}
                   disabled={!onEdit}
                   aria-label={`Edit ${item.name}`}
-                  className="h-8 w-8"
+                  className="h-11 w-11"
                 >
                   <Pencil className="h-3.5 w-3.5" aria-hidden />
                 </Button>
@@ -493,7 +493,7 @@ function CompactCard({
                   onClick={onDelete}
                   disabled={!onDelete}
                   aria-label={`Remove ${item.name}`}
-                  className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  className="h-11 w-11 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 </Button>
@@ -503,7 +503,7 @@ function CompactCard({
         </div>
       </div>
       {availabilityAction ? (
-        <div className="flex items-center justify-between gap-2 border-t border-amber-900/10 px-2.5 py-1.5">
+        <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-3 py-2">
           <span
             className={cn(
               'inline-flex min-w-0 items-center gap-1 text-[10px] font-semibold',
@@ -526,7 +526,7 @@ function CompactCard({
               onClick={onEdit}
               disabled={!onEdit}
               aria-label={`Edit ${item.name}`}
-              className="h-8 w-8"
+              className="h-11 w-11"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden />
             </Button>
@@ -537,7 +537,7 @@ function CompactCard({
               onClick={onDelete}
               disabled={!onDelete}
               aria-label={`Remove ${item.name}`}
-              className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              className="h-11 w-11 text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden />
             </Button>

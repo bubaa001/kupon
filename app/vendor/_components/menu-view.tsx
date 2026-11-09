@@ -184,12 +184,12 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
           mode === 'preview'
             ? 'Exactly what a student sees after scanning your counter QR — dishes staff have marked in stock, with their photos, prices and categories.'
             : audience === 'staff'
-              ? 'Keep today’s student menu accurate. Add foods, update prices and photos, and mark items in stock as service changes.'
+              ? 'Update today’s dishes and mark what is in stock for students.'
               : 'Manage your cafeteria’s dishes, photos and prices from anywhere. Your staff update what is in stock each day.'
         }
         actions={
           mode === 'preview' ? undefined : (
-            <Button size="sm" onClick={openCreate}>
+            <Button size="sm" className="min-h-11 sm:min-h-9" onClick={openCreate}>
               <Plus className="h-4 w-4" aria-hidden />
               {audience === 'staff' ? 'Add food' : 'Add dish'}
             </Button>
@@ -225,11 +225,12 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
             <Card className="flex items-center justify-between gap-4 p-4">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900">
-                  Automatically accept all meal requests
+                  Accept meal requests automatically
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  When enabled, students can pay as soon as their request arrives. When disabled,
-                  staff accept each request before the student can pay.
+                  {items.every((item) => item.autoAccept)
+                    ? 'Students can pay as soon as their request arrives.'
+                    : 'Review each request before the student pays.'}
                 </p>
               </div>
               <Switch
@@ -254,14 +255,14 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search dishes, categories…"
                     aria-label="Search your menu"
-                    className="h-10 pl-9 pr-9 text-xs"
+                    className="h-11 pl-9 pr-10 text-sm"
                   />
                   {search ? (
                     <button
                       type="button"
                       onClick={() => setSearch('')}
                       aria-label="Clear search"
-                      className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                      className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />
                     </button>
@@ -274,12 +275,12 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                     onValueChange={(value) => setFilter(value as MenuFilter)}
                     className="min-w-0 flex-1"
                   >
-                    <TabsList className="grid h-10 w-full grid-cols-3">
+                    <TabsList className="grid h-12 w-full grid-cols-3">
                       {filterOptions.map((option) => (
                         <TabsTrigger
                           key={option.value}
                           value={option.value}
-                          className="min-w-0 gap-1 px-1.5 text-[10px] sm:px-3 sm:text-xs"
+                          className="min-h-11 min-w-0 gap-1 px-1.5 text-[10px] sm:px-3 sm:text-xs"
                         >
                           {option.label}
                           <span className="tabular text-[10px] text-slate-400 max-[379px]:hidden">
@@ -289,7 +290,9 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                       ))}
                     </TabsList>
                   </Tabs>
-                  <LayoutToggle value={layout} onChange={setLayout} />
+                  <div className={audience === 'staff' ? 'hidden sm:block' : undefined}>
+                    <LayoutToggle value={layout} onChange={setLayout} />
+                  </div>
                 </div>
               </div>
 
@@ -417,9 +420,19 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                     <button
                       type="button"
                       onClick={openCreate}
-                      className="flex min-h-[64px] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-amber-900/15 bg-[#FFFDF7]/70 text-sm font-semibold text-slate-700 transition-colors hover:border-emerald-400 hover:bg-emerald-50/40"
+                      className={cn(
+                        'flex min-h-16 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-colors',
+                        audience === 'staff'
+                          ? 'border-slate-200 bg-white text-emerald-900 hover:border-emerald-400 hover:bg-emerald-50/40'
+                          : 'border-amber-900/15 bg-[#FFFDF7]/70 text-emerald-900 hover:border-emerald-400 hover:bg-emerald-50/40',
+                      )}
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm ring-1 ring-amber-900/10">
+                      <span
+                        className={cn(
+                          'flex h-8 w-8 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm ring-1',
+                          audience === 'staff' ? 'ring-slate-200' : 'ring-amber-900/10',
+                        )}
+                      >
                         <Plus className="h-4 w-4" aria-hidden />
                       </span>
                       {audience === 'staff' ? 'Add food' : 'Add a dish'}
@@ -553,7 +566,13 @@ function MenuBoardHero({
               />
               {refreshing ? 'Updating' : 'Live stock'}
             </span>
-            <Button type="button" variant="outline" size="sm" onClick={onPreview}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11 sm:min-h-9"
+              onClick={onPreview}
+            >
               <Eye className="h-3.5 w-3.5" aria-hidden />
               Student view
             </Button>
@@ -769,10 +788,10 @@ function CategoryChipButton({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'min-h-[32px] shrink-0 rounded-full border px-2.5 text-[10.5px] font-semibold transition-colors',
+        'min-h-11 shrink-0 rounded-full border px-3 text-[11px] font-semibold transition-colors',
         active
           ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:bg-amber-50/60',
+          : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:text-emerald-800',
       )}
     >
       {children}
@@ -791,9 +810,19 @@ function AddDishTile({
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-full min-h-[240px] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-900/15 bg-[#FFFDF7]/70 px-6 py-8 text-center transition-colors hover:border-emerald-400 hover:bg-emerald-50/40"
+        className={cn(
+          'group flex h-full min-h-[200px] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors',
+          audience === 'staff'
+            ? 'border-slate-200 bg-white text-emerald-900 hover:border-emerald-400 hover:bg-emerald-50/40'
+            : 'min-h-[240px] border-amber-900/15 bg-[#FFFDF7]/70 hover:border-emerald-400 hover:bg-emerald-50/40',
+        )}
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm ring-1 ring-amber-900/10 transition-transform group-hover:scale-105">
+      <span
+        className={cn(
+          'flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm ring-1 transition-transform group-hover:scale-105',
+          audience === 'staff' ? 'ring-slate-200' : 'ring-amber-900/10',
+        )}
+      >
         <Plus className="h-5 w-5" aria-hidden />
       </span>
       <span className="text-sm font-semibold text-slate-800">
@@ -854,7 +883,7 @@ function AvailabilityButton({
       type="button"
       variant={item.available ? 'outline' : 'default'}
       size="sm"
-      className="shrink-0 px-2 text-[10px]"
+      className="min-h-11 shrink-0 px-3 text-[10px] sm:min-h-9 sm:text-[11px]"
       loading={busy}
       disabled={disabled}
       aria-pressed={item.available}
@@ -864,12 +893,12 @@ function AvailabilityButton({
       {item.available ? (
         <>
           <EyeOff className="h-3.5 w-3.5" aria-hidden />
-          Unavailable
+          Mark sold out
         </>
       ) : (
         <>
           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-          Available
+          Mark in stock
         </>
       )}
     </Button>
@@ -878,8 +907,21 @@ function AvailabilityButton({
 
 function InfoNote({ audience }: { audience: 'vendor' | 'staff' }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-amber-900/10 bg-[#FFFDF7]/80 p-3 text-[10.5px] leading-relaxed text-slate-500">
-      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700/60" aria-hidden />
+    <div
+      className={cn(
+        'flex items-start gap-2 rounded-xl border p-3 text-[10.5px] leading-relaxed',
+        audience === 'staff'
+          ? 'border-slate-200 bg-white text-slate-600'
+          : 'border-amber-900/10 bg-[#FFFDF7]/80 text-slate-500',
+      )}
+    >
+      <Info
+        className={cn(
+          'mt-0.5 h-3.5 w-3.5 shrink-0',
+          audience === 'staff' ? 'text-emerald-700' : 'text-amber-700/60',
+        )}
+        aria-hidden
+      />
       <p>
         {audience === 'staff'
           ? 'Manage the menu at the cafeteria: add and update food, set prices, and keep availability current. Owners can review changes remotely. Prices are in Tanzanian shillings.'
