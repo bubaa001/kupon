@@ -384,7 +384,7 @@ function VendorCard({
               onClick={onEdit}
               disabled={!onEdit}
               aria-label={`Edit ${item.name}`}
-              className="h-10 w-10 text-white/55 hover:bg-white/10 hover:text-white"
+              className="h-11 w-11 text-white/55 hover:bg-white/10 hover:text-white sm:h-10 sm:w-10"
             >
               <Pencil className="h-4 w-4" aria-hidden />
             </Button>
@@ -395,7 +395,7 @@ function VendorCard({
               onClick={onDelete}
               disabled={!onDelete}
               aria-label={`Remove ${item.name}`}
-              className="h-10 w-10 text-white/45 hover:bg-red-500/20 hover:text-red-300"
+              className="h-11 w-11 text-white/70 hover:bg-red-500/20 hover:text-red-300 sm:h-10 sm:w-10"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
             </Button>

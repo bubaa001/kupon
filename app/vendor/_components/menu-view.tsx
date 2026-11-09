@@ -53,7 +53,7 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
   const { data, loading, error, reload } = useApiData<MenuResponse>(apiPath);
 
   const [mode, setMode] = useState<MenuViewMode>('manage');
-  const [layout, setLayout] = useState<MenuLayout>(audience === 'staff' ? 'list' : 'grid');
+  const [layout, setLayout] = useState<MenuLayout>('grid');
   const [filter, setFilter] = useState<MenuFilter>('ALL');
   const [category, setCategory] = useState<string>(ALL_CATEGORIES);
   const [search, setSearch] = useState('');
@@ -290,9 +290,9 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                       ))}
                     </TabsList>
                   </Tabs>
-                  <div className={audience === 'staff' ? 'hidden sm:block' : undefined}>
+                  {audience === 'staff' ? null : (
                     <LayoutToggle value={layout} onChange={setLayout} />
-                  </div>
+                  )}
                 </div>
               </div>
 
