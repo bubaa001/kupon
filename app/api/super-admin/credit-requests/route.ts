@@ -9,15 +9,16 @@ export async function GET() {
   try {
     await requireApiUser(['SUPER_ADMIN']);
     const requests = await prisma.creditRequest.findMany({
-      where: { status: 'PENDING_ADMIN' },
+      where: { status: { in: ['PENDING_ADMIN', 'PENDING_FINANCE', 'APPROVED', 'REJECTED'] } },
       include: {
         order: { select: { reference: true, status: true, expiresAt: true } },
         student: { select: { studentId: true, user: { select: { name: true } } } },
         vendor: { select: { name: true, code: true } },
         university: { select: { name: true, code: true } },
+        reviewer: { select: { name: true, role: true } },
       },
-      orderBy: { createdAt: 'asc' },
-      take: 100,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
     });
     return ok({ requests });
   } catch (error) {

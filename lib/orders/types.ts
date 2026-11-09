@@ -8,6 +8,7 @@ export type OrderStatus =
   | 'PAYMENT_PENDING'
   | 'PAYMENT_FAILED'
   | 'AWAITING_ACCEPTANCE'
+  | 'AWAITING_PAYMENT'
   | 'PENDING'
   | 'VERIFIED'
   | 'CANCELLED'
@@ -54,6 +55,7 @@ export type OrderView = {
   apiFee: number;
   kuponFee: number;
   creditApplied: number;
+  useCafeteriaCredit: boolean;
   vendor: OrderVendorView;
   student: OrderStudentView;
   items: OrderItemView[];
@@ -100,6 +102,7 @@ export type VendorOrdersData = {
   orders: OrderView[];
   counts: {
     awaitingAcceptance: number;
+    awaitingPayment: number;
     pending: number;
     verified: number;
     today: number;

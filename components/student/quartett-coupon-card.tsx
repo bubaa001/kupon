@@ -24,6 +24,7 @@ export function QuartettCouponCard({
   const expiredAt = useExpired(order.expiresAt);
   const expired = order.status === 'PENDING' && expiredAt;
   const awaitingAcceptance = order.status === 'AWAITING_ACCEPTANCE';
+  const awaitingPayment = order.status === 'AWAITING_PAYMENT';
   const extraItems = Math.max(0, order.itemCount - 1);
 
   return (
@@ -77,7 +78,11 @@ export function QuartettCouponCard({
           </span>
         ) : null}
         <span className="absolute bottom-1.5 left-1.5">
-          <StatusChip expired={expired} awaitingAcceptance={awaitingAcceptance} />
+          <StatusChip
+            expired={expired}
+            awaitingAcceptance={awaitingAcceptance}
+            awaitingPayment={awaitingPayment}
+          />
         </span>
       </div>
 
@@ -85,7 +90,7 @@ export function QuartettCouponCard({
       <div className="flex flex-1 gap-2 px-2.5 pt-2">
         <div className="flex w-[45%] flex-col border-r border-slate-300/80 pr-2">
           <p className="text-[6.5px] font-bold uppercase tracking-[0.16em] text-slate-400">
-            {awaitingAcceptance ? 'Meal request' : 'Meal coupon'}
+            {awaitingAcceptance || awaitingPayment ? 'Meal request' : 'Meal coupon'}
           </p>
           <p className="mt-0.5 line-clamp-3 text-[15px] font-extrabold uppercase leading-[1.03] tracking-[-0.02em] text-slate-900">
             {hero?.name ?? 'Coupon'}
@@ -100,8 +105,14 @@ export function QuartettCouponCard({
           <MetaRow label="Ref" value={order.reference.replace('ORD-', '')} mono />
           <MetaRow label="Total" value={formatTZS(order.total)} />
           <MetaRow
-            label={awaitingAcceptance ? 'Status' : 'Code'}
-            value={awaitingAcceptance ? 'Waiting for cafe' : order.couponCode}
+            label={awaitingAcceptance || awaitingPayment ? 'Status' : 'Code'}
+            value={
+              awaitingAcceptance
+                ? 'Waiting for cafe'
+                : awaitingPayment
+                  ? 'Pay after approval'
+                  : order.couponCode
+            }
             mono
           />
           <MetaRow label="Vendor" value={order.vendor.code} mono />
@@ -119,7 +130,13 @@ export function QuartettCouponCard({
             expired ? 'text-red-600' : 'text-amber-700',
           )}
         >
-          {expired ? 'Expired' : awaitingAcceptance ? 'Waiting for cafe' : 'Inasubiri'}
+          {expired
+            ? 'Expired'
+            : awaitingAcceptance
+              ? 'Waiting for cafe'
+              : awaitingPayment
+                ? 'Pay now'
+                : 'Inasubiri'}
         </p>
       </div>
     </article>
@@ -155,9 +172,11 @@ function MetaRow({
 function StatusChip({
   expired,
   awaitingAcceptance,
+  awaitingPayment,
 }: {
   expired: boolean;
   awaitingAcceptance: boolean;
+  awaitingPayment: boolean;
 }) {
   if (expired) {
     return (
@@ -172,6 +191,14 @@ function StatusChip({
       <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/60 bg-sky-100/95 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-[0.1em] text-sky-950 backdrop-blur-md">
         <span className="h-1 w-1 animate-pulse rounded-full bg-sky-700" aria-hidden />
         Needs acceptance
+      </span>
+    );
+  }
+  if (awaitingPayment) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/60 bg-violet-100/95 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-[0.1em] text-violet-950 backdrop-blur-md">
+        <span className="h-1 w-1 animate-pulse rounded-full bg-violet-700" aria-hidden />
+        Pay after approval
       </span>
     );
   }

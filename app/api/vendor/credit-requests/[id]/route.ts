@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         const claimed = await tx.creditRequest.updateMany({
           where: { id: creditRequest.id, status: 'PENDING_VENDOR' },
           data: {
-            status: 'PENDING_ADMIN',
+            status: 'PENDING_FINANCE',
             reviewedById: user.id,
             vendorReviewedAt: new Date(),
             vendorNote: body.note ?? null,
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           {
             actorId: user.id,
             universityId: creditRequest.universityId,
-            action: 'CAFETERIA_CREDIT_FORWARDED_TO_ADMIN',
+            action: 'CAFETERIA_CREDIT_FORWARDED_TO_FINANCE',
             entity: 'CreditRequest',
             entityId: creditRequest.id,
             metadata: { reference: creditRequest.reference, note: body.note ?? null },
@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           tx,
         );
       });
-      return ok({ status: 'PENDING_ADMIN' });
+      return ok({ status: 'PENDING_FINANCE' });
     }
 
     await prisma.$transaction(async (tx) => {

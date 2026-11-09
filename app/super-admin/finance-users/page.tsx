@@ -9,13 +9,33 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
-import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
+import { ApiClientError, apiFetch, patchJson, postJson } from '@/lib/client-api';
+import { MIN_WITHDRAWAL } from '@/lib/constants';
 
 type VendorOption = {
   id: string;
   name: string;
   code: string;
   university: { name: string };
+};
+
+type FinanceAccount = {
+  id: string;
+  name: string;
+  phone: string | null;
+  emergencyWithdrawalLimit: number;
+  managedVendor: { id: string; name: string; code: string } | null;
+};
+
+type EmergencyWithdrawal = {
+  id: string;
+  actorName: string;
+  vendorName: string;
+  vendorCode: string;
+  amount: number;
+  reason: string;
+  reference: string;
+  createdAt: string;
 };
 
 export default function TeamAccountsPage() {
@@ -25,14 +45,34 @@ export default function TeamAccountsPage() {
   const [role, setRole] = useState<'STAFF' | 'FINANCE'>('FINANCE');
   const [vendorId, setVendorId] = useState('');
   const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
+  const [emergencyWithdrawals, setEmergencyWithdrawals] = useState<EmergencyWithdrawal[]>([]);
+  const [limits, setLimits] = useState<Record<string, string>>({});
   const [loadingVendors, setLoadingVendors] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingLimit, setSavingLimit] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    apiFetch<{ vendors: VendorOption[] }>('/api/super-admin/finance-users')
-      .then(({ vendors: options }) => {
-        if (active) setVendors(options);
+    apiFetch<{
+      vendors: VendorOption[];
+      accounts: FinanceAccount[];
+      emergencyWithdrawals: EmergencyWithdrawal[];
+    }>('/api/super-admin/finance-users')
+      .then(({ vendors: options, accounts: financeAccounts, emergencyWithdrawals: withdrawals }) => {
+        if (active) {
+          setVendors(options);
+          setAccounts(financeAccounts);
+          setEmergencyWithdrawals(withdrawals);
+          setLimits(
+            Object.fromEntries(
+              financeAccounts.map((account) => [
+                account.id,
+                String(account.emergencyWithdrawalLimit),
+              ]),
+            ),
+          );
+        }
       })
       .catch((error) => {
         if (active) {
@@ -71,6 +111,41 @@ export default function TeamAccountsPage() {
     }
   }
 
+  async function saveLimit(account: FinanceAccount) {
+    const emergencyWithdrawalLimit = Number(limits[account.id] ?? 0);
+    if (!Number.isSafeInteger(emergencyWithdrawalLimit) || emergencyWithdrawalLimit < 0) {
+      toast.error('Enter a non-negative whole-shilling limit.');
+      return;
+    }
+    if (emergencyWithdrawalLimit !== 0 && emergencyWithdrawalLimit < MIN_WITHDRAWAL) {
+      toast.error(`Use 0 to disable or set a limit of at least TZS ${MIN_WITHDRAWAL.toLocaleString()}.`);
+      return;
+    }
+    setSavingLimit(account.id);
+    try {
+      await patchJson('/api/super-admin/finance-users', {
+        userId: account.id,
+        emergencyWithdrawalLimit,
+      });
+      setAccounts((current) =>
+        current.map((item) =>
+          item.id === account.id ? { ...item, emergencyWithdrawalLimit } : item,
+        ),
+      );
+      toast.success(
+        emergencyWithdrawalLimit === 0
+          ? 'Emergency withdrawal access disabled.'
+          : `Emergency withdrawal limit set to TZS ${emergencyWithdrawalLimit.toLocaleString()}.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof ApiClientError ? error.message : 'Could not update the withdrawal limit.',
+      );
+    } finally {
+      setSavingLimit(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -80,7 +155,8 @@ export default function TeamAccountsPage() {
       />
       <Alert variant="warning">
         Staff can verify coupons and update today’s availability only. Finance can review scoped
-        credit/support cases and monitor payments; nobody can manually confirm a checkout.
+        credit/support cases. Emergency withdrawals are disabled unless an admin grants a
+        per-account limit; settlements remain test simulations and send no money.
       </Alert>
       <Card className="max-w-2xl p-5 sm:p-6">
         <form onSubmit={createAccount} className="space-y-4">
@@ -170,6 +246,82 @@ export default function TeamAccountsPage() {
           temporary password securely.
         </div>
       </Card>
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Finance emergency limits</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Limits apply per withdrawal, only to the assigned cafeteria, and can be set to 0 to
+            revoke access. Every withdrawal requires a reason and is audit-logged.
+          </p>
+        </div>
+        {accounts.length ? accounts.map((account) => (
+          <Card key={account.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">{account.name}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {account.phone ?? 'No phone'} · {account.managedVendor
+                  ? `${account.managedVendor.name} (${account.managedVendor.code})`
+                  : 'Platform-wide Finance (not eligible for withdrawals)'}
+              </p>
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor={`withdrawal-limit-${account.id}`}>Per-withdrawal limit (TZS)</Label>
+                <Input
+                  id={`withdrawal-limit-${account.id}`}
+                  type="number"
+                  min={0}
+                  max={5_000_000}
+                  step={1}
+                  value={limits[account.id] ?? '0'}
+                  onChange={(event) =>
+                    setLimits((current) => ({ ...current, [account.id]: event.target.value }))
+                  }
+                  disabled={!account.managedVendor}
+                  className="w-48"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!account.managedVendor || savingLimit === account.id}
+                loading={savingLimit === account.id}
+                onClick={() => void saveLimit(account)}
+              >
+                Save limit
+              </Button>
+            </div>
+          </Card>
+        )) : (
+          <Card className="p-4 text-sm text-slate-500">No Finance accounts have been created yet.</Card>
+        )}
+      </section>
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Emergency withdrawal audit</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Finance requests and reasons are visible here. Entries are simulated settlements only;
+            no funds are sent.
+          </p>
+        </div>
+        {emergencyWithdrawals.length ? emergencyWithdrawals.map((withdrawal) => (
+          <Card key={withdrawal.id} className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900">
+                TZS {withdrawal.amount.toLocaleString()} · {withdrawal.vendorName}
+                {withdrawal.vendorCode ? ` (${withdrawal.vendorCode})` : ''}
+              </p>
+              <p className="text-xs text-slate-500">{new Date(withdrawal.createdAt).toLocaleString()}</p>
+            </div>
+            <p className="mt-1 text-xs text-slate-600">
+              Requested by {withdrawal.actorName} · {withdrawal.reference}
+            </p>
+            <p className="mt-2 text-sm text-slate-700">{withdrawal.reason || 'No reason recorded'}</p>
+          </Card>
+        )) : (
+          <Card className="p-4 text-sm text-slate-500">No emergency withdrawals have been recorded.</Card>
+        )}
+      </section>
     </div>
   );
 }

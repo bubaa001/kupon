@@ -42,6 +42,7 @@ export function OrderCard({
 }) {
   const pending = order.status === 'PENDING';
   const awaitingAcceptance = order.status === 'AWAITING_ACCEPTANCE';
+  const awaitingPayment = order.status === 'AWAITING_PAYMENT';
   const verified = order.status === 'VERIFIED';
   const hero = order.items[0];
 
@@ -51,6 +52,7 @@ export function OrderCard({
         'animate-order-in card-surface min-w-0 overflow-hidden',
         pending && 'border-amber-200/90 bg-amber-50/30',
         awaitingAcceptance && 'border-sky-200/90 bg-sky-50/30',
+        awaitingPayment && 'border-violet-200/90 bg-violet-50/30',
         verified && 'border-emerald-200/80 bg-emerald-50/20',
         order.status === 'CANCELLED' && 'opacity-70',
         isNew && 'ring-2 ring-amber-200/80',
@@ -166,7 +168,13 @@ export function OrderCard({
         {awaitingAcceptance ? (
           <p className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-sky-700/90">
             <Clock3 className="h-3 w-3" />
-            Payment is confirmed. Accept this order before Kupon issues the student&apos;s coupon.
+            No payment has been taken. Accept only if the requested food can be prepared.
+          </p>
+        ) : null}
+        {awaitingPayment ? (
+          <p className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-violet-700/90">
+            <Clock3 className="h-3 w-3" />
+            Request accepted. The student must pay before a coupon is issued.
           </p>
         ) : null}
       </div>
@@ -189,6 +197,9 @@ function OrderStatusChip({ status }: { status: OrderStatus }) {
         Pending
       </span>
     );
+  }
+  if (status === 'AWAITING_PAYMENT') {
+    return <Badge variant="default" dot>Waiting for payment</Badge>;
   }
   if (status === 'VERIFIED') {
     return (

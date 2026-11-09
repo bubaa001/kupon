@@ -10,8 +10,13 @@ export async function getStudentActiveOrders(studentId: string): Promise<OrderVi
   const orders = await prisma.order.findMany({
     where: {
       studentId,
-      status: { in: ['PAYMENT_PENDING', 'PENDING'] },
-      OR: [{ status: 'PAYMENT_PENDING' }, { expiresAt: { gt: new Date() } }],
+      status: {
+        in: ['PAYMENT_PENDING', 'AWAITING_ACCEPTANCE', 'AWAITING_PAYMENT', 'PENDING'],
+      },
+      OR: [
+        { status: 'PAYMENT_PENDING' },
+        { expiresAt: { gt: new Date() } },
+      ],
     },
     include: orderInclude,
     orderBy: { createdAt: 'desc' },

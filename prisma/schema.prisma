@@ -54,6 +54,7 @@ model User {
   role            String    @default("STUDENT") // STUDENT | VENDOR | ADMIN | SUPER_ADMIN | FINANCE | STAFF
   universityId    String?
   managedVendorId String?
+  emergencyWithdrawalLimit Int @default(0)
   passwordHash    String?
   otp             String?
   otpExpiresAt    DateTime?
@@ -274,6 +275,7 @@ model Order {
   status             String    @default("PENDING")
   total              Int
   creditApplied      Int       @default(0)
+  useCafeteriaCredit Boolean   @default(false)
   requiresAcceptance Boolean   @default(false)
   testOnly           Boolean   @default(false)
   itemCount          Int

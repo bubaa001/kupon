@@ -7,6 +7,8 @@ import { conflict, notFound, tooManyRequests } from '@/lib/errors';
 import { prisma } from '@/lib/db';
 import { phoneSchema } from '@/lib/validators';
 import { rateLimit } from '@/lib/rate-limit';
+import { MIN_WITHDRAWAL } from '@/lib/constants';
+import { safeJson } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,15 +35,100 @@ const createTeamAccountSchema = z.object({
   }
 });
 
+const withdrawalLimitSchema = z.object({
+  userId: z.string().min(1),
+  emergencyWithdrawalLimit: z
+    .number()
+    .int()
+    .min(0)
+    .max(5_000_000)
+    .refine((value) => value === 0 || value >= MIN_WITHDRAWAL),
+}).strict();
+
 export async function GET() {
   try {
     await requireApiUser(['SUPER_ADMIN']);
-    const vendors = await prisma.vendor.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true, name: true, code: true, university: { select: { name: true } } },
-      orderBy: [{ university: { name: 'asc' } }, { name: 'asc' }],
+    const [vendors, accounts, withdrawalEvents] = await Promise.all([
+      prisma.vendor.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, name: true, code: true, university: { select: { name: true } } },
+        orderBy: [{ university: { name: 'asc' } }, { name: 'asc' }],
+      }),
+      prisma.user.findMany({
+        where: { role: 'FINANCE' },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          emergencyWithdrawalLimit: true,
+          managedVendor: { select: { id: true, name: true, code: true } },
+        },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.auditLog.findMany({
+        where: { action: 'FINANCE_EMERGENCY_TEST_SETTLEMENT_RECORDED' },
+        select: {
+          id: true,
+          actor: { select: { name: true } },
+          metadata: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+    ]);
+    const emergencyWithdrawals = withdrawalEvents.map((event) => {
+      const metadata = safeJson<Record<string, unknown>>(event.metadata, {});
+      return {
+        id: event.id,
+        actorName: event.actor?.name ?? 'Former Finance user',
+        vendorName: typeof metadata.vendorName === 'string' ? metadata.vendorName : 'Cafeteria',
+        vendorCode: typeof metadata.vendorCode === 'string' ? metadata.vendorCode : '',
+        amount: typeof metadata.amount === 'number' ? metadata.amount : 0,
+        reason: typeof metadata.emergencyReason === 'string' ? metadata.emergencyReason : '',
+        reference: typeof metadata.reference === 'string' ? metadata.reference : '',
+        createdAt: event.createdAt.toISOString(),
+      };
     });
-    return ok({ vendors });
+    return ok({ vendors, accounts, emergencyWithdrawals });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const actor = await requireApiUser(['SUPER_ADMIN']);
+    const body = await parseJson(request, withdrawalLimitSchema);
+    const account = await prisma.user.findFirst({
+      where: { id: body.userId, role: 'FINANCE', managedVendorId: { not: null } },
+      select: { id: true, managedVendorId: true, universityId: true },
+    });
+    if (!account?.managedVendorId || !account.universityId) {
+      throw notFound('A cafeteria-scoped Finance account is required.');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: account.id },
+        data: { emergencyWithdrawalLimit: body.emergencyWithdrawalLimit },
+      });
+      await auditLog(
+        {
+          actorId: actor.id,
+          universityId: account.universityId,
+          action: 'FINANCE_EMERGENCY_WITHDRAWAL_LIMIT_UPDATED',
+          entity: 'User',
+          entityId: account.id,
+          metadata: {
+            vendorId: account.managedVendorId,
+            emergencyWithdrawalLimit: body.emergencyWithdrawalLimit,
+          },
+        },
+        tx,
+      );
+    });
+    return ok({ emergencyWithdrawalLimit: body.emergencyWithdrawalLimit });
   } catch (error) {
     return fail(error);
   }

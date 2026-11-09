@@ -94,7 +94,7 @@ export default function VendorCreditRequestsPage() {
       });
       toast.success(
         decision === 'ACCEPT'
-          ? 'Cafeteria credit issued to the student.'
+          ? 'Credit case sent to Finance for a decision.'
           : 'Credit request declined.',
       );
       await load();
@@ -110,7 +110,7 @@ export default function VendorCreditRequestsPage() {
       <PageHeader
         eyebrow="Cafeteria operations"
         title="Credit cases"
-        description="Respond to student unfulfilled-order claims or request Finance approval for a closing-time issue."
+        description="Review a student’s unfulfilled-order claim or send an operational credit case to Finance. Finance decides the credit; platform admins can see the full audit trail."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -189,7 +189,7 @@ export default function VendorCreditRequestsPage() {
                 {request.kind === 'STUDENT_UNFULFILLED' && request.status === 'PENDING_VENDOR' ? (
                   <div className="flex shrink-0 gap-2">
                     <Button size="sm" disabled={busy === request.id} onClick={() => void review(request, 'ACCEPT')}>
-                      <Check className="h-4 w-4" /> Accept & issue credit
+                    <Check className="h-4 w-4" /> Accept & send to Finance
                     </Button>
                     <Button size="sm" variant="outline" disabled={busy === request.id} onClick={() => void review(request, 'REJECT')}>
                       <X className="h-4 w-4" /> Decline

@@ -1,0 +1,2 @@
+ALTER TABLE "User"
+ADD COLUMN "emergencyWithdrawalLimit" INTEGER NOT NULL DEFAULT 0;

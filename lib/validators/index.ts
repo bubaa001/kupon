@@ -156,7 +156,6 @@ export const menuItemSchema = z.object({
     .min(1, 'Upload a food photo')
     .max(500)
     .transform((value) => value),
-  autoAccept: z.boolean().optional().default(false),
 }).strict();
 
 export const menuPatchSchema = menuItemSchema.partial().strict();

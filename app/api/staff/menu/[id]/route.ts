@@ -9,7 +9,10 @@ import { rateLimit } from '@/lib/rate-limit';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const availabilitySchema = z.object({ available: z.boolean() }).strict();
+const staffMenuPatchSchema = z
+  .object({ available: z.boolean().optional(), autoAccept: z.boolean().optional() })
+  .strict()
+  .refine((value) => value.available !== undefined || value.autoAccept !== undefined);
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -18,7 +21,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const limit = rateLimit(`staff:menu-availability:${vendor.id}`, 60, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many menu changes. Wait a minute and try again.');
 
-    const body = await parseJson(request, availabilitySchema);
+    const body = await parseJson(request, staffMenuPatchSchema);
     const item = await prisma.menuItem.findFirst({
       where: { id: params.id, vendorId: vendor.id },
       select: { id: true, universityId: true, name: true },
@@ -28,18 +31,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const updated = await prisma.$transaction(async (tx) => {
       const saved = await tx.menuItem.update({
         where: { id: item.id },
-        data: { available: body.available },
-        select: { id: true, name: true, available: true },
+        data: body,
+        select: { id: true, name: true, available: true, autoAccept: true },
       });
 
       await auditLog(
         {
           actorId: user.id,
           universityId: item.universityId,
-          action: 'STAFF_MENU_AVAILABILITY_UPDATED',
+          action: body.available !== undefined
+            ? 'STAFF_MENU_AVAILABILITY_UPDATED'
+            : 'STAFF_ORDER_AUTO_ACCEPT_UPDATED',
           entity: 'MenuItem',
           entityId: item.id,
-          metadata: { available: saved.available, vendorId: vendor.id },
+          metadata: { ...body, vendorId: vendor.id },
         },
         tx,
       );

@@ -42,10 +42,35 @@ export async function POST(request: Request, { params }: { params: { id: string 
     });
     if (!order) throw notFound('Order request not found.');
     if (
-      !['PENDING', 'AWAITING_ACCEPTANCE'].includes(order.status) ||
-      (order.status === 'PENDING' && order.expiresAt <= new Date())
+      !['PENDING', 'AWAITING_ACCEPTANCE', 'AWAITING_PAYMENT'].includes(order.status) ||
+      (order.status !== 'AWAITING_ACCEPTANCE' && order.expiresAt <= new Date())
     ) {
       throw conflict('Only an active order can be reported as unavailable.');
+    }
+    if (order.status === 'AWAITING_ACCEPTANCE' || order.status === 'AWAITING_PAYMENT') {
+      await prisma.$transaction(async (tx) => {
+        const cancelled = await tx.order.updateMany({
+          where: {
+            id: order.id,
+            vendorId: vendor.id,
+            status: order.status,
+          },
+          data: { status: 'CANCELLED' },
+        });
+        if (!cancelled.count) throw conflict('This order request was just handled.');
+        await auditLog(
+          {
+            actorId: user.id,
+            universityId: order.universityId,
+            action: 'UNPAID_ORDER_REQUEST_DECLINED',
+            entity: 'Order',
+            entityId: order.id,
+            metadata: { reference: order.reference, reason: body.reason },
+          },
+          tx,
+        );
+      });
+      return ok({ status: 'CANCELLED', message: 'The request was declined before payment.' });
     }
     const paid =
       order.transaction?.status === 'SETTLED' ||
@@ -64,7 +89,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
           vendorId: order.vendorId,
           universityId: order.universityId,
           kind: 'VENDOR_CLOSING',
-          status: 'PENDING_ADMIN',
+          status: 'PENDING_FINANCE',
           amount: order.total,
           reason: body.reason,
         },

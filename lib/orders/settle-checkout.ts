@@ -82,7 +82,7 @@ export async function settleOrderCheckout(input: {
 
     const orderClaim = await tx.order.updateMany({
       where: { id: orderId, status: 'PAYMENT_PENDING' },
-      data: { status: order.requiresAcceptance ? 'AWAITING_ACCEPTANCE' : 'PENDING' },
+      data: { status: 'PENDING' },
     });
     if (orderClaim.count === 0) {
       throw conflict('The order is no longer waiting for payment.');

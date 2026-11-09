@@ -40,7 +40,7 @@ import { LoadError } from './feedback';
 import { OrderCard } from './order-card';
 import { VerifyCouponDialog } from './verify-coupon-dialog';
 
-type TabKey = 'REQUESTS' | 'PENDING' | 'VERIFIED' | 'ALL';
+type TabKey = 'REQUESTS' | 'AWAITING_PAYMENT' | 'PENDING' | 'VERIFIED' | 'ALL';
 type VerifyMode = 'code' | 'scan';
 type VerifyTarget = { order: OrderView | null; mode: VerifyMode };
 
@@ -75,7 +75,10 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
 
       const pendingIds = payload.orders
         .filter(
-          (order) => order.status === 'PENDING' || order.status === 'AWAITING_ACCEPTANCE',
+          (order) =>
+            order.status === 'PENDING' ||
+            order.status === 'AWAITING_ACCEPTANCE' ||
+            order.status === 'AWAITING_PAYMENT',
         )
         .map((order) => order.id);
       const known = knownPendingRef.current;
@@ -96,15 +99,22 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           const requestCount = payload.orders.filter(
             (order) => fresh.includes(order.id) && order.status === 'AWAITING_ACCEPTANCE',
           ).length;
+          const paymentWaitCount = payload.orders.filter(
+            (order) => fresh.includes(order.id) && order.status === 'AWAITING_PAYMENT',
+          ).length;
           toast.success(
             requestCount
               ? `${requestCount} new meal request${requestCount === 1 ? '' : 's'}`
-              : fresh.length === 1
-                ? 'New coupon ready'
-                : `${fresh.length} coupons ready`,
+              : paymentWaitCount
+                ? `${paymentWaitCount} approved order${paymentWaitCount === 1 ? '' : 's'} awaiting payment`
+                : fresh.length === 1
+                  ? 'New coupon ready'
+                  : `${fresh.length} coupons ready`,
             {
               description: requestCount
-                ? 'Accept each request or report food that is unavailable.'
+                ? 'Confirm availability. Students pay only after acceptance.'
+                : paymentWaitCount
+                  ? 'The student must complete payment before a coupon is issued.'
                 : 'A student is waiting at the counter — verify their coupon.',
             },
           );
@@ -175,6 +185,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           orders,
           counts: {
             awaitingAcceptance: previous.counts.awaitingAcceptance,
+            awaitingPayment: previous.counts.awaitingPayment,
             pending: Math.max(0, previous.counts.pending - (wasPending ? 1 : 0)),
             verified: previous.counts.verified + (wasPending ? 1 : 0),
             today: previous.counts.today,
@@ -198,10 +209,19 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
     if (tab === 'REQUESTS') {
       return rows.filter((order) => order.status === 'AWAITING_ACCEPTANCE');
     }
+    if (tab === 'AWAITING_PAYMENT') {
+      return rows.filter((order) => order.status === 'AWAITING_PAYMENT');
+    }
     return rows.filter((order) => order.status === tab);
   }, [data, tab]);
 
-  const counts = data?.counts ?? { awaitingAcceptance: 0, pending: 0, verified: 0, today: 0 };
+  const counts = data?.counts ?? {
+    awaitingAcceptance: 0,
+    awaitingPayment: 0,
+    pending: 0,
+    verified: 0,
+    today: 0,
+  };
   const requestGroups = useMemo(() => {
     const groups = new Map<string, number>();
     for (const order of data?.orders ?? []) {
@@ -233,7 +253,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
     try {
       await postJson(`/api/vendor/orders/${encodeURIComponent(order.id)}/accept`, {});
       toast.success(`${order.items.map((item) => item.name).join(', ')} accepted`, {
-        description: 'The student coupon is now ready to show at the counter.',
+        description: 'The student can now pay. The coupon will appear after payment is confirmed.',
       });
       await load(true);
     } catch (cause) {
@@ -260,13 +280,18 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
     if (!unavailableOrder || unavailableReason.trim().length < 5) return;
     setReportingUnavailable(true);
     try {
-      await postJson(
+      const result = await postJson<{ status: string; message?: string }>(
         `/api/vendor/orders/${encodeURIComponent(unavailableOrder.id)}/unavailable`,
         { reason: unavailableReason.trim() },
       );
-      toast.success('Credit request sent to the platform admin', {
-        description: 'The student will see the decision and any approved cafeteria credit.',
-      });
+      toast.success(
+        result.status === 'CANCELLED' ? 'Unpaid request declined' : 'Credit case sent for review',
+        {
+          description:
+            result.message ??
+            'The finance team and platform admin can review the reason and case history.',
+        },
+      );
       setUnavailableOrder(null);
       setUnavailableReason('');
       await load(true);
@@ -284,6 +309,8 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           ? Inbox
           : tab === 'PENDING'
             ? CheckCircle2
+            : tab === 'AWAITING_PAYMENT'
+              ? Clock3
             : tab === 'VERIFIED'
               ? CheckCircle2
               : ClipboardCheck
@@ -293,15 +320,19 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           ? 'No meal requests waiting'
           : tab === 'PENDING'
             ? 'No coupons ready'
+            : tab === 'AWAITING_PAYMENT'
+              ? 'No approved orders awaiting payment'
           : tab === 'VERIFIED'
             ? 'No verified coupons yet'
             : 'No orders yet'
       }
       description={
         tab === 'REQUESTS'
-          ? 'Manual foods appear here after payment. Auto-accepted foods skip this step and issue a coupon immediately.'
+          ? 'Meal requests wait here for staff to confirm that the food is available. The student pays after acceptance.'
+          : tab === 'AWAITING_PAYMENT'
+            ? 'These orders were approved by staff. Students must complete payment before their coupon becomes available.'
           : tab === 'PENDING'
-            ? 'Accepted or auto-accepted orders appear here. Ask the student to show their coupon before handing over the food.'
+            ? 'Paid orders appear here. Ask the student to show their coupon before handing over the food.'
           : tab === 'VERIFIED'
             ? 'Coupons you verify move here so you can always look up what was collected and when.'
             : 'Students order by scanning the counter QR on your home screen. Orders appear here automatically.'
@@ -324,7 +355,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
       <PageHeader
         eyebrow="Order desk"
         title="Order & coupon desk"
-        description="Paid requests for manual foods wait here for acceptance; selected foods can auto-accept. Only accepted orders receive a coupon."
+        description="Check each request against current stock. Students pay only after staff accept; only paid orders receive a coupon."
         actions={
           <>
             <Button
@@ -432,10 +463,14 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
-              <TabsList className="grid w-full grid-cols-4 sm:w-[32rem]">
+              <TabsList className="grid w-full grid-cols-5 sm:w-[38rem]">
                 <TabsTrigger value="REQUESTS" className="gap-1 px-2 text-xs sm:px-3">
                   Requests
                   <TabCount value={counts.awaitingAcceptance} active={tab === 'REQUESTS'} />
+                </TabsTrigger>
+                <TabsTrigger value="AWAITING_PAYMENT" className="gap-1 px-2 text-xs sm:px-3">
+                  Pay
+                  <TabCount value={counts.awaitingPayment} active={tab === 'AWAITING_PAYMENT'} />
                 </TabsTrigger>
                 <TabsTrigger value="PENDING" className="gap-1 px-2 text-xs sm:px-3">
                   Ready

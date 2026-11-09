@@ -45,7 +45,7 @@ export async function acceptOrderRequest(input: {
         },
       },
       data: {
-        status: 'PENDING',
+        status: 'AWAITING_PAYMENT',
         expiresAt: new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000),
       },
     });
@@ -98,7 +98,7 @@ export async function acceptAllOrderRequests(input: {
         },
       },
       data: {
-        status: 'PENDING',
+        status: 'AWAITING_PAYMENT',
         expiresAt: new Date(now.getTime() + COUPON_TTL_HOURS * 60 * 60 * 1000),
       },
     });

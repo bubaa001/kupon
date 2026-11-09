@@ -18,11 +18,14 @@ type CreditRequest = {
   status: string;
   amount: number;
   reason: string;
+  vendorNote: string | null;
+  adminNote: string | null;
   createdAt: string;
   order: { reference: string; status: string; expiresAt: string };
   student: { studentId: string; user: { name: string } };
   vendor: { name: string; code: string };
   university: { name: string; code: string };
+  reviewer: { name: string; role: string } | null;
 };
 
 type CreditRequestsResponse = { requests: CreditRequest[] };
@@ -48,11 +51,17 @@ export function CreditRequestsView() {
   }, [load]);
 
   async function decide(requestId: string, decision: 'APPROVE' | 'REJECT') {
+    const note = window.prompt(`Platform-admin note for ${requestId}:`, '');
+    if (note === null) return;
+    if (note.trim().length < 5) {
+      toast.error('Enter a review note with at least 5 characters.');
+      return;
+    }
     setBusy(requestId);
     try {
       await patchJson(`/api/super-admin/credit-requests/${encodeURIComponent(requestId)}`, {
         decision,
-        note: decision === 'REJECT' ? 'Rejected by platform admin.' : undefined,
+        note,
       });
       toast.success(
         decision === 'APPROVE'
@@ -72,7 +81,7 @@ export function CreditRequestsView() {
       <PageHeader
         eyebrow="Platform operations"
         title="Cafeteria credit requests"
-        description="A cafeteria reports an unfulfilled paid order here. Approving issues cafeteria-specific credit to that student; it is not a cash refund."
+        description="Review credit cases and see Finance decisions across cafeterias. Finance can issue cafeteria-specific credit; every reason remains visible here."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -82,8 +91,7 @@ export function CreditRequestsView() {
       />
 
       <Alert variant="info">
-        Approval creates a credit balance that only works at the originating cafeteria, records
-        the decision, and charges the cafeteria for the unfulfilled order.
+        Student credit is restricted to the originating cafeteria and is not cash or a general wallet. Finance-issued credit decisions and notes are recorded here for platform oversight.
       </Alert>
 
       {loading && !data ? (
@@ -96,7 +104,19 @@ export function CreditRequestsView() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs font-semibold">{request.reference}</span>
-                    <Badge variant="warning">Needs review</Badge>
+                    <Badge
+                      variant={
+                        request.status === 'PENDING_ADMIN'
+                          ? 'warning'
+                          : request.status === 'APPROVED'
+                            ? 'success'
+                            : request.status === 'REJECTED'
+                              ? 'danger'
+                              : 'neutral'
+                      }
+                    >
+                      {request.status.replaceAll('_', ' ')}
+                    </Badge>
                     <Badge variant="neutral">{request.kind.replaceAll('_', ' ')}</Badge>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-slate-900">
@@ -107,11 +127,22 @@ export function CreditRequestsView() {
                     {' · '}Order {request.order.reference}
                   </p>
                   <p className="mt-2 text-sm text-slate-600">{request.reason}</p>
+                  {request.vendorNote || request.adminNote ? (
+                    <div className="mt-2 space-y-1 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
+                      {request.vendorNote ? <p>Cafeteria note: {request.vendorNote}</p> : null}
+                      {request.adminNote ? <p>Finance/review note: {request.adminNote}</p> : null}
+                    </div>
+                  ) : null}
+                  {request.reviewer ? (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Reviewed by {request.reviewer.name} ({request.reviewer.role})
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-[11px] text-slate-400">
                     {formatDateTime(request.createdAt)}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                {request.status === 'PENDING_ADMIN' ? <div className="flex shrink-0 gap-2">
                   <Button
                     size="sm"
                     disabled={busy === request.id}
@@ -129,7 +160,7 @@ export function CreditRequestsView() {
                     <X className="h-4 w-4" />
                     Reject
                   </Button>
-                </div>
+                </div> : null}
               </div>
             </Card>
           ))}

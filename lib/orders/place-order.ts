@@ -5,8 +5,6 @@ import { randomReference } from '@/lib/utils';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
 import type { PlaceOrderInput } from './types';
-import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
-import { calcOrderCheckoutFees } from '@/lib/fees';
 
 const MAX_ITEMS = 20;
 const MAX_QUANTITY = 10;
@@ -26,19 +24,8 @@ async function uniqueCouponCode(): Promise<string> {
 }
 
 /**
- * Starts a meal order and simulates a mobile-money payment through Kupon's
- * internal test gateway. The gateway automatically records receipt and
- * confirmation; no mobile-money collection occurs.
- *
- * The money path for the student-scans-vendor flow:
- *   validate tenant + menu availability + quantities
- *   → create a payment-pending order and transaction
- *   → create a test payment intent
- *   → Kupon's test gateway records received and confirmed events automatically
- *   → issue the coupon and book the vendor settlement
- *
- * The vendor later verifies the coupon; verification is an operational step and
- * never moves money a second time.
+ * Records a student's meal request without charging them. Manual requests wait
+ * for cafeteria approval; auto-accepted items can proceed directly to payment.
  */
 export async function placeOrder(input: {
   studentProfileId: string;
@@ -78,8 +65,6 @@ export async function placeOrder(input: {
   if (student.university.status !== 'ACTIVE') {
     throw conflict('Your university is suspended. Orders are paused.');
   }
-  await processKuponTestGatewayPayments({ studentId: student.id });
-
   const vendor = await prisma.vendor.findUnique({
     where: { id: input.payload.vendorId },
     include: { university: { select: { id: true, code: true, status: true } } },
@@ -131,130 +116,32 @@ export async function placeOrder(input: {
   const expiresAt = new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000);
 
   const created = await prisma.$transaction(async (tx) => {
-    const creditAccount = input.payload.useCredit
-      ? await tx.cafeteriaCredit.findUnique({
-          where: {
-            studentId_vendorId_isTest: {
-              studentId: student.id,
-              vendorId: vendor.id,
-              isTest: true,
-            },
-          },
-          select: { id: true, balance: true },
-        })
-      : null;
-    const creditApplied = Math.min(creditAccount?.balance ?? 0, total);
-    if (creditApplied > 0 && creditAccount) {
-      const debited = await tx.cafeteriaCredit.updateMany({
-        where: { id: creditAccount.id, balance: { gte: creditApplied } },
-        data: { balance: { decrement: creditApplied } },
-      });
-      if (!debited.count) throw conflict('Your cafeteria credit balance changed. Try again.');
-    }
-
-    const cashAmount = total - creditApplied;
-    const fees = calcOrderCheckoutFees(cashAmount);
-    const paymentReference = cashAmount > 0 ? randomReference('PAY') : null;
-    const transaction = paymentReference
-      ? await tx.transaction.create({
-          data: {
-            reference: paymentReference,
-            universityId: student.universityId,
-            studentId: student.id,
-            vendorId: vendor.id,
-            amount: fees.amountCharged,
-            fee: fees.apiFee + fees.kuponFee,
-            platformFee: fees.kuponFee,
-            aggregatorFee: fees.apiFee,
-            vendorSettlement: fees.vendorSettlement,
-            type: 'PAYMENT',
-            status: 'PENDING',
-            isTest: true,
-            metadata: JSON.stringify({
-              channel: 'MOBILE_MONEY_ORDER',
-              orderReference: reference,
-              couponCode,
-              vendorCode: vendor.code,
-              vendorName: vendor.name,
-              item:
-                orderItems.length === 1
-                  ? orderItems[0].name
-                  : `${orderItems[0].name} + ${orderItems.length - 1} more`,
-              items: orderItems.map((item) => ({
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-              })),
-              creditApplied,
-              gatewayFee: fees.apiFee,
-              kuponFee: fees.kuponFee,
-              vendorSettlement: fees.vendorSettlement,
-              provider: 'kupon-test-gateway',
-              stage: 'INITIATED',
-            }),
-          },
-        })
-      : null;
-
-    if (transaction) {
-      await tx.paymentEvent.create({
-        data: {
-          transactionId: transaction.id,
-          sequence: 1,
-          stage: 'INITIATED',
-          source: 'KUPON_TEST_GATEWAY',
-        },
-      });
-    }
-
     const order = await tx.order.create({
       data: {
         reference,
         universityId: student.universityId,
         studentId: student.id,
         vendorId: vendor.id,
-        status: transaction
-          ? 'PAYMENT_PENDING'
-          : requiresAcceptance
-            ? 'AWAITING_ACCEPTANCE'
-            : 'PENDING',
+        status: requiresAcceptance ? 'AWAITING_ACCEPTANCE' : 'AWAITING_PAYMENT',
         total,
-        creditApplied,
+        creditApplied: 0,
+        useCafeteriaCredit: input.payload.useCredit === true,
         requiresAcceptance,
         testOnly: true,
         itemCount,
         couponCode,
         note: input.payload.note?.trim() || null,
-        transactionId: transaction?.id ?? null,
         expiresAt,
         items: { create: orderItems.map(({ autoAccept: _autoAccept, ...item }) => item) },
       },
       include: orderInclude,
     });
 
-    if (creditApplied > 0 && creditAccount) {
-      const updatedAccount = await tx.cafeteriaCredit.findUniqueOrThrow({
-        where: { id: creditAccount.id },
-        select: { balance: true },
-      });
-      await tx.creditMovement.create({
-        data: {
-          reference: randomReference('CRD'),
-          creditId: creditAccount.id,
-          orderId: order.id,
-          kind: 'SPEND',
-          amount: creditApplied,
-          balanceAfter: updatedAccount.balance,
-          createdById: input.actorId,
-        },
-      });
-    }
-
-    return { order, paymentReference };
+    return order;
   });
 
   const updatedOrder = await prisma.order.findUnique({
-    where: { id: created.order.id },
+    where: { id: created.id },
     include: orderInclude,
   });
   if (!updatedOrder) throw notFound('The order could not be loaded.');
@@ -276,18 +163,17 @@ export async function placeOrder(input: {
 
   return {
     order: serializedOrder,
-    transactionId: created.paymentReference,
+    transactionId: null,
     payment: {
-        status: created.paymentReference ? 'PENDING' : 'SETTLED',
-        message: created.paymentReference
-          ? `Kupon test gateway is simulating TZS ${serializedOrder.amountPaid.toLocaleString()} payment, including TZS ${serializedOrder.apiFee.toLocaleString()} API fee. No real money is collected.`
-          : updatedOrder.status === 'AWAITING_ACCEPTANCE'
-            ? 'Paid with cafeteria credit. The cafeteria must accept the request before a coupon is issued.'
-            : 'Order paid with cafeteria credit. No new money was collected.',
-        demo: true,
-        amountCharged: serializedOrder.amountPaid,
-        apiFee: serializedOrder.apiFee,
-        kuponFee: serializedOrder.kuponFee,
+      status: updatedOrder.status,
+      message:
+        updatedOrder.status === 'AWAITING_ACCEPTANCE'
+          ? 'Your request is waiting for the cafeteria to confirm the food is available. You will pay after approval.'
+          : 'Your request is approved for payment. Pay to receive your coupon.',
+      demo: true,
+      amountCharged: 0,
+      apiFee: 0,
+      kuponFee: 0,
       requiresAcceptance: updatedOrder.status === 'AWAITING_ACCEPTANCE',
     },
   };
@@ -303,7 +189,8 @@ export async function getStudentOrderCoupon(studentProfileId: string, orderId: s
   const couponToken =
     order.status === 'PAYMENT_PENDING' ||
     order.status === 'PAYMENT_FAILED' ||
-    order.status === 'AWAITING_ACCEPTANCE'
+    order.status === 'AWAITING_ACCEPTANCE' ||
+    order.status === 'AWAITING_PAYMENT'
       ? null
       : await signCouponToken(
           {

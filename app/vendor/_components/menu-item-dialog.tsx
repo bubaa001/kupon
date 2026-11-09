@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   FOOD_CATEGORIES,
@@ -64,7 +63,6 @@ export function MenuItemDialog({
   const [categoryMode, setCategoryMode] = useState<'preset' | 'custom'>('preset');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [autoAccept, setAutoAccept] = useState(false);
   const [previewQty, setPreviewQty] = useState(0);
   const [saving, setSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -89,7 +87,6 @@ export function MenuItemDialog({
     setCategoryMode(!itemCategory || categoryIsPreset ? 'preset' : 'custom');
     setDescription(item?.description ?? '');
     setImageUrl(item?.imageUrl ?? '');
-    setAutoAccept(item?.autoAccept ?? false);
     setPreviewQty(0);
     setSaving(false);
     setAttempted(false);
@@ -500,24 +497,6 @@ export function MenuItemDialog({
                 <p className="text-[10px] text-slate-400">
                   One short line is enough. It shows under the dish name on the menu.
                 </p>
-              </div>
-
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-3.5">
-                <div className="min-w-0">
-                  <Label htmlFor="menu-auto-accept" className="cursor-pointer">
-                    Auto-accept this food
-                  </Label>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">
-                    Use for meals you can reliably serve. Orders containing manual foods wait for
-                    staff approval before a coupon is issued.
-                  </p>
-                </div>
-                <Switch
-                  id="menu-auto-accept"
-                  checked={autoAccept}
-                  onCheckedChange={setAutoAccept}
-                  className="mt-0.5"
-                />
               </div>
 
               <div className="flex gap-2.5 rounded-xl border border-emerald-200/70 bg-emerald-50/70 p-3">

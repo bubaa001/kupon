@@ -9,9 +9,12 @@ export async function GET() {
   try {
     const user = await requireApiUser(['FINANCE']);
     const vendorScope = user.managedVendor ? { vendorId: user.managedVendor.id } : {};
-    const [creditRequests, supportTickets] = await Promise.all([
+    const [creditRequests, supportTickets, emergencySettlement, withdrawalLimit] = await Promise.all([
       prisma.creditRequest.findMany({
-        where: { ...vendorScope, status: { in: ['APPROVED', 'REJECTED'] } },
+        where: {
+          ...vendorScope,
+          status: { in: ['PENDING_FINANCE', 'APPROVED', 'REJECTED'] },
+        },
         include: {
           order: { select: { reference: true, status: true, expiresAt: true } },
           student: { select: { studentId: true, user: { select: { name: true } } } },
@@ -33,9 +36,28 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 100,
       }),
+      user.managedVendor
+        ? prisma.vendor.findUnique({
+            where: { id: user.managedVendor.id },
+            select: { pendingBalance: true },
+          })
+        : Promise.resolve(null),
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: { emergencyWithdrawalLimit: true },
+      }),
     ]);
 
-    return ok({ creditRequests, supportTickets });
+    return ok({
+      creditRequests,
+      supportTickets,
+      emergencySettlement: user.managedVendor
+        ? {
+            pendingBalance: emergencySettlement?.pendingBalance ?? 0,
+            authorizedLimit: withdrawalLimit?.emergencyWithdrawalLimit ?? 0,
+          }
+        : null,
+    });
   } catch (error) {
     return fail(error);
   }

@@ -36,6 +36,7 @@ export function serializeOrder(order: OrderRecord, couponToken: string | null = 
     order.status === 'PAYMENT_PENDING' ||
     order.status === 'PAYMENT_FAILED' ||
     order.status === 'AWAITING_ACCEPTANCE' ||
+    order.status === 'AWAITING_PAYMENT' ||
     expired;
   return {
     id: order.id,
@@ -55,6 +56,7 @@ export function serializeOrder(order: OrderRecord, couponToken: string | null = 
     apiFee: order.transaction?.aggregatorFee ?? 0,
     kuponFee: order.transaction?.platformFee ?? 0,
     creditApplied: order.creditApplied,
+    useCafeteriaCredit: order.useCafeteriaCredit,
     vendor: {
       id: order.vendor.id,
       name: order.vendor.name,

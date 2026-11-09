@@ -50,6 +50,13 @@ const STATUS: Record<
     description:
       'Payment is confirmed. The cafeteria is checking availability; your coupon appears as soon as they accept.',
   },
+  AWAITING_PAYMENT: {
+    label: 'Approved — payment needed',
+    short: 'Pay now',
+    tone: 'border-primary-200 bg-primary-50 text-primary-800',
+    dot: 'bg-primary-500',
+    description: 'The cafeteria accepted your order. Complete payment to receive your coupon.',
+  },
   EXPIRED: {
     label: 'Coupon expired',
     short: 'Expired',

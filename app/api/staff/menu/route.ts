@@ -11,7 +11,7 @@ export async function GET() {
     const vendor = requireManagedVendor(user);
     const items = await prisma.menuItem.findMany({
       where: { vendorId: vendor.id },
-      select: { id: true, name: true, category: true, emoji: true, available: true },
+      select: { id: true, name: true, category: true, emoji: true, available: true, autoAccept: true },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
 

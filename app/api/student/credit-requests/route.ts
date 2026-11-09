@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     });
     if (!order) throw notFound('Order not found.');
     if (
-      !['PENDING', 'AWAITING_ACCEPTANCE'].includes(order.status) ||
+      order.status !== 'PENDING' ||
       (order.status === 'PENDING' && order.expiresAt <= new Date())
     ) {
       throw conflict('Only an active, unredeemed coupon can be submitted for cafeteria credit.');

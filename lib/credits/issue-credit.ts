@@ -16,8 +16,9 @@ type CreditRequestForIssue = {
 export async function issueCafeteriaCredit(input: {
   tx: Prisma.TransactionClient;
   request: CreditRequestForIssue;
-  expectedStatus: 'PENDING_VENDOR' | 'PENDING_ADMIN';
+  expectedStatus: 'PENDING_VENDOR' | 'PENDING_ADMIN' | 'PENDING_FINANCE';
   actorId: string;
+  note?: string;
 }) {
   const order = await input.tx.order.findUnique({
     where: { id: input.request.orderId },
@@ -38,7 +39,7 @@ export async function issueCafeteriaCredit(input: {
   ) {
     throw conflict('The credit request no longer matches its order.');
   }
-  if (order.status !== 'PENDING' && order.status !== 'AWAITING_ACCEPTANCE') {
+  if (order.status !== 'PENDING') {
     throw conflict('This order is no longer eligible for cafeteria credit.');
   }
   const isTest = order.testOnly || order.transaction?.isTest === true;
@@ -46,7 +47,7 @@ export async function issueCafeteriaCredit(input: {
   const cancelled = await input.tx.order.updateMany({
     where: {
       id: input.request.orderId,
-      status: { in: ['PENDING', 'AWAITING_ACCEPTANCE'] },
+      status: 'PENDING',
     },
     data: { status: 'CANCELLED' },
   });
@@ -58,6 +59,7 @@ export async function issueCafeteriaCredit(input: {
       status: 'APPROVED',
       reviewedById: input.actorId,
       reviewedAt: new Date(),
+      ...(input.note ? { adminNote: input.note } : {}),
       ...(input.expectedStatus === 'PENDING_VENDOR' ? { vendorReviewedAt: new Date() } : {}),
     },
   });
@@ -113,6 +115,7 @@ export async function issueCafeteriaCredit(input: {
         reference: input.request.reference,
         amount: input.request.amount,
         vendorId: input.request.vendorId,
+        note: input.note ?? null,
       },
     },
     input.tx,

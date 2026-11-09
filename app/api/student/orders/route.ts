@@ -20,6 +20,7 @@ const ordersQuerySchema = z.object({
       'PAYMENT_PENDING',
       'PAYMENT_FAILED',
       'AWAITING_ACCEPTANCE',
+      'AWAITING_PAYMENT',
       'PENDING',
       'VERIFIED',
       'CANCELLED',
@@ -44,6 +45,7 @@ async function withCoupon<
     order.status === 'PAYMENT_PENDING' ||
     order.status === 'PAYMENT_FAILED' ||
     order.status === 'AWAITING_ACCEPTANCE' ||
+    order.status === 'AWAITING_PAYMENT' ||
     (order.status === 'PENDING' && order.expiresAt <= new Date())
   ) {
     return null;
@@ -66,8 +68,8 @@ async function withCoupon<
  * remain hidden until payment is confirmed and the cafeteria accepts the order.
  *
  * POST /api/student/orders
- * Starts an internal test payment from a vendor menu. Kupon's test gateway
- * automatically simulates receipt and confirmation before issuing the coupon.
+ * Creates an unpaid meal request. Cafeteria acceptance is required before
+ * payment can be started.
  */
 export async function GET(request: Request) {
   try {
@@ -109,7 +111,10 @@ export async function GET(request: Request) {
     );
     // Only an unverified coupon is "active". Verified coupons live in history
     // and should not block the student from scanning a new vendor.
-    const active = serialized.find((order) => order.status === 'PENDING') ?? null;
+    const active =
+      serialized.find((order) =>
+        ['PENDING', 'AWAITING_ACCEPTANCE', 'AWAITING_PAYMENT'].includes(order.status),
+      ) ?? null;
 
     return ok({ orders: serialized, active });
   } catch (error) {

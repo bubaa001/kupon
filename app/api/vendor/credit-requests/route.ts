@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     });
     if (!order) throw notFound('Order not found for this cafeteria.');
     if (
-      !['PENDING', 'AWAITING_ACCEPTANCE'].includes(order.status) ||
+      order.status !== 'PENDING' ||
       (order.status === 'PENDING' && order.expiresAt <= new Date())
     ) {
       throw conflict('Only an active, unredeemed coupon can be submitted for closing-time credit.');
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           vendorId: vendor.id,
           universityId: order.universityId,
           kind: 'VENDOR_CLOSING',
-          status: 'PENDING_ADMIN',
+          status: 'PENDING_FINANCE',
           amount: order.total,
           reason: body.reason,
         },

@@ -33,6 +33,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           request: creditRequest,
           expectedStatus: 'PENDING_ADMIN',
           actorId: user.id,
+          note: body.note,
         }),
       );
       return ok({ status: 'APPROVED', creditBalance: account.balance });

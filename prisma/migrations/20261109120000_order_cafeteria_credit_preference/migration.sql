@@ -1,0 +1,2 @@
+ALTER TABLE "Order"
+ADD COLUMN "useCafeteriaCredit" BOOLEAN NOT NULL DEFAULT false;
