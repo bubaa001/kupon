@@ -134,7 +134,7 @@ export function OverviewView() {
       </div>
 
       <section
-        className="card-surface border-amber-200 bg-amber-50/50 p-5"
+        className="card-surface border-amber-200 bg-amber-50/50 p-4 sm:p-5"
         aria-label="Test gateway activity"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -179,8 +179,8 @@ export function OverviewView() {
         </dl>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="card-surface p-5 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div className="card-surface p-4 sm:p-5 lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="eyebrow">Platform fee revenue</p>
@@ -203,16 +203,19 @@ export function OverviewView() {
                   aria-live="polite"
                 >
                   <span className="live-status__dot" aria-hidden="true" />
-                  {refreshing ? 'Updating sales…' : 'Live · refreshes every 15s'}
+                  <span className="sm:hidden">{refreshing ? 'Updating…' : 'Live · 15s'}</span>
+                  <span className="hidden sm:inline">
+                    {refreshing ? 'Updating sales…' : 'Live · refreshes every 15s'}
+                  </span>
                 </span>
-                <span className="text-[10px] text-slate-400" aria-live="off">
+                <span className="text-[10px] text-slate-500 sm:text-slate-400" aria-live="off">
                   Updated {updatedAt}
                 </span>
               </div>
             </div>
           </div>
-          <div className={`refreshing-chart mt-4 ${refreshing ? 'opacity-70' : 'opacity-100'}`}>
-            <RevenueAreaChart data={chart} height={260} />
+          <div className={`refreshing-chart mt-3 sm:mt-4 ${refreshing ? 'opacity-70' : 'opacity-100'}`}>
+            <RevenueAreaChart data={chart} height={260} mobileHeight={220} />
           </div>
           {platform.platformFee7d === 0 ? (
             <p className="mt-2 text-center text-xs text-slate-400">

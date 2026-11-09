@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import {
   Area,
   AreaChart,
@@ -51,14 +52,22 @@ function CustomTooltip({
 export function RevenueAreaChart({
   data,
   height = 280,
+  mobileHeight = 220,
   showProfit = false,
 }: {
   data: RevenuePoint[];
   height?: number;
+  mobileHeight?: number;
   showProfit?: boolean;
 }) {
+  const chartSize = {
+    width: '100%',
+    '--chart-height-mobile': `${mobileHeight}px`,
+    '--chart-height-wide': `${height}px`,
+  } as CSSProperties;
+
   return (
-    <div style={{ width: '100%', height }} className="min-w-0">
+    <div style={chartSize} className="h-[var(--chart-height-mobile)] min-w-0 w-full sm:h-[var(--chart-height-wide)]">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
           <defs>

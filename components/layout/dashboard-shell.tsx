@@ -218,13 +218,13 @@ export function DashboardShell({
 
       <div className="lg:pl-[260px]">
         <header className="dashboard-glass-header sticky top-0 z-20 border-b border-slate-200/70">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <div className="flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:gap-3 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 lg:hidden"
+                    className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-600 transition-colors hover:bg-white lg:hidden"
                     aria-label="Open navigation"
                   >
                     <Menu className="h-5 w-5" />
@@ -279,7 +279,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           {children}
         </main>
       </div>
