@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CircleCheck, LockKeyhole, QrCode, RotateCcw, TicketCheck } from 'lucide-react';
+import { CircleCheck, LockKeyhole, RotateCcw, TicketCheck } from 'lucide-react';
 
 const steps = [
   'Order placed',
@@ -9,6 +9,35 @@ const steps = [
   'Payment confirmed',
   'Coupon issued',
 ];
+
+function DecorativeQr() {
+  const side = 25;
+  const cells = Array.from({ length: side * side }, (_, index) => {
+    const x = index % side;
+    const y = Math.floor(index / side);
+    const finder =
+      (x < 8 && y < 8) ||
+      (x >= side - 8 && y < 8) ||
+      (x < 8 && y >= side - 8);
+    if (finder) {
+      const originX = x >= side - 8 ? side - 8 : 0;
+      const originY = y >= side - 8 ? side - 8 : 0;
+      const ring = Math.max(Math.abs(x - originX - 3), Math.abs(y - originY - 3));
+      return ring === 3 || ring <= 1;
+    }
+    return ((x * 17 + y * 29 + x * y * 7) % 100) > 49;
+  });
+
+  return (
+    <span
+      className="payment-story__qr-grid"
+      aria-hidden="true"
+      style={{ gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))` }}
+    >
+      {cells.map((filled, index) => <i key={index} className={filled ? 'is-filled' : ''} />)}
+    </span>
+  );
+}
 
 /** An illustrative sequence only: it never creates an order or contacts the payment gateway. */
 export function PaymentStory() {
@@ -44,17 +73,16 @@ export function PaymentStory() {
 
   return (
     <div className="payment-story landing-enter landing-enter-delayed">
-      <div className="payment-story__ticket">
+      <div className={`payment-story__ticket ${step >= 2 ? 'is-unlocked' : ''}`}>
         <div className="payment-story__ticket-head">
           <span className="payment-story__brand"><TicketCheck aria-hidden className="h-5 w-5" /> Kupon</span>
-          <span className={`payment-story__status ${step >= 2 ? 'is-confirmed' : ''}`}>
-            {step < 0 ? 'Awaiting payment' : step < 2 ? 'Payment requested' : 'Payment confirmed'}
+          <span role="status" aria-live="polite" className={`payment-story__status ${step >= 2 ? 'is-confirmed' : ''}`}>
+            {step < 1 ? 'Awaiting payment' : step < 2 ? 'Payment requested' : 'Payment confirmed'}
           </span>
         </div>
-        <p className="payment-story__overline">SAMPLE MEAL COUPON</p>
-        <h2 className="payment-story__meal">Lunch order</h2>
+        <h2 className="payment-story__meal">Meal coupon</h2>
         <div className={`payment-story__details ${step >= 2 ? 'is-unlocked' : ''}`}>
-          <div className="payment-story__qr" aria-hidden="true"><QrCode strokeWidth={1.35} /></div>
+          <div className="payment-story__qr"><DecorativeQr /></div>
           <div>
             <p className="payment-story__code-label">Coupon code</p>
             <p className="payment-story__code">{step >= 2 ? 'KPN-4F9A-27QX' : 'KPN-••••-••••'}</p>
@@ -63,9 +91,10 @@ export function PaymentStory() {
           {step < 2 ? <div className="payment-story__lock"><LockKeyhole aria-hidden /> Locked until payment confirms</div> : null}
         </div>
         <div className="payment-story__ticket-foot">
-          <strong>{step >= 3 ? 'Ready to collect' : 'Payment unlocks your coupon'}</strong>
-          <span>Sample only · not redeemable</span>
+          <strong>Your coupon is ready only when your payment is.</strong>
+          <span>Sample coupon, not redeemable.</span>
         </div>
+        <span className="payment-story__glare" aria-hidden="true" />
       </div>
 
       <ol className="payment-story__tracker" aria-label="Illustrative order and payment stages" aria-live="off">
