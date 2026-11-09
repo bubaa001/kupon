@@ -234,8 +234,8 @@ export function MenuItemDialog({
         if (!saving) onOpenChange(next);
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:max-h-[92dvh] [&>button]:hidden">
-        <div className="flex max-h-[92dvh] min-h-0 flex-col">
+      <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:h-[92dvh] sm:max-h-[92dvh] [&>button]:hidden">
+        <div className="flex h-full min-h-0 flex-col">
         <DialogHeader className="shrink-0 gap-0 border-b border-amber-900/10 bg-[#FFFDF7] px-5 py-3.5 pr-14 sm:px-6 sm:py-4">
           <p className="eyebrow mb-1 text-amber-800/60">
             Menu · {item ? 'Edit dish' : 'New dish'}
@@ -582,7 +582,7 @@ export function MenuItemDialog({
         </div>
         </div>
 
-        <div className="shrink-0 border-t border-amber-900/10 bg-[#FFFDF7] px-5 py-3 sm:px-6">
+        <div className="shrink-0 border-t border-amber-900/10 bg-[#FFFDF7] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-3">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <p
               className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500"
