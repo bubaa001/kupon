@@ -6,8 +6,8 @@ remaining hardening has already shipped.
 
 ## Deployed baseline
 
-- Vercel project `kupon` is a Next.js app. Its latest deployment at the time of
-  review was `READY`, built from commit `cf5c093` on `main`.
+- Vercel project `kupon` is a Next.js app. Its latest production deployment at
+  the time of review was `READY`, built from commit `cf5c093` on `main`.
 - The app uses a custom `kupon_session` JWT cookie. Server-side guards verify the
   token, reload the user, check `sessionVersion`, and enforce role and tenant
   checks in application code.
@@ -68,6 +68,10 @@ identity.
 
 - The latest Vercel deployment is ready, but that only verifies the deployed
   commit's build; it does not prove row-level database authorization.
+- The review branch's Vercel Preview build stopped before compilation because
+  Preview does not have `DIRECT_URL`. The database credentials are currently
+  production-only; they were not copied into Preview. An isolated database
+  branch is required to verify a Preview safely.
 - TypeScript checking of the local checkout passed during this review.
 - A local Next production build could not complete in this Windows environment:
   it failed with `EPERM` while creating generated `.next` output directories,
