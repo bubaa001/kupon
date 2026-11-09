@@ -31,7 +31,8 @@ export type SliceTotals = {
   gmv: number;
   platformFee: number;
   universityRevenue: number;
-  aggregatorFee: number;
+  apiFeesCollected: number;
+  aggregatorCosts: number;
   topupVolume: number;
   transactions: number;
   settled: number;
@@ -71,7 +72,8 @@ export type TenantSummary = {
   monthlyRevenue: number;
   platformFee30d: number;
   universityRevenue30d: number;
-  aggregatorFee30d: number;
+  apiFeesCollected30d: number;
+  aggregatorCosts30d: number;
   topupVolume30d: number;
   transactionNet30d: number;
   successRate7d: number;
@@ -96,6 +98,7 @@ export type PlatformPulse = {
   platformFee30d: number;
   platformFeeChangePercent: number | null;
   transactionNet30d: number;
+  apiFeesCollected30d: number;
   aggregatorCosts30d: number;
   universityRevenue30d: number;
   topupVolume30d: number;
@@ -150,7 +153,8 @@ export type MonthPoint = {
   platformFee: number;
   saas: number;
   saasCollected: number;
-  aggregatorFee: number;
+  apiFeesCollected: number;
+  aggregatorCosts: number;
   universityRevenue: number;
   platformNet: number;
   transactions: number;
@@ -165,7 +169,8 @@ export type TenantRevenue = {
   gmv: number;
   platformFee: number;
   universityRevenue: number;
-  aggregatorFee: number;
+  apiFeesCollected: number;
+  aggregatorCosts: number;
   transactionNet: number;
   saasCollected: number;
   saasBilled: number;
@@ -192,11 +197,12 @@ export type RevenueData = {
   transactionFees: number;
   platformNet: number;
   saasRevenue: number;
+  apiFeesCollected: number;
   aggregatorCosts: number;
   universityRevenue: number;
   feeModel: {
     platformFeePercent: number;
-    aggregatorFeePercent: number;
+    apiFeePercent: number;
     universitySharePercent: number;
   };
   totals: RevenueTotals;

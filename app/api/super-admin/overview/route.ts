@@ -55,7 +55,14 @@ export async function GET() {
       (sum, tenant) => sum + tenant.universityRevenue30d,
       0,
     );
-    const aggregatorCosts30d = tenants.reduce((sum, tenant) => sum + tenant.aggregatorFee30d, 0);
+    const apiFeesCollected30d = tenants.reduce(
+      (sum, tenant) => sum + tenant.apiFeesCollected30d,
+      0,
+    );
+    const aggregatorCosts30d = tenants.reduce(
+      (sum, tenant) => sum + tenant.aggregatorCosts30d,
+      0,
+    );
     const topupVolume30d = tenants.reduce((sum, tenant) => sum + tenant.topupVolume30d, 0);
 
     const platform: PlatformPulse = {
@@ -74,6 +81,7 @@ export async function GET() {
       platformFee30d,
       platformFeeChangePercent: percentChange(last7.platformFee, prev7.platformFee),
       transactionNet30d: platformFee30d - universityRevenue30d - aggregatorCosts30d,
+      apiFeesCollected30d,
       aggregatorCosts30d,
       universityRevenue30d,
       topupVolume30d,

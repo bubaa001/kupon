@@ -25,10 +25,9 @@ import type {
  *
  * The fee model mirrors `lib/fees.ts` (every rate comes from `lib/env.ts`):
  *   gross sale → platformFee → university share (% of the fee) +
- *   aggregator rail cost + Kupon transaction net.
- * Top-ups generate no platform fee; any rail cost recorded on a top-up is still
- * counted as a platform cost. Rail costs are only recognised once a transaction
- * settles, so platform net reconciles exactly with the settled ledger.
+ *   Kupon transaction net.
+ * The payment aggregatorFee field is the API fee charged to the student and
+ * passed through, while top-up aggregator fees are platform rail costs.
  */
 
 export type TimedTxSlice = TxSlice & { ts: number };
@@ -112,7 +111,8 @@ export function summarize(slices: TxSlice[]): SliceTotals {
     gmv: 0,
     platformFee: 0,
     universityRevenue: 0,
-    aggregatorFee: 0,
+    apiFeesCollected: 0,
+    aggregatorCosts: 0,
     topupVolume: 0,
     transactions: 0,
     settled: 0,
@@ -133,10 +133,9 @@ export function summarize(slices: TxSlice[]): SliceTotals {
     if (isTopUp && slice.status === 'SETTLED') {
       totals.topupVolume += slice.amount;
     }
-    // Only settled rail charges count: pending/failed attempts have not been
-    // charged by the aggregator and must not reduce platform P&L.
-    if ((isPayment || isTopUp) && slice.status === 'SETTLED') {
-      totals.aggregatorFee += slice.aggregatorFee;
+    if (slice.status === 'SETTLED') {
+      if (isPayment) totals.apiFeesCollected += slice.aggregatorFee;
+      if (isTopUp) totals.aggregatorCosts += slice.aggregatorFee;
     }
     if (slice.status === 'SETTLED') totals.settled += 1;
     if (slice.status === 'FAILED') totals.failed += 1;
@@ -146,9 +145,11 @@ export function summarize(slices: TxSlice[]): SliceTotals {
   return totals;
 }
 
-/** Platform transaction margin: fees minus university share and rail costs. */
-export function feeNet(totals: Pick<SliceTotals, 'platformFee' | 'universityRevenue' | 'aggregatorFee'>) {
-  return totals.platformFee - totals.universityRevenue - totals.aggregatorFee;
+/** Platform transaction margin: fees minus university share and top-up rail costs. */
+export function feeNet(
+  totals: Pick<SliceTotals, 'platformFee' | 'universityRevenue' | 'aggregatorCosts'>,
+) {
+  return totals.platformFee - totals.universityRevenue - totals.aggregatorCosts;
 }
 
 /** Settled / (settled + failed) payment attempts, as a percentage. */
@@ -362,7 +363,8 @@ export async function buildTenantSummaries(): Promise<{
       monthlyRevenue: month.gmv,
       platformFee30d: last30.platformFee,
       universityRevenue30d: last30.universityRevenue,
-      aggregatorFee30d: last30.aggregatorFee,
+      apiFeesCollected30d: last30.apiFeesCollected,
+      aggregatorCosts30d: last30.aggregatorCosts,
       topupVolume30d: last30.topupVolume,
       transactionNet30d: feeNet(last30),
       successRate7d,

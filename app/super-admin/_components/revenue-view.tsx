@@ -68,7 +68,7 @@ export function RevenueView() {
       <PageHeader
         eyebrow="Bubaa Comp · Revenue"
         title="Platform revenue"
-        description="All-time fee waterfall, SaaS billing, mobile-money rail costs and the live double-entry ledger check. Includes test-gateway activity."
+        description="All-time fee waterfall, SaaS billing, top-up rail costs and the live double-entry ledger check. Includes test-gateway activity."
         actions={
           <>
             <Button
@@ -122,7 +122,7 @@ export function RevenueView() {
           value={formatTZS(data.platformNet)}
           icon={TrendingUp}
           accent="navy"
-          hint="fees + SaaS − university share − rail"
+          hint="fees + SaaS − university share − top-up rail costs"
         />
       </div>
 
@@ -146,7 +146,7 @@ export function RevenueView() {
           <p className="eyebrow">Unit economics</p>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
             Fee model: {data.feeModel.platformFeePercent}% platform fee ·{' '}
-            {data.feeModel.aggregatorFeePercent}% mobile-money rail ·{' '}
+            {data.feeModel.apiFeePercent}% student API fee (pass-through) ·{' '}
             {data.feeModel.universitySharePercent}% of the fee to the university
           </p>
           <div className="mt-4 space-y-2.5">
@@ -167,7 +167,12 @@ export function RevenueView() {
               tone="neutral"
             />
             <BreakdownRow
-              label="Mobile-money rail costs"
+              label="Student API fees (pass-through)"
+              value={formatTZS(data.apiFeesCollected)}
+              tone="neutral"
+            />
+            <BreakdownRow
+              label="Top-up rail costs"
               value={`− ${formatTZS(data.aggregatorCosts)}`}
               tone="negative"
             />
@@ -196,9 +201,9 @@ export function RevenueView() {
           </div>
 
           <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-            Each settled sale pays the university its share of the platform fee plus the
-            mobile-money rail cost; the remainder is Kupon transaction net. SaaS subscriptions are
-            billed separately every month and are the platform's largest revenue line.
+            Student API fees are passed through for payment processing and are not deducted from
+            Kupon's transaction earnings. Settled wallet top-up rail costs are deducted separately.
+            SaaS subscriptions are billed separately every month.
           </p>
         </div>
       </div>
@@ -206,9 +211,9 @@ export function RevenueView() {
       {totals.platformTransactionNet < 0 ? (
         <Alert variant="warning" title="Transaction-fee margin is negative this period">
           The platform absorbed {formatTZS(Math.abs(totals.platformTransactionNet))} more in
-          university revenue share and mobile-money rail costs than it collected in transaction
-          fees. SaaS subscriptions ({formatTZS(totals.saasCollected)} collected) keep the platform
-          cash-positive.
+          university revenue share and settled top-up rail costs than it collected in transaction
+          fees. Student API fees are pass-through charges, not Kupon costs. SaaS subscriptions (
+          {formatTZS(totals.saasCollected)} collected) are reported separately.
         </Alert>
       ) : null}
 
@@ -245,7 +250,8 @@ export function RevenueView() {
                       <TableHead className="text-right">GMV</TableHead>
                       <TableHead className="text-right">Fees</TableHead>
                       <TableHead className="text-right">University share</TableHead>
-                      <TableHead className="text-right">Rail costs</TableHead>
+                      <TableHead className="text-right">API fee pass-through</TableHead>
+                      <TableHead className="text-right">Top-up rail costs</TableHead>
                       <TableHead className="text-right">Txn net</TableHead>
                       <TableHead className="text-right">SaaS collected</TableHead>
                       <TableHead className="text-right">Platform net</TableHead>
@@ -271,7 +277,10 @@ export function RevenueView() {
                           {formatTZS(tenant.universityRevenue)}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap tabular text-sm text-slate-500">
-                          {formatTZS(tenant.aggregatorFee)}
+                          {formatTZS(tenant.apiFeesCollected)}
+                        </TableCell>
+                        <TableCell className="text-right whitespace-nowrap tabular text-sm text-slate-500">
+                          {formatTZS(tenant.aggregatorCosts)}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -327,7 +336,8 @@ export function RevenueView() {
                   <TableHead className="text-right">GMV</TableHead>
                   <TableHead className="text-right">Platform fees</TableHead>
                   <TableHead className="text-right">SaaS collected</TableHead>
-                  <TableHead className="text-right">Rail costs</TableHead>
+                  <TableHead className="text-right">API fee pass-through</TableHead>
+                  <TableHead className="text-right">Top-up rail costs</TableHead>
                   <TableHead className="text-right">Platform net</TableHead>
                 </TableRow>
               </TableHeader>
@@ -340,7 +350,8 @@ export function RevenueView() {
           </div>
           <p className="mt-2 text-[11px] text-slate-400">
             SaaS is recognised on the invoice issue date. Platform net = platform fees − university
-            share − rail costs + collected SaaS for the month.
+            share − top-up rail costs + collected SaaS for the month. Student API fees are
+            pass-through charges and are excluded from platform net.
           </p>
         </TabsContent>
       </Tabs>
@@ -496,9 +507,15 @@ function TenantRevenueCard({
         </div>
         <div>
           <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Rail costs
+            API fee pass-through
           </dt>
-          <dd className="tabular text-sm text-slate-700">{formatTZS(tenant.aggregatorFee)}</dd>
+          <dd className="tabular text-sm text-slate-700">{formatTZS(tenant.apiFeesCollected)}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Top-up rail costs
+          </dt>
+          <dd className="tabular text-sm text-slate-700">{formatTZS(tenant.aggregatorCosts)}</dd>
         </div>
         <div>
           <dt className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -539,7 +556,10 @@ function MonthlyRow({ month }: { month: MonthPoint }) {
       <TableCell className="text-right tabular text-sm">{formatTZS(month.platformFee)}</TableCell>
       <TableCell className="text-right tabular text-sm">{formatTZS(month.saasCollected)}</TableCell>
       <TableCell className="text-right tabular text-sm text-slate-500">
-        {formatTZS(month.aggregatorFee)}
+        {formatTZS(month.apiFeesCollected)}
+      </TableCell>
+      <TableCell className="text-right tabular text-sm text-slate-500">
+        {formatTZS(month.aggregatorCosts)}
       </TableCell>
       <TableCell
         className={cn(

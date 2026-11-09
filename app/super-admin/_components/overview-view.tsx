@@ -241,10 +241,17 @@ export function OverviewView() {
               tone={platform.transactionNet30d < 0 ? 'danger' : 'ok'}
             />
             <PulseRow
+              label="Student API fees passed through (30d)"
+              value={formatTZS(platform.apiFeesCollected30d)}
+            />
+            <PulseRow
               label="University share (30d)"
               value={formatTZS(platform.universityRevenue30d)}
             />
-            <PulseRow label="Rail costs (30d)" value={formatTZS(platform.aggregatorCosts30d)} />
+            <PulseRow
+              label="Top-up rail costs (30d)"
+              value={formatTZS(platform.aggregatorCosts30d)}
+            />
           </dl>
           <div className="mt-4 flex-1" />
           <Button asChild variant="outline" size="sm" className="w-full">
