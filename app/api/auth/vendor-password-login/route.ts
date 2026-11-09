@@ -12,12 +12,12 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    if (!rateLimit(`vendor-password-login:ip:${ip}`, 20, 10 * 60_000).allowed) {
+    if (!(await rateLimit(`vendor-password-login:ip:${ip}`, 20, 10 * 60_000)).allowed) {
       throw tooManyRequests('Too many login attempts from this network.');
     }
 
     const body = await parseJson(request, vendorPasswordLoginSchema);
-    if (!rateLimit(`vendor-password-login:${body.identifier}`, 8, 10 * 60_000).allowed) {
+    if (!(await rateLimit(`vendor-password-login:${body.identifier}`, 8, 10 * 60_000)).allowed) {
       throw tooManyRequests('This account is temporarily locked. Try again later.');
     }
 

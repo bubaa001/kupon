@@ -138,4 +138,3 @@ export const MIN_TOPUP = 500;
 export const MAX_TOPUP = 500_000;
 
 export const QR_TTL_SECONDS = 120;
-export const DEMO_MODE = process.env.DEMO_MODE !== 'false';

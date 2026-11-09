@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const ipLimit = rateLimit(`staff-login:ip:${ip}`, 20, 10 * 60 * 1000);
+    const ipLimit = await rateLimit(`staff-login:ip:${ip}`, 20, 10 * 60 * 1000);
     if (!ipLimit.allowed) throw tooManyRequests('Too many login attempts from this network.');
 
     const body = await parseJson(request, staffLoginSchema);
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const identifier = parsedPhone.success
       ? normalizePhone(rawIdentifier)
       : rawIdentifier.toLowerCase();
-    const phoneLimit = rateLimit(`staff-login:${identifier}`, 8, 10 * 60 * 1000);
+    const phoneLimit = await rateLimit(`staff-login:${identifier}`, 8, 10 * 60 * 1000);
     if (!phoneLimit.allowed) {
       throw tooManyRequests('This account is temporarily locked. Try again later.');
     }

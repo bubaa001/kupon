@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   try {
     const user = await requireApiUser(['STUDENT']);
     const student = requireStudent(user);
-    const limit = rateLimit(`student:pay-order:${student.id}`, 8, 60_000);
+    const limit = await rateLimit(`student:pay-order:${student.id}`, 8, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many payment attempts. Wait a minute and try again.');
     const body = await parseJson(request, paySchema);
     const result = await payApprovedOrder({

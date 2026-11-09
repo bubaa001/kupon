@@ -31,7 +31,7 @@ const setupSchema = z.object({
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const limit = rateLimit(`bootstrap-super-admin:${ip}`, 5, 60 * 60_000);
+    const limit = await rateLimit(`bootstrap-super-admin:${ip}`, 5, 60 * 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many setup attempts. Try again later.');
     if (!env.SUPER_ADMIN_SETUP_TOKEN) {
       throw forbidden('First-owner setup is disabled until its server token is configured.');

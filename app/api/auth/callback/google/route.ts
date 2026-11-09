@@ -9,7 +9,7 @@ import {
 } from '@/lib/google-auth';
 import { roleHome, signSession, setSessionCookie } from '@/lib/auth';
 import type { Role } from '@/lib/constants';
-import { externalUrl } from '@/lib/request-origin';
+import { externalUrl, getExternalOrigin } from '@/lib/request-origin';
 import {
   GOOGLE_SIGNUP_COOKIE,
   GOOGLE_SIGNUP_MAX_AGE,
@@ -111,12 +111,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-    const host = forwardedHost ?? request.headers.get('host');
-    const proto =
-      request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ??
-      request.nextUrl.protocol.replace(':', '');
-    const callbackOrigin = host ? `${proto}://${host}` : request.nextUrl.origin;
+    const callbackOrigin = getExternalOrigin(request);
     const { redirectUri } = resolveGoogleRedirectUri(config, callbackOrigin);
 
     const accessToken = await exchangeGoogleCode(config, code, redirectUri);

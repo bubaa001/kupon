@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     const student = requireStudent(user);
     if (!user.universityId) throw forbidden('Your student account is not linked to a campus.');
 
-    const limit = rateLimit(`student:place-order:${student.id}`, 8, 60_000);
+    const limit = await rateLimit(`student:place-order:${student.id}`, 8, 60_000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many order attempts. Wait a minute and try again.');
     }

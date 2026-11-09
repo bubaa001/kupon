@@ -13,6 +13,7 @@ const secret = new TextEncoder().encode(env.JWT_SECRET);
 
 export type SessionPayload = {
   uid: string;
+  sessionVersion: number;
   role: Role;
   universityId: string | null;
   name: string;
@@ -49,9 +50,16 @@ export type AuthUser = SessionPayload & {
   } | null;
 };
 
-export async function signSession(payload: SessionPayload): Promise<string> {
+export async function signSession(payload: Omit<SessionPayload, 'sessionVersion'>): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { id: payload.uid },
+    select: { sessionVersion: true },
+  });
+  if (!user) throw unauthorized();
+
   return new SignJWT({
     role: payload.role,
+    sessionVersion: user.sessionVersion,
     universityId: payload.universityId,
     name: payload.name,
     phone: payload.phone,
@@ -73,8 +81,11 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
       algorithms: ['HS256'],
     });
     if (!payload.sub || typeof payload.role !== 'string') return null;
+    const sessionVersion = Number(payload.sessionVersion ?? 0);
+    if (!Number.isInteger(sessionVersion) || sessionVersion < 0) return null;
     return {
       uid: payload.sub,
+      sessionVersion,
       role: payload.role as Role,
       universityId: (payload.universityId as string | null) ?? null,
       name: String(payload.name ?? ''),
@@ -138,6 +149,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   });
 
   if (!user) return null;
+  if (user.sessionVersion !== session.sessionVersion) return null;
   if (
     (user.role === 'STAFF' || user.role === 'FINANCE') &&
     user.managedVendorId &&
@@ -166,6 +178,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   return {
     id: user.id,
     uid: user.id,
+    sessionVersion: user.sessionVersion,
     role: user.role as Role,
     universityId: user.universityId,
     name: user.name,

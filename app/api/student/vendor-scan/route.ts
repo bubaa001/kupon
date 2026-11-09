@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       throw forbidden('Your student profile is not linked to a university.');
     }
 
-    const limit = rateLimit(`student:vendor-scan:${student.id}`, 30, 60_000);
+    const limit = await rateLimit(`student:vendor-scan:${student.id}`, 30, 60_000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many menu scans. Wait a minute and try again.');
     }

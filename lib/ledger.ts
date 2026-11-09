@@ -38,10 +38,32 @@ export async function postJournal(
   },
 ) {
   const lines = input.lines.filter((line) => (line.debit ?? 0) !== 0 || (line.credit ?? 0) !== 0);
+  if (lines.length < 2) {
+    throw new AppError('A ledger journal must contain at least two non-zero lines.', 500, 'LEDGER_INVALID');
+  }
+
+  for (const line of lines) {
+    const debit = line.debit ?? 0;
+    const credit = line.credit ?? 0;
+    if (
+      !Number.isSafeInteger(debit) ||
+      !Number.isSafeInteger(credit) ||
+      debit < 0 ||
+      credit < 0 ||
+      (debit === 0) === (credit === 0)
+    ) {
+      throw new AppError(
+        'Each ledger line must have one positive whole-shilling amount on exactly one side.',
+        500,
+        'LEDGER_INVALID',
+      );
+    }
+  }
+
   const totalDebit = lines.reduce((sum, line) => sum + (line.debit ?? 0), 0);
   const totalCredit = lines.reduce((sum, line) => sum + (line.credit ?? 0), 0);
 
-  if (totalDebit !== totalCredit) {
+  if (!Number.isSafeInteger(totalDebit) || !Number.isSafeInteger(totalCredit) || totalDebit !== totalCredit) {
     throw new AppError(
       `Ledger is unbalanced: debits ${totalDebit} ≠ credits ${totalCredit}.`,
       500,

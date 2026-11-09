@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     const actor = await requireAdmin();
     const scopeUniversityId =
       actor.role === 'SUPER_ADMIN' ? null : requireUniversityId(actor, request);
-    const limit = rateLimit(`admin:create-team-account:${actor.id}`, 10, 60 * 60_000);
+    const limit = await rateLimit(`admin:create-team-account:${actor.id}`, 10, 60 * 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many team accounts created. Try again later.');
 
     const body = await parseJson(request, createTeamInviteSchema);

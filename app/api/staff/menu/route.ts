@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       throw forbidden('Staff account is not linked to this cafeteria’s university.');
     }
 
-    const limit = rateLimit(`staff:menu-create:${vendor.id}`, 20, 60_000);
+    const limit = await rateLimit(`staff:menu-create:${vendor.id}`, 20, 60_000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many menu changes. Wait a minute and try again.');
     }

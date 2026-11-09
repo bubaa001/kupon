@@ -38,7 +38,7 @@ const allowedDocuments = new Map([
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    if (!rateLimit(`vendor-application:${ip}`, 5, 60 * 60_000).allowed) {
+    if (!(await rateLimit(`vendor-application:${ip}`, 5, 60 * 60_000)).allowed) {
       throw tooManyRequests('Too many applications from this network. Try again later.');
     }
 

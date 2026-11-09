@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const user = await requireApiUser(['VENDOR', 'STAFF']);
     const vendor = requireOperationalVendor(user);
     if (!user.universityId) throw forbidden('Vendor is not linked to a university.');
-    const limit = rateLimit(`vendor:unavailable-order:${vendor.id}`, 20, 60_000);
+    const limit = await rateLimit(`vendor:unavailable-order:${vendor.id}`, 20, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many requests. Try again shortly.');
     const body = await parseJson(request, requestSchema);
     const orderKey = await assertOrderRequestAccess(params.id, vendor.id, user.universityId);

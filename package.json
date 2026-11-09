@@ -5,24 +5,20 @@
   "description": "Kupon records cafeteria orders, test-payment events, verified meal coupons and cafeteria credit for Tanzanian universities.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && node scripts/migrate-vercel-production.mjs && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:push": "prisma db push",
+    "db:push": "pnpm exec tsx --env-file=.env scripts/guard-schema-push.ts && prisma db push",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed",
-    "db:repair": "tsx scripts/repair-wallets.ts",
-    "db:reset": "prisma db push --force-reset && prisma db seed",
-    "setup": "prisma generate && prisma db push && prisma db seed",
+    "db:seed": "pnpm exec tsx --env-file=.env scripts/guard-destructive-db.ts && prisma db seed",
+    "db:reset": "pnpm exec tsx --env-file=.env scripts/guard-destructive-db.ts && prisma db push --force-reset && prisma db seed",
+    "setup": "pnpm exec tsx --env-file=.env scripts/guard-destructive-db.ts && prisma generate && prisma db push && prisma db seed",
     "screenshots": "node scripts/screenshots.mjs",
     "smoke": "node scripts/smoke-test.mjs",
     "audit:mobile": "node scripts/audit-mobile.mjs",
     "link:google": "tsx scripts/link-google-email.ts",
     "screenshots:flow": "node scripts/screenshots-flow.mjs"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.1.1",
@@ -42,6 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.6.1",
     "html5-qrcode": "^2.3.8",
     "jose": "^5.9.6",
     "lucide-react": "^0.468.0",
@@ -72,7 +69,7 @@
     "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.6.0"
   },
   "packageManager": "pnpm@11.22.0"
 }

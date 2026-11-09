@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireApiUser(['STUDENT']);
     const student = requireStudent(user);
-    const limit = rateLimit(`student:credit-request:${student.id}`, 4, 10 * 60_000);
+    const limit = await rateLimit(`student:credit-request:${student.id}`, 4, 10 * 60_000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many credit requests. Wait a few minutes and try again.');
     }

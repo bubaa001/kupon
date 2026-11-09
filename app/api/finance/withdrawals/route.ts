@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!user.managedVendor || !user.universityId) {
       throw forbidden('Emergency withdrawals require a Finance account assigned to one cafeteria.');
     }
-    const limit = rateLimit(`finance:emergency-withdrawal:${user.id}`, 3, 60 * 60_000);
+    const limit = await rateLimit(`finance:emergency-withdrawal:${user.id}`, 3, 60 * 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many emergency withdrawals. Try again later.');
     const body = await parseJson(request, withdrawalSchema);
     const account = await prisma.user.findUnique({

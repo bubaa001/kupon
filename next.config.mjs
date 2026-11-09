@@ -10,7 +10,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
   async headers() {
-    return [
+    const headers = [
       {
         source: '/(.*)',
         headers: [
@@ -21,9 +21,18 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(self), microphone=(), geolocation=()',
           },
+          { key: 'X-DNS-Prefetch-Control', value: 'off' },
+          ...(process.env.VERCEL_ENV === 'production'
+            ? [{ key: 'Strict-Transport-Security', value: 'max-age=15552000' }]
+            : []),
         ],
       },
+      {
+        source: '/api/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, max-age=0' }],
+      },
     ];
+    return headers;
   },
 };
 

@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const user = await requireApiUser(['STAFF']);
     const vendor = requireManagedVendor(user);
-    const limit = rateLimit(`staff:menu-availability:${vendor.id}`, 60, 60_000);
+    const limit = await rateLimit(`staff:menu-availability:${vendor.id}`, 60, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many menu changes. Wait a minute and try again.');
 
     const body = await parseJson(request, staffMenuPatchSchema);
@@ -71,7 +71,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
   try {
     const user = await requireApiUser(['STAFF']);
     const vendor = requireManagedVendor(user);
-    const limit = rateLimit(`staff:menu-availability:${vendor.id}`, 60, 60_000);
+    const limit = await rateLimit(`staff:menu-availability:${vendor.id}`, 60, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many menu changes. Wait a minute and try again.');
 
     const item = await prisma.menuItem.findFirst({

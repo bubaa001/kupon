@@ -52,9 +52,41 @@ export function fail(error: unknown): NextResponse<ApiErrorBody> {
 }
 
 export async function parseJson<T>(request: Request, schema: ZodSchema<T>): Promise<T> {
+  const maxBytes = 256 * 1024;
+  const contentLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new AppError('Request body is too large.', 413, 'BODY_TOO_LARGE');
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) throw new AppError('Request body must be valid JSON.', 400, 'INVALID_JSON');
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new AppError('Request body is too large.', 413, 'BODY_TOO_LARGE');
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError('Request body could not be read.', 400, 'INVALID_JSON');
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(new TextDecoder().decode(bytes));
   } catch {
     throw new AppError('Request body must be valid JSON.', 400, 'INVALID_JSON');
   }

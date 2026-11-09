@@ -15,7 +15,7 @@ export async function PATCH(request: Request) {
   try {
     const user = await requireApiUser(['STAFF']);
     const vendor = requireManagedVendor(user);
-    const limit = rateLimit(`staff:auto-accept:${vendor.id}`, 20, 60_000);
+    const limit = await rateLimit(`staff:auto-accept:${vendor.id}`, 20, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many order settings changes. Try again shortly.');
     const body = await parseJson(request, autoAcceptSchema);
     const universityId = user.universityId;

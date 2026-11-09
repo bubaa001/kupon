@@ -16,7 +16,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | Method | Route | Role | Notes |
 | --- | --- | --- | --- |
 | GET | `/api/universities` | public | Active tenants for the login picker |
-| POST | `/api/auth/request-otp` | public | `{ phone, universityId }` → demoOtp in DEMO_MODE |
+| POST | `/api/auth/request-otp` | public | `{ phone, universityId }` → demoOtp only in non-production DEMO_MODE; unavailable in production while SMS provider is mock |
 | POST | `/api/auth/verify-otp` | public | `{ phone, code, universityId }` → sets cookie |
 | POST | `/api/auth/vendor-login` | public | `{ code, pin }` → sets cookie |
 | POST | `/api/auth/vendor-password-login` | public | `{ identifier, password }` where identifier is vendor email or legacy phone number; vendor passwords are at least 8 characters → vendor session cookie |
@@ -30,7 +30,7 @@ Auth is an httpOnly `kupon_session` JWT cookie. Every API route calls
 | POST | `/api/auth/logout` | any | clears cookie |
 | GET | `/api/auth/google/start?universityId=&role=student\|vendor\|staff` | public | Redirects to Google OAuth; only student sign-in requires a selected campus. Vendor sign-in activates an approved application |
 | GET | `/api/auth/callback/google` | public | Verifies state + code. Students can sign up; vendors must have an approved application matching their verified Google email; staff must match an existing account |
-| POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates student profile + session cookie |
+| POST | `/api/auth/google/signup` | Google signup ticket cookie | `{ name, phone, studentId, course?, year, confirm:true }` → creates profile outside production; production enrollment is closed until roster verification is configured |
 | GET | `/api/super-admin/vendor-applications` | SUPER_ADMIN | `{ applications, requests, rejectedApplications, rejectedRequests, universities }` → pending and rejected vendor applications plus available campuses; rejection notes are stored for review and are not emailed automatically |
 | PATCH | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | `{ decision:'APPROVE'\|'REJECT'\|'REOPEN', universityId?, physicalSiteVerified?, note? }` → approves/rejects or returns a rejected application to the review queue; approval assigns the campus and enables Google activation. Platform admins provision new institutions under `/super-admin/tenants` before assigning them. |
 | DELETE | `/api/super-admin/vendor-requests/:id` | SUPER_ADMIN | Permanently deletes a rejected application and its private TIN/TRA upload; writes an audit record |

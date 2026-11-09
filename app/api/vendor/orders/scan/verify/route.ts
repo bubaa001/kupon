@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const vendor = requireOperationalVendor(user);
     if (!user.universityId) throw forbidden('Vendor is not linked to a university.');
 
-    const limit = rateLimit(`vendor:verify-coupon:${vendor.id}`, 30, 60_000);
+    const limit = await rateLimit(`vendor:verify-coupon:${vendor.id}`, 30, 60_000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many verification attempts. Wait a minute and try again.');
     }

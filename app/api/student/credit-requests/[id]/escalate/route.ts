@@ -24,7 +24,7 @@ export async function POST(
   try {
     const user = await requireApiUser(['STUDENT']);
     const student = requireStudent(user);
-    const limit = rateLimit(`student:credit-escalation:${student.id}`, 3, 10 * 60_000);
+    const limit = await rateLimit(`student:credit-escalation:${student.id}`, 3, 10 * 60_000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many escalation requests. Wait before trying again.');
     }

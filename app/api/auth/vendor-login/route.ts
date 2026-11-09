@@ -12,11 +12,11 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const ipLimit = rateLimit(`vendor-login:ip:${ip}`, 25, 10 * 60 * 1000);
+    const ipLimit = await rateLimit(`vendor-login:ip:${ip}`, 25, 10 * 60 * 1000);
     if (!ipLimit.allowed) throw tooManyRequests('Too many login attempts from this network.');
 
     const body = await parseJson(request, vendorLoginSchema);
-    const codeLimit = rateLimit(`vendor-login:${body.code}`, 8, 10 * 60 * 1000);
+    const codeLimit = await rateLimit(`vendor-login:${body.code}`, 8, 10 * 60 * 1000);
     if (!codeLimit.allowed) {
       throw tooManyRequests('This vendor account is temporarily locked. Try again later.');
     }

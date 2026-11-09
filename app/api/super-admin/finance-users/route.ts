@@ -137,7 +137,7 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   try {
     const actor = await requireApiUser(['SUPER_ADMIN']);
-    const limit = rateLimit(`super-admin:create-finance:${actor.id}`, 5, 60 * 60_000);
+    const limit = await rateLimit(`super-admin:create-finance:${actor.id}`, 5, 60 * 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many team accounts created. Try again later.');
     const body = await parseJson(request, createTeamAccountSchema);
     const vendor = body.vendorId

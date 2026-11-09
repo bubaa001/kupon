@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const user = await requireApiUser(['VENDOR']);
     const vendor = requireVendor(user);
     if (!user.universityId) throw forbidden('Vendor is not linked to a university.');
-    const limit = rateLimit(`vendor:closing-credit:${vendor.id}`, 10, 10 * 60_000);
+    const limit = await rateLimit(`vendor:closing-credit:${vendor.id}`, 10, 10 * 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many requests. Try again later.');
     const body = await parseJson(request, closingRequestSchema);
 

@@ -95,7 +95,7 @@ export async function POST(request: Request) {
   try {
     const { user, vendor, universityId } = await requireVendorAccess();
 
-    const limit = rateLimit(`vendor-settlement:${vendor.id}`, 6, 60_000);
+    const limit = await rateLimit(`vendor-settlement:${vendor.id}`, 6, 60_000);
     if (!limit.allowed) {
       throw tooManyRequests(
         'Too many payout requests. Wait a minute before requesting another settlement.',

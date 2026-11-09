@@ -55,6 +55,7 @@ model User {
   universityId    String?
   managedVendorId String?
   emergencyWithdrawalLimit Int @default(0)
+  sessionVersion  Int       @default(0)
   passwordHash    String?
   otp             String?
   otpExpiresAt    DateTime?
@@ -165,6 +166,7 @@ model VendorApplication {
 
   @@index([status, createdAt])
   @@index([email, status])
+  @@index([universityId])
 }
 
 model TeamInvite {
@@ -187,6 +189,8 @@ model TeamInvite {
 
   @@index([vendorId, acceptedAt, expiresAt])
   @@index([email])
+  @@index([universityId])
+  @@index([createdById])
 }
 
 model Wallet {
@@ -301,6 +305,7 @@ model Order {
   @@index([vendorId, status, createdAt])
   @@index([studentId, createdAt])
   @@index([universityId, createdAt])
+  @@index([verifiedById])
 }
 
 model OrderItem {
@@ -317,6 +322,7 @@ model OrderItem {
   menuItem MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([menuItemId])
 }
 
 model PaymentEvent {
@@ -334,6 +340,7 @@ model PaymentEvent {
 
   @@unique([transactionId, sequence])
   @@index([transactionId, createdAt])
+  @@index([actorId])
 }
 
 model CafeteriaCredit {
@@ -382,6 +389,7 @@ model CreditRequest {
   @@index([universityId, status, createdAt])
   @@index([vendorId, status, createdAt])
   @@index([studentId, createdAt])
+  @@index([reviewedById])
 }
 
 model CreditMovement {
@@ -430,6 +438,9 @@ model SupportTicket {
 
   @@index([universityId, status, createdAt])
   @@index([vendorId, createdAt])
+  @@index([orderId])
+  @@index([studentId])
+  @@index([reviewedById])
 }
 
 // A student money request. Two distinct semantics share this audited queue:
@@ -476,6 +487,8 @@ model RefundRequest {
   @@index([studentId])
   @@index([studentId, kind, status])
   @@index([orderId])
+  @@index([transactionId])
+  @@index([reviewedById])
 }
 
 model AuditLog {
@@ -508,6 +521,16 @@ model OtpCode {
   university University? @relation(fields: [universityId], references: [id])
 
   @@index([phone, createdAt])
+  @@index([universityId])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
 }
 
 // A 120-second, single-use payment token. The QR payload is a signed JWT whose
@@ -528,6 +551,7 @@ model PaymentToken {
 
   @@index([code, expiresAt])
   @@index([studentId, expiresAt])
+  @@index([universityId])
 }
 
 // Double-entry journal. For each transaction, SUM(debit) === SUM(credit).

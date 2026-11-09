@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { createHmac, randomInt } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
@@ -12,6 +12,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const OTP_TTL_SECONDS = 5 * 60;
+const hashOtp = (phone: string, code: string) =>
+  createHmac('sha256', env.JWT_SECRET).update(`${phone}:${code}`).digest('hex');
 
 /**
  * Requests a login OTP. Rate limited per IP and per phone number.
@@ -20,15 +22,18 @@ const OTP_TTL_SECONDS = 5 * 60;
  */
 export async function POST(request: Request) {
   try {
+    if (process.env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'mock') {
+      throw new AppError('Student code login is unavailable until SMS delivery is configured.', 503, 'SMS_UNAVAILABLE');
+    }
     const ip = getClientIp(request);
-    const ipLimit = rateLimit(`otp:ip:${ip}`, 20, 10 * 60 * 1000);
+    const ipLimit = await rateLimit(`otp:ip:${ip}`, 20, 10 * 60 * 1000);
     if (!ipLimit.allowed) {
       throw tooManyRequests('Too many code requests from this network. Try again shortly.');
     }
 
     const body = await parseJson(request, otpRequestSchema);
 
-    const phoneLimit = rateLimit(`otp:phone:${body.phone}`, 4, 10 * 60 * 1000);
+    const phoneLimit = await rateLimit(`otp:phone:${body.phone}`, 4, 10 * 60 * 1000);
     if (!phoneLimit.allowed) {
       throw tooManyRequests(
         `Too many codes requested for this number. Try again in ${phoneLimit.retryAfterSeconds}s.`,
@@ -79,7 +84,7 @@ export async function POST(request: Request) {
     await prisma.otpCode.create({
       data: {
         phone: body.phone,
-        code,
+        code: hashOtp(body.phone, code),
         universityId: university.id,
         expiresAt: new Date(Date.now() + OTP_TTL_SECONDS * 1000),
       },

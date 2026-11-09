@@ -18,7 +18,7 @@ const decisionSchema = z.object({
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireApiUser(['SUPER_ADMIN']);
-    const limit = rateLimit(`platform:credit-review:${user.id}`, 30, 60_000);
+    const limit = await rateLimit(`platform:credit-review:${user.id}`, 30, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many review actions. Try again shortly.');
     const body = await parseJson(request, decisionSchema);
     const creditRequest = await prisma.creditRequest.findFirst({

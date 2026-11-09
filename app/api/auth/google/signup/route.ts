@@ -7,6 +7,7 @@ import { conflict, forbidden, tooManyRequests } from '@/lib/errors';
 import { auditLog } from '@/lib/audit';
 import { rateLimit } from '@/lib/rate-limit';
 import { signSession, setSessionCookie } from '@/lib/auth';
+import { env } from '@/lib/env';
 import {
   GOOGLE_SIGNUP_COOKIE,
   verifyGoogleSignupTicket,
@@ -42,7 +43,7 @@ const signupSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const limit = rateLimit(`google-signup:${getClientIp(request)}`, 8, 10 * 60 * 1000);
+    const limit = await rateLimit(`google-signup:${getClientIp(request)}`, 8, 10 * 60 * 1000);
     if (!limit.allowed) {
       throw tooManyRequests('Too many signup attempts. Try again in a few minutes.');
     }
@@ -52,6 +53,9 @@ export async function POST(request: NextRequest) {
     );
     if (!ticket) {
       throw forbidden('Your Google signup session expired. Start again from the login page.');
+    }
+    if (process.env.NODE_ENV === 'production' && !env.STUDENT_SIGNUP_ENABLED) {
+      throw forbidden('New student enrollment is temporarily closed. Ask your university administrator to verify your account.');
     }
 
     const body = await parseJson(request, signupSchema);

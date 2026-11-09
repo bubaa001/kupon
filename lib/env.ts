@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const booleanFromString = z
   .enum(['true', 'false'])
-  .default('true')
+  .default('false')
   .transform((value) => value === 'true');
 
 const optionalUrl = z.preprocess(
@@ -24,6 +24,7 @@ const EnvSchema = z.object({
   UNIVERSITY_REVENUE_SHARE_PERCENT: z.coerce.number().min(0).max(100).default(0),
   MOCK_SETTLEMENT_DELAY_MS: z.coerce.number().min(0).max(60_000).default(2000),
   SMS_PROVIDER: z.enum(['mock']).default('mock'),
+  STUDENT_SIGNUP_ENABLED: booleanFromString,
   USSD_SHORTCODE: z.string().default('*150*88#'),
   DEMO_MODE: booleanFromString,
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
@@ -46,6 +47,7 @@ const parsed = EnvSchema.safeParse({
   UNIVERSITY_REVENUE_SHARE_PERCENT: process.env.UNIVERSITY_REVENUE_SHARE_PERCENT,
   MOCK_SETTLEMENT_DELAY_MS: process.env.MOCK_SETTLEMENT_DELAY_MS,
   SMS_PROVIDER: process.env.SMS_PROVIDER,
+  STUDENT_SIGNUP_ENABLED: process.env.STUDENT_SIGNUP_ENABLED,
   USSD_SHORTCODE: process.env.USSD_SHORTCODE,
   DEMO_MODE: process.env.DEMO_MODE,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -63,6 +65,16 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-if (env.JWT_SECRET === 'kupon-dev-only-secret-change-me-to-a-64-char-random-string') {
-  console.warn('[kupon] Using the example JWT secret. Change it before deploying.');
+const EXAMPLE_JWT_SECRET = 'kupon-dev-only-secret-change-me-to-a-64-char-random-string';
+
+if (process.env.NODE_ENV === 'production' && env.DEMO_MODE) {
+  throw new Error('DEMO_MODE must be false in production.');
+}
+
+if (process.env.NODE_ENV === 'production' && (env.JWT_SECRET.length < 32 || env.JWT_SECRET === EXAMPLE_JWT_SECRET)) {
+  throw new Error('Production requires a unique JWT_SECRET with at least 32 characters.');
+}
+
+if (env.JWT_SECRET === EXAMPLE_JWT_SECRET) {
+  console.warn('[kupon] Using the example JWT secret. Replace it before deployment.');
 }

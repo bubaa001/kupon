@@ -18,7 +18,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const user = await requireApiUser(['VENDOR']);
     const vendor = requireVendor(user);
-    const limit = rateLimit(`vendor:credit-review:${vendor.id}`, 30, 60_000);
+    const limit = await rateLimit(`vendor:credit-review:${vendor.id}`, 30, 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many review actions. Try again shortly.');
     const body = await parseJson(request, decisionSchema);
 

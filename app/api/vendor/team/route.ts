@@ -44,7 +44,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { user: actor, vendor, universityId } = await requireVendorAccess();
-    const limit = rateLimit(`vendor:create-team-account:${vendor.id}`, 10, 60 * 60_000);
+    const limit = await rateLimit(`vendor:create-team-account:${vendor.id}`, 10, 60 * 60_000);
     if (!limit.allowed) throw tooManyRequests('Too many team accounts created. Try again later.');
 
     const body = await parseJson(request, createTeamInviteSchema);

@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
-import { externalUrl } from '@/lib/request-origin';
+import { externalUrl, getExternalOrigin } from '@/lib/request-origin';
 import {
   GOOGLE_STATE_COOKIE,
   buildGoogleAuthUrl,
@@ -38,12 +38,7 @@ export async function GET(request: Request) {
   }
 
   const canonical = new URL(env.NEXT_PUBLIC_APP_URL);
-  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  const host = forwardedHost ?? request.headers.get('host');
-  const proto =
-    request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ??
-    requestUrl.protocol.replace(':', '');
-  const actualOrigin = host ? `${proto}://${host}` : requestUrl.origin;
+  const actualOrigin = getExternalOrigin(request);
   const { redirectUri, matchedMobile } = resolveGoogleRedirectUri(config, actualOrigin);
   const userAgent = request.headers.get('user-agent') ?? '';
   const isMobileRequest = /android|iphone|ipad|ipod|mobile/i.test(userAgent);

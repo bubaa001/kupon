@@ -140,8 +140,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </div>
 
             <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-400">
-              Seeded demo data. The Kupon test gateway simulates payment statuses; no real money
-              moves. Phone OTP is temporarily disabled; students use Google.
+              Only payment status is simulated; no real money moves. Students sign in with Google
+              while SMS login is unavailable.
             </p>
           </div>
         </section>

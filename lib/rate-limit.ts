@@ -1,13 +1,6 @@
-/**
- * In-memory fixed-window rate limiter.
- *
- * This is intentionally a mock suitable for a single-instance MVP. In
- * production replace the Map with Upstash Redis / Vercel KV so limits are
- * shared across serverless instances. The API shape stays the same.
- */
-type Bucket = { count: number; resetAt: number };
-
-const buckets = new Map<string, Bucket>();
+import { createHmac } from 'node:crypto';
+import { prisma } from '@/lib/db';
+import { env } from '@/lib/env';
 
 export type RateLimitResult = {
   allowed: boolean;
@@ -15,32 +8,49 @@ export type RateLimitResult = {
   retryAfterSeconds: number;
 };
 
-export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
-  const now = Date.now();
-  const existing = buckets.get(key);
+/**
+ * Shared fixed-window limiter. The database upsert is atomic, so every
+ * serverless instance observes and increments the same bucket. Raw identifiers
+ * (including phone numbers and IP addresses) are never persisted.
+ */
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<RateLimitResult> {
+  const bucketKey = createHmac('sha256', env.JWT_SECRET).update(key).digest('hex');
+  const resetAt = new Date(Date.now() + windowMs);
+  const rows = await prisma.$queryRaw<Array<{ count: number; resetAt: Date }>>`
+    INSERT INTO "RateLimitBucket" ("key", "count", "resetAt", "updatedAt")
+    VALUES (${bucketKey}, 1, ${resetAt}, NOW())
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE
+        WHEN "RateLimitBucket"."resetAt" <= NOW() THEN 1
+        ELSE "RateLimitBucket"."count" + 1
+      END,
+      "resetAt" = CASE
+        WHEN "RateLimitBucket"."resetAt" <= NOW() THEN EXCLUDED."resetAt"
+        ELSE "RateLimitBucket"."resetAt"
+      END,
+      "updatedAt" = NOW()
+    RETURNING "count", "resetAt"
+  `;
 
-  if (!existing || existing.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: limit - 1, retryAfterSeconds: 0 };
+  // Opportunistic bounded cleanup avoids requiring a separate cron job.
+  if (Math.random() < 0.01) {
+    await prisma.$executeRaw`
+      DELETE FROM "RateLimitBucket"
+      WHERE "resetAt" < NOW() - INTERVAL '1 day'
+    `;
   }
 
-  existing.count += 1;
-  const allowed = existing.count <= limit;
+  const bucket = rows[0];
+  const allowed = bucket.count <= limit;
   return {
     allowed,
-    remaining: Math.max(0, limit - existing.count),
-    retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)),
+    remaining: Math.max(0, limit - bucket.count),
+    retryAfterSeconds: allowed
+      ? 0
+      : Math.max(1, Math.ceil((bucket.resetAt.getTime() - Date.now()) / 1000)),
   };
-}
-
-/** Periodically remove expired buckets so memory stays bounded. */
-if (typeof setInterval !== 'undefined') {
-  const timer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, bucket] of buckets) {
-      if (bucket.resetAt <= now) buckets.delete(key);
-    }
-  }, 60_000);
-  // Do not keep short-lived scripts (seed/build) alive because of the timer.
-  timer.unref?.();
 }

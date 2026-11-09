@@ -1,3 +1,5 @@
+import { env } from '@/lib/env';
+
 /**
  * Resolves the URL a browser actually used.
  *
@@ -13,7 +15,25 @@ export function getExternalOrigin(request: Request): string {
   const proto =
     request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ??
     url.protocol.replace(':', '');
-  return host ? `${proto}://${host}` : url.origin;
+  const canonical = new URL(env.NEXT_PUBLIC_APP_URL).origin;
+  if (!host) return canonical;
+
+  try {
+    const candidate = new URL(`${proto}://${host}`).origin;
+    const allowed = new Set([canonical]);
+    if (env.GOOGLE_MOBILE_REDIRECT_URI) {
+      allowed.add(new URL(env.GOOGLE_MOBILE_REDIRECT_URI).origin);
+    }
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(new URL(candidate).host)
+    ) {
+      allowed.add(candidate);
+    }
+    return allowed.has(candidate) ? candidate : canonical;
+  } catch {
+    return canonical;
+  }
 }
 
 export function externalUrl(request: Request, path: string): URL {

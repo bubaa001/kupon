@@ -25,7 +25,7 @@ const activationSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
-    if (!rateLimit(`vendor-activate:${ip}`, 5, 10 * 60_000).allowed) {
+    if (!(await rateLimit(`vendor-activate:${ip}`, 5, 10 * 60_000)).allowed) {
       throw tooManyRequests('Too many setup attempts. Try again later.');
     }
 

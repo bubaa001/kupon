@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@/lib/db';
+import { env } from '@/lib/env';
 import { fail, getClientIp, ok, parseJson } from '@/lib/api';
 import { AppError, tooManyRequests, unauthorized } from '@/lib/errors';
 import { signSession, setSessionCookie, roleHome } from '@/lib/auth';
@@ -9,16 +10,22 @@ import { otpVerifySchema } from '@/lib/validators';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const hashOtp = (phone: string, code: string) =>
+  createHmac('sha256', env.JWT_SECRET).update(`${phone}:${code}`).digest();
+
 export async function POST(request: Request) {
   try {
+    if (process.env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'mock') {
+      throw new AppError('Student code login is unavailable until SMS delivery is configured.', 503, 'SMS_UNAVAILABLE');
+    }
     const ip = getClientIp(request);
-    const ipLimit = rateLimit(`otp-verify:ip:${ip}`, 40, 10 * 60 * 1000);
+    const ipLimit = await rateLimit(`otp-verify:ip:${ip}`, 40, 10 * 60 * 1000);
     if (!ipLimit.allowed) {
       throw tooManyRequests('Too many verification attempts from this network.');
     }
 
     const body = await parseJson(request, otpVerifySchema);
-    const phoneLimit = rateLimit(`otp-verify:${body.phone}`, 10, 10 * 60 * 1000);
+    const phoneLimit = await rateLimit(`otp-verify:${body.phone}`, 10, 10 * 60 * 1000);
     if (!phoneLimit.allowed) {
       throw tooManyRequests('Too many attempts. Request a new code in a few minutes.');
     }
@@ -48,11 +55,21 @@ export async function POST(request: Request) {
       throw tooManyRequests('Too many incorrect attempts. Request a new code.', 60);
     }
 
-    if (otp.code !== body.code) {
-      await prisma.otpCode.update({
-        where: { id: otp.id },
+    const storedHash = Buffer.from(otp.code, 'hex');
+    const suppliedHash = hashOtp(body.phone, body.code);
+    const matches = storedHash.length === suppliedHash.length && timingSafeEqual(storedHash, suppliedHash);
+    if (!matches) {
+      const attempt = await prisma.otpCode.updateMany({
+        where: { id: otp.id, consumed: false, attempts: { lt: 5 } },
         data: { attempts: { increment: 1 } },
       });
+      if (attempt.count === 0) {
+        await prisma.otpCode.updateMany({
+          where: { id: otp.id, consumed: false },
+          data: { consumed: true },
+        });
+        throw tooManyRequests('Too many incorrect attempts. Request a new code.', 60);
+      }
       throw new AppError(
         `Incorrect code. ${Math.max(0, 4 - otp.attempts)} attempts left.`,
         401,

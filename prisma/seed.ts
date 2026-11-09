@@ -3,10 +3,13 @@ import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { subDays, setHours, setMinutes, startOfMonth, subMonths } from 'date-fns';
+import { assertSafeDestructiveDatabaseOperation } from '../lib/destructive-db-guard';
 
 if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
   throw new Error('Set DATABASE_URL and DIRECT_URL before seeding.');
 }
+
+assertSafeDestructiveDatabaseOperation();
 
 const prisma = new PrismaClient();
 
@@ -361,21 +364,6 @@ async function reset() {
 }
 
 async function main() {
-  // This seed is intentionally destructive for demo data, but it must never
-  // silently wipe real Google-created accounts during testing. `db:reset`
-  // clears the database first, so this guard only trips when someone runs the
-  // demo seed against a live/dev database with real signups.
-  const googleAccounts = await prisma.user.count({
-    where: { googleId: { not: null } },
-  });
-  if (googleAccounts > 0 && process.env.FORCE_DESTRUCTIVE_SEED !== '1') {
-    console.error(
-      `Refusing to run the destructive demo seed: ${googleAccounts} account(s) exist. ` +
-        'Use `pnpm db:reset` only when you intend to delete them, or set FORCE_DESTRUCTIVE_SEED=1.',
-    );
-    process.exit(1);
-  }
-
   console.log('🌱 Resetting Kupon demo database…');
   await reset();
 

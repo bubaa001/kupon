@@ -1,8 +1,17 @@
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit';
-import { badRequest, conflict, forbidden, notFound } from '@/lib/errors';
+import { badRequest, conflict, forbidden, notFound, tooManyRequests } from '@/lib/errors';
+import { rateLimit } from '@/lib/rate-limit';
 import { verifyCouponToken } from './coupon';
 import { orderInclude, serializeVendorOrder } from './serialize';
+
+async function rejectInvalidCodeAttempt(vendorId: string): Promise<never> {
+  const limit = await rateLimit(`vendor:invalid-coupon:${vendorId}`, 20, 15 * 60_000);
+  if (!limit.allowed) {
+    throw tooManyRequests('Too many invalid coupon attempts. Wait before trying again.', limit.retryAfterSeconds);
+  }
+  throw notFound('Coupon not found. Check the code and try again.');
+}
 
 /**
  * Vendor coupon verification. The coupon is only valid once; the conditional
@@ -42,7 +51,10 @@ export async function verifyOrderCoupon(input: {
     });
     orderId = byCode?.id;
   }
-  if (!orderId) throw notFound('Coupon not found. Check the code and try again.');
+  if (!orderId) {
+    if (expectedCode && !input.token) return rejectInvalidCodeAttempt(input.vendorId);
+    throw notFound('Coupon not found. Check the code and try again.');
+  }
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -50,9 +62,11 @@ export async function verifyOrderCoupon(input: {
   });
   if (!order) throw notFound('Order not found.');
   if (order.vendorId !== input.vendorId || order.universityId !== input.universityId) {
+    if (expectedCode && !input.token) return rejectInvalidCodeAttempt(input.vendorId);
     throw forbidden('This order belongs to another vendor or university.');
   }
   if (expectedCode && order.couponCode !== expectedCode) {
+    if (!input.token) return rejectInvalidCodeAttempt(input.vendorId);
     throw conflict('That coupon code does not match this order.');
   }
   if (order.status === 'VERIFIED') {

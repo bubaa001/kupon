@@ -149,7 +149,7 @@ USSD/offline payments are **not supported in this build**. The legacy wallet-bas
 
 ## Quick start
 
-Prerequisites: **Node.js 20+**, **pnpm 9+** (npm also works but lockfile is pnpm).
+Prerequisites: **Node.js 20.6+**, **pnpm 9+** (npm also works but lockfile is pnpm).
 
 ```bash
 # 1. Install
@@ -170,8 +170,12 @@ Open **http://localhost:3000**.
 > Configure both `DATABASE_URL` (transaction pooler) and `DIRECT_URL` (session
 > pooler) in `.env` before running Prisma commands. The example URLs use a
 > placeholder password; URL-encode special characters in your real password.
-> `pnpm db:seed` creates destructive demo data; run it only against a disposable
-> development project, never the production database. The legacy Wallet table remains for
+> `pnpm db:seed`, `pnpm db:reset`, and `pnpm setup` replace application data. They
+> require `ALLOW_DESTRUCTIVE_DB_RESET=1` and refuse to run in production. Remote
+> databases also require `ALLOW_REMOTE_DB_RESET=1`. Use them only with a disposable
+> development database. `pnpm db:push` also refuses production and requires
+> `ALLOW_SCHEMA_PUSH=1`; remote databases additionally require
+> `ALLOW_REMOTE_SCHEMA_PUSH=1`. Use reviewed migrations for releases. The legacy Wallet table remains for
 > historical compatibility only; current student checkout and credit flows do not use it.
 
 
@@ -382,19 +386,19 @@ Kupon separates **customer auth** from **staff auth** at the route level, not ju
 - **Session rehydration:** the JWT is verified, then the user is reloaded from the DB so suspended vendors/universities lose access immediately. Suspended university kills every tenant role.
 - **Internal test payments:** the test gateway records ordered payment events automatically; Finance can only inspect them. Test transactions and test credits are isolated from real-money reporting and wallet refunds.
 - **Zod validation** on every body/query mutation; stable `{ok,error}` envelope with human messages and no stack traces.
-- **Rate limiting** (in-memory mock): OTP request/verify, vendor/staff login, checkout and credit/support actions. **Swap for Upstash Redis/KV before production** — the helper is `lib/rate-limit.ts`.
+- **Shared rate limiting** for OTP, login, checkout, credit/support and other sensitive actions. Fixed-window counters are atomically stored in PostgreSQL with HMAC-keyed identifiers.
 - **Audit log** for payment-state changes, cafeteria credit, support tickets, vendor onboarding/suspension and coupon verification.
 - **Double-entry ledger invariant** checked when writing and exposed in Settings / Super-admin health.
-- Security headers (`X-Frame-Options`, `nosniff`, Referrer-Policy, camera-only Permissions-Policy).
+- Security headers (`X-Frame-Options`, `nosniff`, Referrer-Policy, camera-only Permissions-Policy, production HSTS); API responses are marked no-store.
 - The service worker **never caches HTML or `/api/*`**, so a shared campus phone cannot show another user's cached order data.
 
 ### Intentional MVP shortcuts (replace before production)
 
-- OTP login is disabled in the UI for now; the code and APIs are retained for when SMS delivery is enabled. OTP codes are stored in plaintext (with 5-minute expiry, attempt limit and rate limit) and are returned by the API in `DEMO_MODE=true`.
+- OTP login is disabled in the UI for now; the code and APIs are retained for when SMS delivery is enabled. OTP codes are stored as HMAC hashes, expire after five minutes, and have attempt and shared rate limits. Demo codes are only returned when `DEMO_MODE=true`, which is rejected in production.
 - SMS is logged to the server console, not delivered.
-- Google signup is open to any verified Google email in this MVP. In production, restrict it to the university's Google Workspace domain or verify the student number against the registry. Existing student-account linking is admin-controlled (or CLI) by design.
-- Session JWT is stateless; no refresh-token rotation or device revocation list.
-- Rate limiting is per-instance memory.
+- Google first-time student enrollment is production-disabled until an official university roster or equivalent enrollment verification is connected. Existing verified student accounts can still sign in; administrators can link accounts to Google through the controlled workflow.
+- Session JWTs are versioned against the user row; logout revokes that user's sessions across devices. Refresh-token rotation and per-device revocation are not implemented.
+- Prisma connects with a Supabase role that bypasses RLS. Application authorization and tenant scoping are the effective access boundary; a least-privilege role and tenant-aware database policies remain production hardening work.
 - There is no live mobile-money collection or payout rail in this build. Test payment and ticket events are not evidence of funds received.
 - Vendor applications have a PENDING state and admin approval, but there is no formal rejection workflow yet — an admin can suspend/reject by leaving the vendor pending or suspending it. Add a dedicated rejection reason before a real pilot.
 - Vendor food photos are written to `public/uploads/food` and served through `/api/uploads/food/<filename>` on the local filesystem. Serverless hosts need object storage (S3/R2/Cloudinary) for durable uploads; the menu contract only stores the returned URL.
@@ -432,23 +436,20 @@ in the Production environment. Use the Supabase transaction-pooler URL for
 `DATABASE_URL`, the session-pooler URL for `DIRECT_URL`, and set
 `NEXT_PUBLIC_APP_URL` and `GOOGLE_REDIRECT_URI` to the deployed HTTPS domain.
 Register the exact Google callback (`https://<your-domain>/api/auth/callback/google`)
-in Google Cloud Console. Production builds run the checked-in Prisma migrations
-before building the app, using the Production `DATABASE_URL` and `DIRECT_URL`.
-Keep Preview connected to a separate Supabase project so preview deployments
-cannot apply migrations to production.
+in Google Cloud Console. Deployments build the app without changing the database.
+Apply checked-in Prisma migrations as a separate, reviewed release step with
+`pnpm db:migrate:deploy`; do not expose database credentials to preview builds.
 
 Set a strong `JWT_SECRET` and `DEMO_MODE=false` in Vercel. Do not copy secrets
 into GitHub.
 
 > Vendor-uploaded food photos are stored in PostgreSQL so they persist across
 > serverless deployments. For larger media libraries, move binary files to
-> object storage to reduce database storage and bandwidth. Also replace the
-> in-memory rate limiter with a shared store before scaling to multiple
-> serverless instances.
+> object storage to reduce database storage and bandwidth.
 
 ### Docker / VPS
 
-`pnpm build && pnpm start` behind Nginx can connect to the same managed PostgreSQL database. Configure both database URLs and run `pnpm db:migrate:deploy` before starting the app.
+`pnpm build && pnpm start` behind Nginx can connect to the same managed PostgreSQL database. Configure both database URLs and run `pnpm db:migrate:deploy` as a separate release step before starting the app.
 
 ---
 
@@ -458,7 +459,7 @@ into GitHub.
 pnpm typecheck                  # strict TypeScript
 pnpm lint                       # next/core-web-vitals
 pnpm build                      # production build
-pnpm db:reset                   # deterministic seed + ledger check
+ALLOW_DESTRUCTIVE_DB_RESET=1 pnpm db:reset  # disposable database only
 
 # With the app running on :3000 and a disposable seeded DB:
 pnpm smoke                      # Creates a Finance observer and test-only orders
@@ -488,7 +489,7 @@ Manual checks worth doing before a real pilot:
 ## Roadmap beyond the MVP
 
 - Real aggregator webhooks + reconciliation job.
-- PostgreSQL + row-level security / Prisma tenant extension.
+- Least-privilege PostgreSQL runtime role with tenant-aware row-level policies or an equivalent enforced tenant context.
 - OTP delivery via Beem/NextSMS and IP + device fingerprint rate limits.
 - Offline-first vendor queue for flaky campus Wi-Fi (IndexedDB + idempotency keys).
 - Vendor payout batching (T+1) and bank reconciliation.
