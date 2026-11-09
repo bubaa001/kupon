@@ -85,6 +85,10 @@ export type PlatformPulse = {
   gmvYesterday: number;
   gmv7d: number;
   gmv30d: number;
+  testGmvToday: number;
+  testGmv7d: number;
+  testPaymentsToday: number;
+  testPayments7d: number;
   gmvChangePercent: number | null;
   platformFeeToday: number;
   platformFee7d: number;

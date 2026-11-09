@@ -33,10 +33,11 @@ export async function GET() {
     const weekStart = startOfDay(subDays(now, 6)).getTime();
     const prevWeekStart = startOfDay(subDays(now, 13)).getTime();
 
-    const [{ tenants, totals, invoices }, recent, ledger, pendingRefunds] =
+    const [{ tenants, totals, invoices }, recent, testRecent, ledger, pendingRefunds] =
       await Promise.all([
         buildTenantSummaries(),
         fetchTxSlices({ createdAt: { gte: startOfDay(subDays(now, 14)) } }),
+        fetchTxSlices({ createdAt: { gte: startOfDay(subDays(now, 14)) } }, true),
         ledgerCheck(),
         prisma.refundRequest.count({ where: { status: 'PENDING' } }),
       ]);
@@ -45,6 +46,8 @@ export async function GET() {
     const yesterday = summarize(within(recent, yesterdayStart, todayStart - 1));
     const last7 = summarize(within(recent, weekStart));
     const prev7 = summarize(within(recent, prevWeekStart, weekStart - 1));
+    const testToday = summarize(within(testRecent, todayStart));
+    const test7d = summarize(within(testRecent, weekStart));
 
     const gmv30d = tenants.reduce((sum, tenant) => sum + tenant.gmv30d, 0);
     const platformFee30d = tenants.reduce((sum, tenant) => sum + tenant.platformFee30d, 0);
@@ -60,6 +63,10 @@ export async function GET() {
       gmvYesterday: yesterday.gmv,
       gmv7d: last7.gmv,
       gmv30d,
+      testGmvToday: testToday.gmv,
+      testGmv7d: test7d.gmv,
+      testPaymentsToday: testToday.transactions,
+      testPayments7d: test7d.transactions,
       gmvChangePercent: percentChange(today.gmv, yesterday.gmv),
       platformFeeToday: today.platformFee,
       platformFee7d: last7.platformFee,

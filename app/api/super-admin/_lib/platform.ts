@@ -74,9 +74,10 @@ export function toIso(value: Date | string): string {
 
 export async function fetchTxSlices(
   where: Prisma.TransactionWhereInput,
+  isTest = false,
 ): Promise<TimedTxSlice[]> {
   const rows = await prisma.transaction.findMany({
-    where: { ...where, isTest: false },
+    where: { ...where, isTest },
     select: {
       universityId: true,
       amount: true,

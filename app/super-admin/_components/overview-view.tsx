@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Building2,
   CreditCard,
+  FlaskConical,
   Percent,
   Plus,
   RefreshCw,
@@ -131,6 +132,51 @@ export function OverviewView() {
           )} vendors`}
         />
       </div>
+
+      <section
+        className="card-surface border-amber-200 bg-amber-50/50 p-5"
+        aria-label="Test gateway activity"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <FlaskConical className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Test gateway activity</h2>
+              <p className="mt-1 text-xs text-slate-600">
+                Simulated payments shown in vendor sales; excluded from production financial totals.
+              </p>
+            </div>
+          </div>
+          <Badge variant="warning" dot>
+            Test only · no money collected
+          </Badge>
+        </div>
+        <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-amber-200 pt-4 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs font-medium text-slate-500">Simulated volume today</dt>
+            <dd className="mt-1 text-lg font-semibold tabular text-slate-900">
+              {formatTZS(platform.testGmvToday)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500">Confirmed test payments today</dt>
+            <dd className="mt-1 text-lg font-semibold tabular text-slate-900">
+              {formatNumber(platform.testPaymentsToday)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500">Simulated volume · last 7 days</dt>
+            <dd className="mt-1 text-lg font-semibold tabular text-slate-900">
+              {formatTZS(platform.testGmv7d)}
+              <span className="ml-2 text-xs font-medium text-slate-500">
+                ({formatNumber(platform.testPayments7d)} payments)
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="card-surface p-5 lg:col-span-2">
