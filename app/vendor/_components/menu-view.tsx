@@ -28,10 +28,10 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FoodProductCard } from '@/components/food';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { deleteJson, patchJson } from '@/lib/client-api';
 import { cn, formatTZS } from '@/lib/utils';
@@ -53,7 +53,7 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
   const { data, loading, error, reload } = useApiData<MenuResponse>(apiPath);
 
   const [mode, setMode] = useState<MenuViewMode>('manage');
-  const [layout, setLayout] = useState<MenuLayout>('grid');
+  const [layout, setLayout] = useState<MenuLayout>(audience === 'staff' ? 'list' : 'grid');
   const [filter, setFilter] = useState<MenuFilter>('ALL');
   const [category, setCategory] = useState<string>(ALL_CATEGORIES);
   const [search, setSearch] = useState('');
@@ -185,7 +185,7 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
   }
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5">
       <PageHeader
         eyebrow={mode === 'preview' ? 'Menu · Preview' : 'Menu'}
         title={
@@ -199,7 +199,7 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
           mode === 'preview'
             ? 'Exactly what a student sees after scanning your counter QR — dishes staff have marked in stock, with their photos, prices and categories.'
             : audience === 'staff'
-              ? 'Manage the food being served at the cafeteria. Add dishes, update prices and photos, and mark items available as stock changes.'
+              ? 'Keep today’s student menu accurate. Add foods, update prices and photos, and mark items in stock as service changes.'
               : 'Manage your cafeteria’s dishes, photos and prices from anywhere. Your staff update what is in stock each day.'
         }
         actions={
@@ -214,7 +214,9 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
 
       {error && !data ? <LoadError message={error} onRetry={reload} /> : null}
 
-      {loading && !data ? <MenuSkeleton /> : null}
+      {loading && !data ? (
+        <MenuLoadingSkeleton audience={audience} />
+      ) : null}
 
       {data && mode === 'preview' ? (
         <div aria-busy={loading}>
@@ -281,17 +283,23 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                   ) : null}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Tabs value={filter} onValueChange={(value) => setFilter(value as MenuFilter)}>
-                    <TabsList className="grid h-10 w-full grid-cols-3 sm:w-auto">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Tabs
+                    value={filter}
+                    onValueChange={(value) => setFilter(value as MenuFilter)}
+                    className="min-w-0 flex-1"
+                  >
+                    <TabsList className="grid h-10 w-full grid-cols-3">
                       {filterOptions.map((option) => (
                         <TabsTrigger
                           key={option.value}
                           value={option.value}
-                          className="gap-1 px-3 text-[11px] sm:text-xs"
+                          className="min-w-0 gap-1 px-1.5 text-[10px] sm:px-3 sm:text-xs"
                         >
                           {option.label}
-                          <span className="tabular text-[10px] text-slate-400">{option.count}</span>
+                          <span className="tabular text-[10px] text-slate-400 max-[379px]:hidden">
+                            {option.count}
+                          </span>
                         </TabsTrigger>
                       ))}
                     </TabsList>
@@ -302,7 +310,7 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
 
               {categories.length > 1 ? (
                 <div
-                  className="hide-scrollbar -mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-0.5"
+                  className="-mx-1 flex items-center gap-1.5 overflow-x-auto overscroll-x-contain px-1 pb-1.5 pt-1 touch-pan-x"
                   role="group"
                   aria-label="Filter by category"
                 >
@@ -380,31 +388,17 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                         revealIndex={index}
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDeleting(item)}
+                        availabilityAction={
+                          audience === 'staff' ? (
+                            <AvailabilityButton
+                              item={item}
+                              busy={availabilityBusy === item.id}
+                              disabled={availabilityBusy !== null}
+                              onToggle={() => void toggleAvailability(item)}
+                            />
+                          ) : undefined
+                        }
                       />
-                      {audience === 'staff' ? (
-                        <Button
-                          type="button"
-                          variant={item.available ? 'outline' : 'default'}
-                          size="sm"
-                          className="mt-2 w-full"
-                          loading={availabilityBusy === item.id}
-                          disabled={availabilityBusy !== null}
-                          aria-pressed={item.available}
-                          onClick={() => void toggleAvailability(item)}
-                        >
-                          {item.available ? (
-                            <>
-                              <EyeOff className="h-4 w-4" />
-                              Mark unavailable
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4" />
-                              Mark available
-                            </>
-                          )}
-                        </Button>
-                      ) : null}
                     </li>
                   ))}
                   <li className="min-w-0">
@@ -421,21 +415,17 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
                         priority={index < 4}
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDeleting(item)}
+                        availabilityAction={
+                          audience === 'staff' ? (
+                            <AvailabilityButton
+                              item={item}
+                              busy={availabilityBusy === item.id}
+                              disabled={availabilityBusy !== null}
+                              onToggle={() => void toggleAvailability(item)}
+                            />
+                          ) : undefined
+                        }
                       />
-                      {audience === 'staff' ? (
-                        <Button
-                          type="button"
-                          variant={item.available ? 'outline' : 'default'}
-                          size="sm"
-                          className="mt-2 w-full"
-                          loading={availabilityBusy === item.id}
-                          disabled={availabilityBusy !== null}
-                          aria-pressed={item.available}
-                          onClick={() => void toggleAvailability(item)}
-                        >
-                          {item.available ? 'Mark unavailable' : 'Mark available'}
-                        </Button>
-                      ) : null}
                     </li>
                   ))}
                   <li className="min-w-0">
@@ -528,6 +518,80 @@ function MenuBoardHero({
   onPreview: () => void;
   audience: 'vendor' | 'staff';
 }) {
+  if (audience === 'staff') {
+    const readiness = total > 0 ? Math.round((available / total) * 100) : 0;
+    const status =
+      total === 0
+        ? 'Add food to open service'
+        : available === 0
+          ? 'No food marked in stock'
+          : available === total
+            ? 'Everything is ready to serve'
+            : `${available} ${available === 1 ? 'food is' : 'foods are'} ready to serve`;
+
+    return (
+      <section
+        aria-label="Today’s service status"
+        className="relative overflow-hidden rounded-2xl border border-emerald-950/15 bg-white shadow-card"
+      >
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-[68px] w-[68px] shrink-0 flex-col items-center justify-center rounded-xl bg-[#10291F] text-white">
+              <span className="text-[25px] font-semibold leading-none tabular">{available}</span>
+              <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-emerald-100/70">
+                of {total} ready
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+                Service board
+              </p>
+              <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+                {status}
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Students only see foods marked in stock.
+                {hiddenCount > 0 ? ` ${hiddenCount} ${hiddenCount === 1 ? 'food is' : 'foods are'} paused.` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 sm:pl-4">
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-full bg-emerald-50 px-3 text-[10px] font-semibold text-emerald-800">
+              <span
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full bg-emerald-500',
+                  refreshing && 'animate-pulse',
+                )}
+                aria-hidden
+              />
+              {refreshing ? 'Updating' : 'Live stock'}
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={onPreview}>
+              <Eye className="h-3.5 w-3.5" aria-hidden />
+              Student view
+            </Button>
+          </div>
+        </div>
+
+        <div
+          className="h-1 bg-slate-100"
+          role="progressbar"
+          aria-label="Menu availability"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={readiness}
+        >
+          <div
+            className="h-full bg-emerald-500 transition-[width] duration-300"
+            style={{ width: `${readiness}%` }}
+          />
+        </div>
+      </section>
+    );
+  }
+
   const stats = [
     { label: 'Dishes', value: String(total), Icon: UtensilsCrossed },
     { label: 'In stock', value: String(available), Icon: CheckCircle2 },
@@ -564,12 +628,8 @@ function MenuBoardHero({
           </h2>
           <p className="mt-1 max-w-md text-[11px] leading-relaxed text-emerald-100/65">
             {available > 0
-              ? audience === 'staff'
-                ? `${available} ${available === 1 ? 'food' : 'foods'} are available to students right now.`
-                : `Staff have marked ${available} ${available === 1 ? 'dish' : 'dishes'} in stock for students right now.`
-              : audience === 'staff'
-                ? 'No foods are marked in stock. Add today’s food or update stock below.'
-                : 'No dishes are marked in stock. Staff can update availability from their menu.'}
+              ? `Staff have marked ${available} ${available === 1 ? 'dish' : 'dishes'} in stock for students right now.`
+              : 'No dishes are marked in stock. Staff can update availability from their menu.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -608,6 +668,59 @@ function MenuBoardHero({
         ))}
       </dl>
     </section>
+  );
+}
+
+function MenuLoadingSkeleton({ audience }: { audience: 'vendor' | 'staff' }) {
+  return (
+    <div role="status" aria-label="Loading menu" aria-busy="true" className="space-y-4">
+      {audience === 'staff' ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+          <div className="flex items-center gap-4 p-4 sm:px-5 sm:py-4">
+            <Skeleton className="h-[68px] w-[68px] shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-5 w-56 max-w-full" />
+              <Skeleton className="h-3 w-72 max-w-full" />
+            </div>
+          </div>
+          <Skeleton className="h-1 w-full rounded-none" />
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((item) => (
+              <Skeleton key={item} className="h-16 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Skeleton className="h-10 flex-1 rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl sm:w-72" />
+      </div>
+
+      <ul className="space-y-2.5" aria-hidden="true">
+        {[0, 1, 2].map((item) => (
+          <li
+            key={item}
+            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2.5"
+          >
+            <Skeleton className="h-[68px] w-[68px] shrink-0 rounded-lg" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-1/4" />
+            </div>
+            <Skeleton className="hidden h-8 w-28 rounded-lg sm:block" />
+          </li>
+        ))}
+      </ul>
+      <span className="sr-only">Loading {audience === 'staff' ? 'today’s menu' : 'menu'}…</span>
+    </div>
   );
 }
 
@@ -718,47 +831,63 @@ function EmptyMenu({
   audience: 'vendor' | 'staff';
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-amber-900/10 bg-[#FFFDF7] px-5 py-8 text-center shadow-[0_12px_28px_-18px_rgba(120,80,20,0.35)]">
-      <div
-        className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-amber-200/30 blur-3xl"
-        aria-hidden
-      />
-      <div className="relative mx-auto flex max-w-[220px] items-center justify-center">
-        <img
-          src="/food/photos/pilau-nyama.jpg"
-          alt=""
-          aria-hidden
-          className="h-16 w-16 -rotate-6 rounded-2xl object-cover ring-4 ring-[#FFFDF7] sm:h-20 sm:w-20"
-        />
-        <img
-          src="/food/photos/grilled-chicken.jpg"
-          alt=""
-          aria-hidden
-          className="z-10 -mt-3 h-16 w-16 scale-110 rounded-2xl object-cover ring-4 ring-[#FFFDF7] sm:h-20 sm:w-20"
-        />
-        <img
-          src="/food/chipsi.svg"
-          alt=""
-          aria-hidden
-          className="h-16 w-16 rotate-6 rounded-2xl object-cover ring-4 ring-[#FFFDF7] sm:h-20 sm:w-20"
-        />
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-card sm:flex-row sm:items-center sm:gap-5 sm:p-6 sm:text-left">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+        <UtensilsCrossed className="h-5 w-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-base font-semibold text-slate-900">
+          {audience === 'staff' ? 'No food on today’s menu' : 'Your menu is empty'}
+        </h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+          {audience === 'staff'
+            ? 'Add the foods being served at the cafeteria. They will appear for students as soon as you save them.'
+            : 'Add your first dish so students know what your cafeteria serves. Staff will mark it in stock before students can order it.'}
+        </p>
       </div>
-      <h2 className="relative mt-5 text-base font-semibold text-slate-900">
-        {audience === 'staff' ? 'No food on today’s menu' : 'Your menu is empty'}
-      </h2>
-      <p className="relative mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-slate-500">
-        {audience === 'staff'
-          ? 'Add the foods being served at the cafeteria. They will appear for students as soon as you save them.'
-          : 'Add your first dish so students know what your cafeteria serves. Staff will mark it in stock before students can order it.'}
-      </p>
-      <Button className="relative mt-4" onClick={onCreate}>
+      <Button className="w-full shrink-0 sm:w-auto" onClick={onCreate}>
         <Plus className="h-4 w-4" aria-hidden />
         {audience === 'staff' ? 'Add food' : 'Add your first dish'}
       </Button>
-      <p className="relative mt-2 text-[10px] text-slate-400">
-        Name, price and a photo — under 30 seconds.
-      </p>
     </div>
+  );
+}
+
+function AvailabilityButton({
+  item,
+  busy,
+  disabled,
+  onToggle,
+}: {
+  item: MenuItemRow;
+  busy: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={item.available ? 'outline' : 'default'}
+      size="sm"
+      className="shrink-0 px-2 text-[10px]"
+      loading={busy}
+      disabled={disabled}
+      aria-pressed={item.available}
+      aria-label={`Mark ${item.name} ${item.available ? 'unavailable' : 'available'}`}
+      onClick={onToggle}
+    >
+      {item.available ? (
+        <>
+          <EyeOff className="h-3.5 w-3.5" aria-hidden />
+          Unavailable
+        </>
+      ) : (
+        <>
+          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+          Available
+        </>
+      )}
+    </Button>
   );
 }
 
@@ -771,37 +900,6 @@ function InfoNote({ audience }: { audience: 'vendor' | 'staff' }) {
           ? 'Manage the menu at the cafeteria: add and update food, set prices, and keep availability current. Owners can review changes remotely. Prices are in Tanzanian shillings.'
           : 'You manage dishes and prices remotely. Staff set daily stock at the cafeteria, and students only see dishes staff mark in stock. Prices are in Tanzanian shillings and include all taxes.'}
       </p>
-    </div>
-  );
-}
-
-function MenuSkeleton() {
-  return (
-    <div className="space-y-4">
-      <Skeleton className="h-[196px] w-full rounded-2xl sm:h-[164px]" />
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Skeleton className="h-10 flex-1" />
-        <Skeleton className="h-10 w-full rounded-xl sm:w-64" />
-      </div>
-      <div className="flex gap-1.5">
-        {[0, 1, 2, 3].map((index) => (
-          <Skeleton key={index} className="h-7 w-20 rounded-full" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-        {[0, 1, 2, 3, 4, 5].map((index) => (
-          <div
-            key={index}
-            className="overflow-hidden rounded-2xl bg-[#171008] ring-1 ring-black/10"
-          >
-            <Skeleton className="aspect-[16/10] w-full rounded-none bg-white/10" />
-            <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-[#1D1810] px-3 py-3">
-              <Skeleton className="h-5 w-20 rounded-full bg-white/10" />
-              <Skeleton className="h-4 w-24 bg-white/10" />
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

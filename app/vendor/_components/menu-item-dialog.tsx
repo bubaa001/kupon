@@ -234,7 +234,7 @@ export function MenuItemDialog({
         if (!saving) onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0 [&>button]:hidden">
+      <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-3xl gap-0 overflow-hidden p-0 sm:max-h-[92dvh] [&>button]:hidden">
         <div className="flex max-h-[92dvh] min-h-0 flex-col">
         <DialogHeader className="shrink-0 gap-0 border-b border-amber-900/10 bg-[#FFFDF7] px-5 py-3.5 pr-14 sm:px-6 sm:py-4">
           <p className="eyebrow mb-1 text-amber-800/60">
@@ -266,7 +266,7 @@ export function MenuItemDialog({
           </DialogClose>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
         <div className="grid gap-5 px-5 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_270px] lg:gap-6">
           <div className="order-2 min-w-0 space-y-6 lg:order-1">
             {formError ? (

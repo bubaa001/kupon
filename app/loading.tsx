@@ -1,13 +1,16 @@
 import { LogoMark } from '@/components/ui/logo';
+import { Loader2 } from 'lucide-react';
 
 export default function Loading() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-canvas">
-      <LogoMark className="animate-pulse" />
-      <div className="h-1 w-32 overflow-hidden rounded-full bg-slate-200">
-        <div className="h-full w-1/2 animate-pulse rounded-full bg-primary-500" />
-      </div>
-      <p className="text-xs font-medium text-slate-500">Loading Kupon…</p>
+    <div
+      className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-canvas"
+      role="status"
+      aria-live="polite"
+    >
+      <LogoMark />
+      <Loader2 className="h-5 w-5 animate-spin text-primary-600" aria-hidden />
+      <p className="text-sm font-medium text-slate-600">Loading page…</p>
     </div>
   );
 }

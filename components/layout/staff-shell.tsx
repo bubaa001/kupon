@@ -37,7 +37,7 @@ export function StaffShell({
               <p className="text-[10px] text-slate-500">{vendorCode}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <nav aria-label="Staff navigation" className="hidden items-center gap-1 sm:flex">
             {NAV.map(({ href, label, icon: Icon }) => {
               const active = href === '/staff' ? pathname === href : pathname.startsWith(href);
               return (
@@ -45,6 +45,7 @@ export function StaffShell({
                   key={href}
                   href={href}
                   aria-current={active ? 'page' : undefined}
+                  aria-label={label}
                   className={cn(
                     'inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-semibold transition-colors',
                     active
@@ -57,18 +58,42 @@ export function StaffShell({
                 </Link>
               );
             })}
-            <button
-              type="button"
-              onClick={() => void signOut('/staff/login')}
-              className="ml-1 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-              aria-label={`Sign out ${name}`}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          </nav>
+          <button
+            type="button"
+            onClick={() => void signOut('/staff/login')}
+            className="ml-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+            aria-label={`Sign out ${name}`}
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
+        <nav
+          aria-label="Staff navigation"
+          className="mx-auto grid max-w-6xl grid-cols-2 gap-2 px-4 pb-2 sm:hidden"
+        >
+          {NAV.map(({ href, label, icon: Icon }) => {
+            const active = href === '/staff' ? pathname === href : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold transition-colors',
+                  active
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                {href === '/staff' ? 'Orders' : 'Menu'}
+              </Link>
+            );
+          })}
+        </nav>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-6 sm:pt-8">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 sm:pt-8">
         <div className="mb-5 sm:hidden">
           <p className="text-sm font-semibold text-slate-800">{vendorName}</p>
           <p className="text-[11px] text-slate-500">Signed in as {name}</p>

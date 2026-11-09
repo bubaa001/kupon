@@ -37,6 +37,8 @@ export type FoodProductCardProps = {
   /** Vendor: row actions. */
   onEdit?: () => void;
   onDelete?: () => void;
+  /** Staff: cafeteria stock control rendered inside the card boundary. */
+  availabilityAction?: React.ReactNode;
   className?: string;
   /** Eager-load the hero (first row of a menu). */
   priority?: boolean;
@@ -270,6 +272,7 @@ function VendorCard({
   item,
   onEdit,
   onDelete,
+  availabilityAction,
   priority,
   revealIndex,
   className,
@@ -355,45 +358,48 @@ function VendorCard({
 
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-[#1D1810] px-2.5 py-1.5 text-white">
-        <span
-          className={cn(
-            'inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-1 text-[11px] font-semibold',
-            available ? 'text-emerald-300' : 'text-white/55',
-          )}
-          aria-label={`Staff marked ${item.name} ${available ? 'in stock' : 'not in stock'}`}
-        >
-          {available ? (
-            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-          ) : (
-            <EyeOff className="h-3.5 w-3.5" aria-hidden />
-          )}
-          {available ? 'Staff: in stock' : 'Staff: not in stock'}
-        </span>
+      <div className="border-t border-white/10 bg-[#1D1810] px-2.5 text-white">
+        <div className="flex min-h-[52px] items-center justify-between gap-2 py-1.5">
+          <span
+            className={cn(
+              'inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-1 text-[11px] font-semibold',
+              available ? 'text-emerald-300' : 'text-white/55',
+            )}
+            aria-label={`Staff marked ${item.name} ${available ? 'in stock' : 'not in stock'}`}
+          >
+            {available ? (
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5" aria-hidden />
+            )}
+            {available ? 'Staff: in stock' : 'Staff: not in stock'}
+          </span>
 
-        <div className="flex items-center gap-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onEdit}
-            disabled={!onEdit}
-            aria-label={`Edit ${item.name}`}
-            className="h-10 w-10 text-white/55 hover:bg-white/10 hover:text-white"
-          >
-            <Pencil className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onDelete}
-            disabled={!onDelete}
-            aria-label={`Remove ${item.name}`}
-            className="h-10 w-10 text-white/45 hover:bg-red-500/20 hover:text-red-300"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </Button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            {availabilityAction}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onEdit}
+              disabled={!onEdit}
+              aria-label={`Edit ${item.name}`}
+              className="h-10 w-10 text-white/55 hover:bg-white/10 hover:text-white"
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onDelete}
+              disabled={!onDelete}
+              aria-label={`Remove ${item.name}`}
+              className="h-10 w-10 text-white/45 hover:bg-red-500/20 hover:text-red-300"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
         </div>
       </div>
     </article>
@@ -408,6 +414,7 @@ function CompactCard({
   maxQuantity,
   onEdit,
   onDelete,
+  availabilityAction,
   className,
 }: FoodProductCardProps & { maxQuantity: number }) {
   const available = item.available !== false;
@@ -415,84 +422,128 @@ function CompactCard({
   return (
     <article
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-xl border border-amber-900/10 bg-[#FFFDF7] p-2.5 shadow-[0_1px_2px_rgba(120,80,20,0.05)]',
+        'flex min-w-0 flex-col rounded-xl border border-amber-900/10 bg-[#FFFDF7] shadow-[0_1px_2px_rgba(120,80,20,0.05)]',
         className,
       )}
       aria-label={item.name}
     >
-      <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-lg bg-[#171008] ring-1 ring-black/5">
-        <FoodImage
-          src={item.imageUrl}
-          name={item.name}
-          imageClassName={cn(!available && 'saturate-[0.7]')}
-          fallbackClassName="bg-[#171008]"
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="truncate text-[13.5px] font-semibold tracking-tight text-slate-900">
-              {item.name}
-            </h3>
-            <p className="mt-0.5 line-clamp-1 text-[10.5px] text-slate-500">
-              {item.description?.trim() || item.category?.trim() || 'Campus kitchen'}
-            </p>
-          </div>
-          <FoodPrice price={item.price} />
+      <div className="flex min-w-0 items-center gap-3 p-2.5">
+        <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-lg bg-[#171008] ring-1 ring-black/5">
+          <FoodImage
+            src={item.imageUrl}
+            name={item.name}
+            imageClassName={cn(!available && 'saturate-[0.7]')}
+            fallbackClassName="bg-[#171008]"
+          />
         </div>
-        <div className="mt-1.5 flex min-h-[32px] items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <CategoryChip category={item.category} tone="light" />
-            {!onAdd && (onEdit || onDelete) ? (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 text-[10px] font-semibold',
-                  available ? 'text-emerald-700' : 'text-slate-400',
-                )}
-              >
-                {available ? 'Staff: in stock' : 'Staff: not in stock'}
-              </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate text-[13.5px] font-semibold tracking-tight text-slate-900">
+                {item.name}
+              </h3>
+              <p className="mt-0.5 line-clamp-1 text-[10.5px] text-slate-500">
+                {item.description?.trim() || item.category?.trim() || 'Campus kitchen'}
+              </p>
+            </div>
+            <FoodPrice price={item.price} />
+          </div>
+          <div className="mt-1.5 flex min-h-[32px] items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <CategoryChip category={item.category} tone="light" />
+              {!availabilityAction && !onAdd && (onEdit || onDelete) ? (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[10px] font-semibold',
+                    available ? 'text-emerald-700' : 'text-slate-400',
+                  )}
+                >
+                  {available ? 'Staff: in stock' : 'Staff: not in stock'}
+                </span>
+              ) : null}
+            </div>
+
+            {onAdd ? (
+              <StudentActions
+                name={item.name}
+                quantity={quantity ?? 0}
+                onAdd={onAdd}
+                onRemove={onRemove}
+                maxQuantity={maxQuantity}
+                available={available}
+                fullWidth={false}
+              />
+            ) : (onEdit || onDelete) && !availabilityAction ? (
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onEdit}
+                  disabled={!onEdit}
+                  aria-label={`Edit ${item.name}`}
+                  className="h-8 w-8"
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onDelete}
+                  disabled={!onDelete}
+                  aria-label={`Remove ${item.name}`}
+                  className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                </Button>
+              </div>
             ) : null}
           </div>
-
-          {onAdd ? (
-            <StudentActions
-              name={item.name}
-              quantity={quantity ?? 0}
-              onAdd={onAdd}
-              onRemove={onRemove}
-              maxQuantity={maxQuantity}
-              available={available}
-              fullWidth={false}
-            />
-          ) : onEdit || onDelete ? (
-            <div className="flex items-center gap-0.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={onEdit}
-                disabled={!onEdit}
-                aria-label={`Edit ${item.name}`}
-                className="h-8 w-8"
-              >
-                <Pencil className="h-3.5 w-3.5" aria-hidden />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={onDelete}
-                disabled={!onDelete}
-                aria-label={`Remove ${item.name}`}
-                className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </Button>
-            </div>
-          ) : null}
         </div>
       </div>
+      {availabilityAction ? (
+        <div className="flex items-center justify-between gap-2 border-t border-amber-900/10 px-2.5 py-1.5">
+          <span
+            className={cn(
+              'inline-flex min-w-0 items-center gap-1 text-[10px] font-semibold',
+              available ? 'text-emerald-700' : 'text-slate-500',
+            )}
+          >
+            {available ? (
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            ) : (
+              <EyeOff className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            )}
+            {available ? 'In stock' : 'Not in stock'}
+          </span>
+          <div className="flex shrink-0 items-center gap-0.5">
+            {availabilityAction}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onEdit}
+              disabled={!onEdit}
+              aria-label={`Edit ${item.name}`}
+              className="h-8 w-8"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onDelete}
+              disabled={!onDelete}
+              aria-label={`Remove ${item.name}`}
+              className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
