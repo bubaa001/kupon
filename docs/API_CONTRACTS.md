@@ -81,7 +81,7 @@ Base path `/api/vendor`. Vendor identity comes from the session, not a query par
 | POST | `/team` | `{ name, email, phone, role:'STAFF'\|'FINANCE' }` | Creates a one-time, seven-day invitation scoped to the signed-in vendor; returns the link once |
 | PATCH | `/application` | Rejected vendor session | Resubmits required business details; clears the rejection and returns the application to platform review |
 | POST | `/menu` | multipart upload then `{ name, price, category, description?, imageUrl, autoAccept? }` | `{ item }` — imageUrl is required; new dishes start unavailable until staff mark them in stock |
-| POST | `/menu/upload` | multipart `file` (JPG/PNG/WebP, ≤5 MB; client resizes phone photos first) | `{ url, size, type }` — returns `/api/uploads/food/<filename>`; local disk in MVP, object storage in production |
+| POST | `/menu/upload` | Vendor or assigned cafeteria staff; multipart `file` (JPG/PNG/WebP, ≤5 MB; client resizes phone photos first) | `{ url, size, type }` — returns `/api/uploads/food/<filename>`; stored in PostgreSQL |
 | GET | `/api/uploads/food/[filename]` | public | Streams an uploaded food photo with an immutable cache header; required because runtime writes are not in Next's public static manifest |
 | PATCH | `/menu/[id]` | `{ name?, price?, category?, description?, imageUrl?, autoAccept? }` | `{ item }` — owner edits catalog details; daily availability is staff-only |
 | DELETE | `/menu/[id]` | — | `{ deleted: true }` |
@@ -93,8 +93,8 @@ issue scoped invitations. Invitees set a password when accepting; Google sign-in
 when the verified Google email matches the invited email. Finance users review scoped credit/support
 cases and may record admin-authorized, capped emergency test settlements; they cannot confirm
 payments. Owners manage the menu catalog, prices, staff, analytics, transactions, and case
-oversight remotely. Staff manage daily availability, handle orders, and verify coupons, but cannot
-edit dishes or prices.
+oversight remotely. Staff manage the on-site menu, food availability, meal requests, and coupon
+verification; menu changes are limited to their assigned cafeteria.
 
 ## Cafeteria staff (role STAFF)
 
@@ -108,9 +108,9 @@ vendor. Login is at `/staff/login`.
 | POST | `/api/vendor/orders/[id]/unavailable` | `{ reason }` | Declines an unpaid request or sends an eligible paid order to Finance for credit review |
 | POST | `/api/vendor/orders/[id]/verify` | `{ token? , code? }` | Single-use coupon verification for the assigned cafeteria |
 | POST | `/api/vendor/orders/scan/verify` | `{ token? , code? }` | Scan-first coupon verification for the assigned cafeteria |
-| GET | `/api/staff/menu` | — | `{ items:[{id,name,category,emoji,price,available,autoAccept}] }` |
-| POST | `/api/staff/menu` | `{ name, price, category?, emoji? }` | Adds a food to the assigned cafeteria's menu and makes it available immediately |
-| PATCH | `/api/staff/menu/[id]` | `{ available:boolean, autoAccept?:boolean }` | Changes daily availability or per-item auto-accept; item details and later price edits remain owner-managed |
+| GET | `/api/staff/menu` | — | `{ items:MenuItem[], summary, operations }` — same full menu records and dashboard data as the owner menu |
+| POST | `/api/staff/menu` | `{ name, price, category, description?, imageUrl }` | Adds a food to the assigned cafeteria's menu and makes it available immediately |
+| PATCH | `/api/staff/menu/[id]` | `{ name?, price?, category?, description?, imageUrl?, available?, autoAccept? }` | Edits a cafeteria menu item or updates its daily stock/acceptance settings |
 | DELETE | `/api/staff/menu/[id]` | — | Removes a food from the assigned cafeteria's menu; historical order item snapshots remain intact |
 | PATCH | `/api/staff/menu/auto-accept` | `{ enabled:boolean }` | Sets automatic acceptance for incoming requests across the cafeteria's items |
 

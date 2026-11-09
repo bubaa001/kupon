@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { FOOD_IMAGE_URL_MAX, isPresetFoodPhoto } from './food-data';
 
 /**
- * Vendor-owned food photo picker.
+ * Cafeteria food photo picker shared by vendor and staff menu management.
  *
  * The primary path is a real upload from the vendor's phone/camera roll. A
  * pasted HTTPS link remains as a fallback, but there is no emoji option: a dish

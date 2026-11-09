@@ -1,18 +1,20 @@
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import { auditLog } from '@/lib/audit';
 import { fail, ok, parseJson } from '@/lib/api';
 import { requireApiUser, requireManagedVendor } from '@/lib/auth';
 import { notFound, tooManyRequests } from '@/lib/errors';
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
+import { menuPatchSchema } from '@/lib/validators';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const staffMenuPatchSchema = z
-  .object({ available: z.boolean().optional(), autoAccept: z.boolean().optional() })
+const staffMenuPatchSchema = menuPatchSchema
+  .extend({ available: z.boolean().optional(), autoAccept: z.boolean().optional() })
   .strict()
-  .refine((value) => value.available !== undefined || value.autoAccept !== undefined);
+  .refine((value) => Object.values(value).some((entry) => entry !== undefined));
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -22,24 +24,22 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (!limit.allowed) throw tooManyRequests('Too many menu changes. Wait a minute and try again.');
 
     const body = await parseJson(request, staffMenuPatchSchema);
+    const { available, autoAccept, ...details } = body;
     const item = await prisma.menuItem.findFirst({
       where: { id: params.id, vendorId: vendor.id },
-      select: { id: true, universityId: true, name: true },
+      select: { id: true, universityId: true, name: true, vendorId: true },
     });
     if (!item) throw notFound('This menu item does not belong to your cafeteria.');
 
     const updated = await prisma.$transaction(async (tx) => {
       const saved = await tx.menuItem.update({
         where: { id: item.id },
-        data: body,
-        select: {
-          id: true,
-          name: true,
-          category: true,
-          emoji: true,
-          price: true,
-          available: true,
-          autoAccept: true,
+        data: {
+          ...(Object.keys(details).length
+            ? (details as Prisma.MenuItemUpdateInput)
+            : {}),
+          ...(available !== undefined ? { available } : {}),
+          ...(autoAccept !== undefined ? { autoAccept } : {}),
         },
       });
 
@@ -47,9 +47,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         {
           actorId: user.id,
           universityId: item.universityId,
-          action: body.available !== undefined
+          action: available !== undefined && Object.keys(details).length === 0
             ? 'STAFF_MENU_AVAILABILITY_UPDATED'
-            : 'STAFF_ORDER_AUTO_ACCEPT_UPDATED',
+            : autoAccept !== undefined && Object.keys(details).length === 0 && available === undefined
+              ? 'STAFF_ORDER_AUTO_ACCEPT_UPDATED'
+              : 'STAFF_MENU_ITEM_UPDATED',
           entity: 'MenuItem',
           entityId: item.id,
           metadata: { ...body, vendorId: vendor.id },

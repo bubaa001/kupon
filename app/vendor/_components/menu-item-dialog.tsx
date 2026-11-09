@@ -50,11 +50,15 @@ export function MenuItemDialog({
   onOpenChange,
   item,
   onSaved,
+  apiPath = '/api/vendor/menu',
+  audience = 'vendor',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: MenuItemRow | null;
   onSaved: (message: string) => void;
+  apiPath?: string;
+  audience?: 'vendor' | 'staff';
 }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -196,11 +200,19 @@ export function MenuItemDialog({
       };
 
       if (item) {
-        await patchJson(`/api/vendor/menu/${item.id}`, payload);
-        onSaved('Dish details updated. Staff still control today’s availability.');
+        await patchJson(`${apiPath}/${item.id}`, payload);
+        onSaved(
+          audience === 'staff'
+            ? 'Dish details updated.'
+            : 'Dish details updated. Staff still control today’s availability.',
+        );
       } else {
-        await postJson('/api/vendor/menu', payload);
-        onSaved('Dish added. It will be available to students after staff mark it in stock.');
+        await postJson(apiPath, payload);
+        onSaved(
+          audience === 'staff'
+            ? 'Dish added to the menu and available to students.'
+            : 'Dish added. It will be available to students after staff mark it in stock.',
+        );
       }
       onOpenChange(false);
     } catch (cause) {
@@ -233,8 +245,12 @@ export function MenuItemDialog({
           </DialogTitle>
           <DialogDescription className="mt-0.5 text-[11px] leading-relaxed sm:text-xs">
             {item
-              ? 'Update the dish details here. Staff manage its availability each day.'
-              : 'Add the dish details here. Staff will mark it in stock when it is available to serve.'}
+              ? audience === 'staff'
+                ? 'Update the food, price or photo. Change its stock status from the menu board.'
+                : 'Update the dish details here. Staff manage its availability each day.'
+              : audience === 'staff'
+                ? 'Add food being served at the cafeteria, including its price and photo.'
+                : 'Add the dish details here. Staff will mark it in stock when it is available to serve.'}
           </DialogDescription>
 
           <DialogClose asChild>
@@ -502,10 +518,13 @@ export function MenuItemDialog({
               <div className="flex gap-2.5 rounded-xl border border-emerald-200/70 bg-emerald-50/70 p-3">
                 <Zap className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
                 <div className="text-[11px] leading-relaxed text-emerald-900">
-                  <p className="font-semibold">Staff controls daily availability</p>
+                  <p className="font-semibold">
+                    {audience === 'staff' ? 'You control today’s food and stock' : 'Staff controls daily availability'}
+                  </p>
                   <p className="mt-0.5 text-emerald-800/80">
-                    Your dish and price are saved to the cafeteria menu. Staff mark it available
-                    when it is in stock and unavailable when it is not.
+                    {audience === 'staff'
+                      ? 'Food you add is available to students immediately. Mark it unavailable when it sells out.'
+                      : 'Your dish and price are saved to the cafeteria menu. Staff mark it available when it is in stock and unavailable when it is not.'}
                   </p>
                 </div>
               </div>

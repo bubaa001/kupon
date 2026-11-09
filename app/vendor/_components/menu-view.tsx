@@ -31,7 +31,9 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FoodProductCard } from '@/components/food';
-import { deleteJson } from '@/lib/client-api';
+import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { deleteJson, patchJson } from '@/lib/client-api';
 import { cn, formatTZS } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useApiData } from '../_lib/use-api';
@@ -46,8 +48,9 @@ type MenuLayout = 'grid' | 'list';
 
 const ALL_CATEGORIES = 'ALL';
 
-export function MenuView() {
-  const { data, loading, error, reload } = useApiData<MenuResponse>('/api/vendor/menu');
+export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff' }) {
+  const apiPath = audience === 'staff' ? '/api/staff/menu' : '/api/vendor/menu';
+  const { data, loading, error, reload } = useApiData<MenuResponse>(apiPath);
 
   const [mode, setMode] = useState<MenuViewMode>('manage');
   const [layout, setLayout] = useState<MenuLayout>('grid');
@@ -58,6 +61,8 @@ export function MenuView() {
   const [editing, setEditing] = useState<MenuItemRow | null>(null);
   const [deleting, setDeleting] = useState<MenuItemRow | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  const [availabilityBusy, setAvailabilityBusy] = useState<string | null>(null);
+  const [autoAcceptBusy, setAutoAcceptBusy] = useState(false);
 
   const items = useMemo(() => data?.items ?? [], [data]);
   const summary = data?.summary ?? {
@@ -89,7 +94,7 @@ export function MenuView() {
 
   const filtersActive = filter !== 'ALL' || category !== ALL_CATEGORIES || search.trim() !== '';
 
-  // Keep the owner's catalog and staff-reported stock state current.
+  // Keep the menu and staff-reported stock state current across staff and owner views.
   useEffect(() => {
     const refresh = () => {
       if (document.visibilityState === 'visible') reload();
@@ -130,8 +135,8 @@ export function MenuView() {
     if (!deleting) return;
     setDeletingBusy(true);
     try {
-      await deleteJson(`/api/vendor/menu/${deleting.id}`);
-      toast.success(`${deleting.name} removed from your menu`);
+      await deleteJson(`${apiPath}/${deleting.id}`);
+      toast.success(`${deleting.name} removed from the menu`);
       setDeleting(null);
       reload();
     } catch (cause) {
@@ -145,21 +150,63 @@ export function MenuView() {
     }
   }
 
+  async function toggleAvailability(item: MenuItemRow) {
+    setAvailabilityBusy(item.id);
+    try {
+      await patchJson(`${apiPath}/${item.id}`, { available: !item.available });
+      toast.success(`${item.name} is ${item.available ? 'unavailable' : 'available'} to students.`);
+      reload();
+    } catch (cause) {
+      toast.error(cause instanceof Error && cause.message ? cause.message : 'Could not update stock.');
+    } finally {
+      setAvailabilityBusy(null);
+    }
+  }
+
+  async function toggleAutoAccept(enabled: boolean) {
+    setAutoAcceptBusy(true);
+    try {
+      await patchJson<{ enabled: boolean }>('/api/staff/menu/auto-accept', { enabled });
+      toast.success(
+        enabled
+          ? 'All incoming meal requests will be accepted automatically.'
+          : 'New meal requests will wait for staff approval.',
+      );
+      reload();
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error && cause.message
+          ? cause.message
+          : 'Could not update request acceptance.',
+      );
+    } finally {
+      setAutoAcceptBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow={mode === 'preview' ? 'Menu · Preview' : 'Menu'}
-        title={mode === 'preview' ? 'Student preview' : 'Your menu'}
+        title={
+          mode === 'preview'
+            ? 'Student preview'
+            : audience === 'staff'
+              ? 'Today’s menu'
+              : 'Your menu'
+        }
         description={
           mode === 'preview'
             ? 'Exactly what a student sees after scanning your counter QR — dishes staff have marked in stock, with their photos, prices and categories.'
-            : 'Manage your cafeteria’s dishes, photos and prices from anywhere. Your staff update what is in stock each day.'
+            : audience === 'staff'
+              ? 'Manage the food being served at the cafeteria. Add dishes, update prices and photos, and mark items available as stock changes.'
+              : 'Manage your cafeteria’s dishes, photos and prices from anywhere. Your staff update what is in stock each day.'
         }
         actions={
           mode === 'preview' ? undefined : (
             <Button size="sm" onClick={openCreate}>
               <Plus className="h-4 w-4" aria-hidden />
-              Add dish
+              {audience === 'staff' ? 'Add food' : 'Add dish'}
             </Button>
           )
         }
@@ -184,7 +231,28 @@ export function MenuView() {
             averagePrice={averagePrice}
             refreshing={loading}
             onPreview={() => setMode('preview')}
+            audience={audience}
           />
+
+          {audience === 'staff' && items.length > 0 ? (
+            <Card className="flex items-center justify-between gap-4 p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  Automatically accept all meal requests
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  When enabled, students can pay as soon as their request arrives. When disabled,
+                  staff accept each request before the student can pay.
+                </p>
+              </div>
+              <Switch
+                checked={items.every((item) => item.autoAccept)}
+                onCheckedChange={(enabled) => void toggleAutoAccept(enabled)}
+                disabled={autoAcceptBusy}
+                aria-label="Automatically accept all meal requests"
+              />
+            </Card>
+          ) : null}
 
           {summary.total > 0 ? (
             <div className="space-y-2.5">
@@ -262,7 +330,7 @@ export function MenuView() {
           ) : null}
 
           {summary.total === 0 ? (
-            <EmptyMenu onCreate={openCreate} />
+            <EmptyMenu onCreate={openCreate} audience={audience} />
           ) : filteredItems.length === 0 ? (
             <EmptyState
               icon={SearchX}
@@ -313,10 +381,34 @@ export function MenuView() {
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDeleting(item)}
                       />
+                      {audience === 'staff' ? (
+                        <Button
+                          type="button"
+                          variant={item.available ? 'outline' : 'default'}
+                          size="sm"
+                          className="mt-2 w-full"
+                          loading={availabilityBusy === item.id}
+                          disabled={availabilityBusy !== null}
+                          aria-pressed={item.available}
+                          onClick={() => void toggleAvailability(item)}
+                        >
+                          {item.available ? (
+                            <>
+                              <EyeOff className="h-4 w-4" />
+                              Mark unavailable
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4" />
+                              Mark available
+                            </>
+                          )}
+                        </Button>
+                      ) : null}
                     </li>
                   ))}
                   <li className="min-w-0">
-                    <AddDishTile onClick={openCreate} />
+                    <AddDishTile onClick={openCreate} audience={audience} />
                   </li>
                 </ul>
               ) : (
@@ -330,6 +422,20 @@ export function MenuView() {
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDeleting(item)}
                       />
+                      {audience === 'staff' ? (
+                        <Button
+                          type="button"
+                          variant={item.available ? 'outline' : 'default'}
+                          size="sm"
+                          className="mt-2 w-full"
+                          loading={availabilityBusy === item.id}
+                          disabled={availabilityBusy !== null}
+                          aria-pressed={item.available}
+                          onClick={() => void toggleAvailability(item)}
+                        >
+                          {item.available ? 'Mark unavailable' : 'Mark available'}
+                        </Button>
+                      ) : null}
                     </li>
                   ))}
                   <li className="min-w-0">
@@ -341,7 +447,7 @@ export function MenuView() {
                       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm ring-1 ring-amber-900/10">
                         <Plus className="h-4 w-4" aria-hidden />
                       </span>
-                      Add a dish
+                      {audience === 'staff' ? 'Add food' : 'Add a dish'}
                       <span className="text-[10px] font-normal text-slate-400">
                         name, price, photo
                       </span>
@@ -352,7 +458,7 @@ export function MenuView() {
             </div>
           )}
 
-          <InfoNote />
+          <InfoNote audience={audience} />
         </div>
       ) : null}
 
@@ -360,6 +466,8 @@ export function MenuView() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         item={editing}
+        apiPath={apiPath}
+        audience={audience}
         onSaved={(message) => {
           toast.success(message);
           reload();
@@ -410,6 +518,7 @@ function MenuBoardHero({
   averagePrice,
   refreshing,
   onPreview,
+  audience,
 }: {
   total: number;
   available: number;
@@ -417,6 +526,7 @@ function MenuBoardHero({
   averagePrice: number;
   refreshing: boolean;
   onPreview: () => void;
+  audience: 'vendor' | 'staff';
 }) {
   const stats = [
     { label: 'Dishes', value: String(total), Icon: UtensilsCrossed },
@@ -454,8 +564,12 @@ function MenuBoardHero({
           </h2>
           <p className="mt-1 max-w-md text-[11px] leading-relaxed text-emerald-100/65">
             {available > 0
-              ? `Staff have marked ${available} ${available === 1 ? 'dish' : 'dishes'} in stock for students right now.`
-              : 'No dishes are marked in stock. Staff can update availability from their menu.'}
+              ? audience === 'staff'
+                ? `${available} ${available === 1 ? 'food' : 'foods'} are available to students right now.`
+                : `Staff have marked ${available} ${available === 1 ? 'dish' : 'dishes'} in stock for students right now.`
+              : audience === 'staff'
+                ? 'No foods are marked in stock. Add today’s food or update stock below.'
+                : 'No dishes are marked in stock. Staff can update availability from their menu.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -568,7 +682,13 @@ function CategoryChipButton({
   );
 }
 
-function AddDishTile({ onClick }: { onClick: () => void }) {
+function AddDishTile({
+  onClick,
+  audience,
+}: {
+  onClick: () => void;
+  audience: 'vendor' | 'staff';
+}) {
   return (
     <button
       type="button"
@@ -578,15 +698,25 @@ function AddDishTile({ onClick }: { onClick: () => void }) {
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm ring-1 ring-amber-900/10 transition-transform group-hover:scale-105">
         <Plus className="h-5 w-5" aria-hidden />
       </span>
-      <span className="text-sm font-semibold text-slate-800">Add a dish</span>
+      <span className="text-sm font-semibold text-slate-800">
+        {audience === 'staff' ? 'Add food' : 'Add a dish'}
+      </span>
       <span className="max-w-[15rem] text-[11px] leading-relaxed text-slate-500">
-        Name, price and a photo — under 30 seconds. Staff set daily availability.
+        {audience === 'staff'
+          ? 'Add the dish and its price to today’s student menu.'
+          : 'Name, price and a photo — under 30 seconds. Staff set daily availability.'}
       </span>
     </button>
   );
 }
 
-function EmptyMenu({ onCreate }: { onCreate: () => void }) {
+function EmptyMenu({
+  onCreate,
+  audience,
+}: {
+  onCreate: () => void;
+  audience: 'vendor' | 'staff';
+}) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-amber-900/10 bg-[#FFFDF7] px-5 py-8 text-center shadow-[0_12px_28px_-18px_rgba(120,80,20,0.35)]">
       <div
@@ -613,14 +743,17 @@ function EmptyMenu({ onCreate }: { onCreate: () => void }) {
           className="h-16 w-16 rotate-6 rounded-2xl object-cover ring-4 ring-[#FFFDF7] sm:h-20 sm:w-20"
         />
       </div>
-      <h2 className="relative mt-5 text-base font-semibold text-slate-900">Your menu is empty</h2>
+      <h2 className="relative mt-5 text-base font-semibold text-slate-900">
+        {audience === 'staff' ? 'No food on today’s menu' : 'Your menu is empty'}
+      </h2>
       <p className="relative mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-slate-500">
-        Add your first dish so students know what your cafeteria serves. Staff will mark it in stock
-        before students can order it.
+        {audience === 'staff'
+          ? 'Add the foods being served at the cafeteria. They will appear for students as soon as you save them.'
+          : 'Add your first dish so students know what your cafeteria serves. Staff will mark it in stock before students can order it.'}
       </p>
       <Button className="relative mt-4" onClick={onCreate}>
         <Plus className="h-4 w-4" aria-hidden />
-        Add your first dish
+        {audience === 'staff' ? 'Add food' : 'Add your first dish'}
       </Button>
       <p className="relative mt-2 text-[10px] text-slate-400">
         Name, price and a photo — under 30 seconds.
@@ -629,13 +762,14 @@ function EmptyMenu({ onCreate }: { onCreate: () => void }) {
   );
 }
 
-function InfoNote() {
+function InfoNote({ audience }: { audience: 'vendor' | 'staff' }) {
   return (
     <div className="flex items-start gap-2 rounded-xl border border-amber-900/10 bg-[#FFFDF7]/80 p-3 text-[10.5px] leading-relaxed text-slate-500">
       <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700/60" aria-hidden />
       <p>
-        You manage dishes and prices remotely. Staff set daily stock at the cafeteria, and students
-        only see dishes staff mark in stock. Prices are in Tanzanian shillings and include all taxes.
+        {audience === 'staff'
+          ? 'Manage the menu at the cafeteria: add and update food, set prices, and keep availability current. Owners can review changes remotely. Prices are in Tanzanian shillings.'
+          : 'You manage dishes and prices remotely. Staff set daily stock at the cafeteria, and students only see dishes staff mark in stock. Prices are in Tanzanian shillings and include all taxes.'}
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { requireApiUser, requireVendor } from '@/lib/auth';
+import { requireApiUser, requireOperationalVendor } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { badRequest } from '@/lib/errors';
 import { fail, ok } from '@/lib/api';
@@ -18,13 +18,13 @@ const MAX_BYTES = 5 * 1024 * 1024;
 /**
  * POST /api/vendor/menu/upload
  *
- * Vendor-owned food photos are stored in PostgreSQL so uploads persist across
- * serverless deployments.
+ * Cafeteria food photos are scoped to the signed-in vendor or its staff and
+ * stored in PostgreSQL so uploads persist across serverless deployments.
  */
 export async function POST(request: Request) {
   try {
-    const user = await requireApiUser(['VENDOR']);
-    const vendor = requireVendor(user);
+    const user = await requireApiUser(['VENDOR', 'STAFF']);
+    const vendor = requireOperationalVendor(user);
 
     let formData: FormData;
     try {

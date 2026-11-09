@@ -148,8 +148,7 @@ export const menuItemSchema = z.object({
   price: z.number().int().min(500).max(100_000),
   category: z.string().trim().min(2).max(30).default('Main'),
   description: z.string().trim().max(160).optional().default(''),
-  // Real food photography is required. Vendors upload their own dish photo;
-  // there is no emoji or illustrated fallback in the vendor form.
+  // Real food photography is required; there is no emoji or illustrated fallback.
   imageUrl: z
     .string()
     .trim()
@@ -159,14 +158,6 @@ export const menuItemSchema = z.object({
 }).strict();
 
 export const menuPatchSchema = menuItemSchema.partial().strict();
-
-export const staffMenuItemSchema = z.object({
-  name: z.string().trim().min(2).max(80),
-  price: z.number().int().min(500).max(100_000),
-  category: z.string().trim().min(2).max(30).default('Main'),
-  description: z.string().trim().max(160).optional().default(''),
-  emoji: z.string().trim().min(1).max(16).default('🍲'),
-}).strict();
 
 export const adminAdjustmentSchema = z.object({
   studentProfileId: z.string().min(1),

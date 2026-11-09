@@ -351,7 +351,7 @@ No marketing metric, test account, transaction, coupon, ledger line or vendor li
 - `lib/public-data.ts` provides live platform totals for the public landing page, including the value of verified meal orders. The landing page itself is image-free.
 - The login page reads its campus snapshot from Prisma (students/vendors/dishes); there are no shared platform-owner credentials.
 - The student scanner fetches active vendors from the database via `GET /api/student/vendors`; there is no `DEMO_VENDORS` array.
-- Food photos are vendor-uploaded files (`POST /api/vendor/menu/upload`) and stored on `MenuItem.imageUrl`; emoji are ignored in the interface. Uploaded files are served by `GET /api/uploads/food/<filename>` because Next.js production does not serve files added to `public/` after the build. In production, point the upload route at S3/R2/Cloudinary instead.
+- Food photos are uploaded by cafeteria owners or their assigned staff (`POST /api/vendor/menu/upload`) and stored in PostgreSQL; their URLs are saved on `MenuItem.imageUrl`. Emoji are ignored in the interface. Uploaded files are served by `GET /api/uploads/food/<filename>` because Next.js production does not serve files added to `public/` after the build.
 
 ## Authentication architecture
 
