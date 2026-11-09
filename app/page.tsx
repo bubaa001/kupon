@@ -3,10 +3,12 @@ import Link from 'next/link';
 import {
   ArrowRight,
   ArrowUpRight,
-  Check,
+  CircleCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MarketingReveal } from '@/components/marketing/marketing-reveal';
+import { MotionHeading } from '@/components/marketing/motion-heading';
+import { LandingMotionEffects } from '@/components/marketing/landing-motion-effects';
 import { PaymentStory } from '@/components/marketing/payment-story';
 import { getLandingData, type LandingData } from '@/lib/public-data';
 import { formatCompactTZS, formatNumber } from '@/lib/utils';
@@ -122,9 +124,8 @@ function Hero() {
             id="hero-title"
             className="landing-hero__title max-w-3xl text-[clamp(2.7rem,6.6vw,5.4rem)] font-semibold leading-[1.02] tracking-[-0.065em] text-navy"
           >
-            Every meal.
-            <br />
-            <span className="font-normal">A record you can trust.</span>
+            <span className="landing-hero__line"><span>Every meal.</span></span>
+            <span className="landing-hero__line"><span>A record you can trust.</span></span>
           </h1>
           <p className="landing-hero__lede mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
             Replace handwritten sales books with searchable orders. Kupon is designed for direct
@@ -166,12 +167,11 @@ function ProblemSection() {
       >
         <div className="mx-auto grid w-full max-w-[75rem] gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-24">
           <div className="landing-problem__head max-w-lg">
-            <h2
+            <MotionHeading
               id="problem-title"
               className="landing-section-title mt-4 text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-5xl"
-            >
-              A notebook shouldn’t decide what happened.
-            </h2>
+              text="A notebook shouldn’t decide what happened."
+            />
             <p className="mt-5 text-base leading-7 text-slate-600">
               Cafeteria teams deserve records that are easy to find and fair to everyone. Kupon
               brings daily sales and payment confirmation into one dependable flow—without blaming
@@ -208,7 +208,7 @@ function HowItWorksSection() {
     <MarketingReveal>
       <section id="how-it-works" aria-labelledby="how-title" className="landing-how scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="mx-auto w-full max-w-[75rem]">
-          <h2 id="how-title" className="landing-section-title max-w-2xl">From menu to meal.</h2>
+          <MotionHeading id="how-title" className="landing-section-title max-w-2xl" text="From menu to meal." />
           <div className="landing-steps mt-12">
             {steps.map((step) => (
               <article className="landing-step" key={step.number}>
@@ -254,12 +254,11 @@ function CafeteriaSection() {
       >
         <div className="mx-auto grid w-full max-w-[75rem] gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-24">
           <div className="max-w-lg">
-            <h2
+            <MotionHeading
               id="cafeteria-title"
               className="landing-section-title mt-4 text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-5xl"
-            >
-              Clear for the person buying. Clear for the team serving.
-            </h2>
+              text="Clear for the person buying. Clear for the team serving."
+            />
             <Link
               href="/vendor-apply"
               className="group mt-7 inline-flex items-center gap-2 text-sm font-semibold text-primary-800"
@@ -312,12 +311,11 @@ function TrustSection() {
       >
         <div className="mx-auto grid w-full max-w-[75rem] gap-10 text-white lg:grid-cols-[1fr_0.85fr] lg:items-center lg:gap-20">
           <div>
-            <h2
+            <MotionHeading
               id="trust-title"
               className="landing-section-title mt-4 max-w-xl text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-5xl"
-            >
-              A meal coupon is proof, not a promise.
-            </h2>
+              text="A meal coupon is proof, not a promise."
+            />
             <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
               Kupon waits for the mobile-money payment to be confirmed before it makes an order
               ready to redeem. That gives the student and the cafeteria team the same clear record.
@@ -326,7 +324,7 @@ function TrustSection() {
           <ul className="landing-proof__checks">
             {checks.map((check) => (
               <li key={check} className="landing-proof__check flex gap-3 text-sm leading-6 text-slate-200">
-                <Check
+                <CircleCheck
                   aria-hidden
                   className="mt-0.5 h-5 w-5 shrink-0 text-primary-300"
                   strokeWidth={2}
@@ -350,12 +348,11 @@ function FinalCta() {
       >
         <div className="mx-auto grid w-full max-w-[75rem] gap-8 sm:grid-cols-[1.2fr_0.8fr] sm:items-end sm:gap-10">
           <div className="max-w-2xl">
-            <h2
+            <MotionHeading
               id="final-cta-title"
-              className="landing-section-title mt-3 text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-4xl"
-            >
-              Give every order a record that lasts.
-            </h2>
+              className="landing-section-title text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-4xl"
+              text="Give every order a record that lasts."
+            />
             <p className="landing-final__copy mt-3 text-sm leading-relaxed sm:text-base">
               Bring direct mobile-money checkout and verified meal coupons to your cafeteria.
             </p>
@@ -407,12 +404,11 @@ function AccountAccessSection() {
         className="landing-section landing-access landing-section--mist scroll-mt-24 px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
       >
         <div className="mx-auto w-full max-w-[75rem]">
-          <h2
+          <MotionHeading
             id="account-access-title"
-            className="landing-section-title mt-3 max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-4xl"
-          >
-            One platform, the right doorway for each role.
-          </h2>
+            className="landing-section-title max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-4xl"
+            text="One platform, the right doorway for each role."
+          />
           <div className="landing-access__grid mt-8 grid gap-3">
             {options.map((option) => (
               <article
@@ -485,6 +481,7 @@ export default async function HomePage() {
     <div className="flex min-h-dvh flex-col">
       <a className="landing-skip" href="#main">Skip to content</a>
       <SiteHeader />
+      <LandingMotionEffects />
       <main id="main" className="flex-1">
         <Hero />
         <Metrics {...landingData} />

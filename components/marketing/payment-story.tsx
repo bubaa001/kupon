@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { CircleCheck, LockKeyhole, RotateCcw, TicketCheck } from 'lucide-react';
 
 const steps = [
@@ -34,7 +34,13 @@ function DecorativeQr() {
       aria-hidden="true"
       style={{ gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))` }}
     >
-      {cells.map((filled, index) => <i key={index} className={filled ? 'is-filled' : ''} />)}
+      {cells.map((filled, index) => (
+        <i
+          key={index}
+          className={filled ? 'is-filled' : ''}
+          style={{ '--cell-delay': index % 320 } as CSSProperties}
+        />
+      ))}
     </span>
   );
 }
@@ -43,6 +49,9 @@ function DecorativeQr() {
 export function PaymentStory() {
   const [step, setStep] = useState(-1);
   const [runId, setRunId] = useState(0);
+  const [couponCode, setCouponCode] = useState('KPN-••••-••••');
+  const ticketRef = useRef<HTMLDivElement>(null);
+  const isUnlocked = step >= 2;
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -69,23 +78,78 @@ export function PaymentStory() {
     };
   }, [runId]);
 
+  useEffect(() => {
+    const finalCode = 'KPN-4F9A-27QX';
+    if (!isUnlocked) {
+      setCouponCode('KPN-••••-••••');
+      return;
+    }
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setCouponCode(finalCode);
+      return;
+    }
+
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const startedAt = Date.now();
+    const scramble = window.setInterval(() => {
+      const progress = Math.min(1, (Date.now() - startedAt) / 1100);
+      setCouponCode(
+        Array.from(finalCode, (character, index) => {
+          if (character === '-' || index / finalCode.length < progress) return character;
+          return alphabet[Math.floor(Math.random() * alphabet.length)];
+        }).join(''),
+      );
+      if (progress >= 1) window.clearInterval(scramble);
+    }, 45);
+
+    return () => window.clearInterval(scramble);
+  }, [isUnlocked]);
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const node = ticketRef.current;
+    if (!node) return;
+    const bounds = node.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    const horizontal = x / bounds.width - 0.5;
+    const vertical = y / bounds.height - 0.5;
+    node.style.setProperty('--tilt-x', `${-vertical * 5}deg`);
+    node.style.setProperty('--tilt-y', `${horizontal * 5}deg`);
+    node.style.setProperty('--gx', `${x}px`);
+    node.style.setProperty('--gy', `${y}px`);
+  };
+
+  const resetPointerTilt = () => {
+    const node = ticketRef.current;
+    node?.style.setProperty('--tilt-x', '0deg');
+    node?.style.setProperty('--tilt-y', '0deg');
+  };
+
   const replay = () => setRunId((current) => current + 1);
 
   return (
     <div className="payment-story landing-enter landing-enter-delayed">
-      <div className={`payment-story__ticket ${step >= 2 ? 'is-unlocked' : ''}`}>
+      <div
+        ref={ticketRef}
+        className="payment-story__tilt"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={resetPointerTilt}
+      >
+      <div className={`payment-story__ticket ${isUnlocked ? 'is-unlocked' : ''}`}>
         <div className="payment-story__ticket-head">
           <span className="payment-story__brand"><TicketCheck aria-hidden className="h-5 w-5" /> Kupon</span>
-          <span role="status" aria-live="polite" className={`payment-story__status ${step >= 2 ? 'is-confirmed' : ''}`}>
+          <span role="status" aria-live="polite" className={`payment-story__status ${isUnlocked ? 'is-confirmed' : ''}`}>
             {step < 1 ? 'Awaiting payment' : step < 2 ? 'Payment requested' : 'Payment confirmed'}
           </span>
         </div>
         <h2 className="payment-story__meal">Meal coupon</h2>
-        <div className={`payment-story__details ${step >= 2 ? 'is-unlocked' : ''}`}>
+        <div className={`payment-story__details ${isUnlocked ? 'is-unlocked' : ''}`}>
           <div className="payment-story__qr"><DecorativeQr /></div>
           <div>
             <p className="payment-story__code-label">Coupon code</p>
-            <p className="payment-story__code">{step >= 2 ? 'KPN-4F9A-27QX' : 'KPN-••••-••••'}</p>
+            <p className="payment-story__code">{couponCode}</p>
             <p className="payment-story__hint">Show this to cafeteria staff before collecting your meal.</p>
           </div>
           {step < 2 ? <div className="payment-story__lock"><LockKeyhole aria-hidden /> Locked until payment confirms</div> : null}
@@ -95,6 +159,8 @@ export function PaymentStory() {
           <span>Sample coupon, not redeemable.</span>
         </div>
         <span className="payment-story__glare" aria-hidden="true" />
+        <span className="payment-story__sheen" aria-hidden="true" />
+      </div>
       </div>
 
       <ol className="payment-story__tracker" aria-label="Illustrative order and payment stages" aria-live="off">
