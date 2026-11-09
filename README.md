@@ -130,12 +130,6 @@ USSD/offline payments are **not supported in this build**. The legacy wallet-bas
 
 ## Tech stack
 
-## Visual system
-
-The public landing page and signed-in workspaces share one visual direction: ink navy (`#0A1730`), mist canvas (`#F2F4F7`), warm paper surfaces (`#FBF8F1`), and restrained brass (`#E3C36F` / `#A87B22`). Emerald remains the success and payment-confirmation color. Shared card, page-heading, button, and shell styles live in `app/globals.css`, `components/ui`, and the Tailwind theme so role pages inherit the same spacing, surface contrast, and interaction feel. Workspace entry motion is short and disabled for reduced-motion preferences; task flows and role navigation remain unchanged.
-
-## Tech stack
-
 | Layer | Choice |
 | --- | --- |
 | Framework | Next.js **14.2.35** App Router, TypeScript, React 18 |

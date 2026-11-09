@@ -29,8 +29,8 @@ export function PageHeader({
             Back
           </Link>
         ) : null}
-        {eyebrow ? <p className="eyebrow mb-2 text-[#A87B22]">{eyebrow}</p> : null}
-        <h1 className="text-balance text-[1.6rem] font-medium leading-tight tracking-[-0.045em] text-[#0A1730] sm:text-3xl">
+        {eyebrow ? <p className="eyebrow mb-2">{eyebrow}</p> : null}
+        <h1 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-3xl">
           {title}
         </h1>
         {description ? (
