@@ -145,12 +145,13 @@ export function OverviewView() {
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Test gateway activity</h2>
               <p className="mt-1 text-xs text-slate-600">
-                Simulated payments shown in vendor sales; excluded from production financial totals.
+                Test gateway payments are included in the platform totals above and shown here as a
+                separate breakdown.
               </p>
             </div>
           </div>
           <Badge variant="warning" dot>
-            Test only · no money collected
+            Simulated · no external money moved
           </Badge>
         </div>
         <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-amber-200 pt-4 sm:grid-cols-3">

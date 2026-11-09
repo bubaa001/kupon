@@ -68,7 +68,7 @@ export function RevenueView() {
       <PageHeader
         eyebrow="Bubaa Comp · Revenue"
         title="Platform revenue"
-        description="All-time fee waterfall, SaaS billing, mobile-money rail costs and the live double-entry ledger check."
+        description="All-time fee waterfall, SaaS billing, mobile-money rail costs and the live double-entry ledger check. Includes test-gateway activity."
         actions={
           <>
             <Button
@@ -89,6 +89,11 @@ export function RevenueView() {
           </>
         }
       />
+
+      <Alert variant="warning" title="Test activity is included in these totals">
+        Payments recorded by Kupon&apos;s test gateway are counted in platform totals and tenant
+        breakdowns. They are simulated records; no external payment or payout was made.
+      </Alert>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

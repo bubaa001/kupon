@@ -37,7 +37,7 @@ export async function GET() {
       await Promise.all([
         buildTenantSummaries(),
         fetchTxSlices({ createdAt: { gte: startOfDay(subDays(now, 14)) } }),
-        fetchTxSlices({ createdAt: { gte: startOfDay(subDays(now, 14)) } }, true),
+        fetchTxSlices({ createdAt: { gte: startOfDay(subDays(now, 14)) } }, 'test'),
         ledgerCheck(),
         prisma.refundRequest.count({ where: { status: 'PENDING' } }),
       ]);

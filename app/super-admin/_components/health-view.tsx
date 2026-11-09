@@ -105,10 +105,10 @@ export function HealthView() {
         }
       />
 
-      <Alert variant="info" title="What is live and what is mocked">
-        Success rate, failed payments, ledger balance, active QR tokens, invoice exposure and
-        incidents are real database results. Uptime % and typical service latency are illustrative
-        demo values — there is no metrics store in this MVP — and every surface labels them.
+      <Alert variant="info" title="Live records and simulated payments">
+        Payment success, failures, ledger balance, active QR tokens, invoice exposure and incidents
+        are database results and include test-gateway transactions. Test payments are simulated;
+        uptime % and typical service latency are illustrative demo values.
       </Alert>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
