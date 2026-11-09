@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 import type { OrderView, StudentOrdersData } from '@/lib/orders/types';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type CreditCase = {
   id: string;
@@ -51,8 +52,8 @@ export default function StudentCreditRequestsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [creditData, orderData] = await Promise.all([
         apiFetch<StudentCredits>('/api/student/credit-requests'),
@@ -70,6 +71,9 @@ export default function StudentCreditRequestsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function submitRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

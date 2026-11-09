@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, LifeBuoy, Plus, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, patchJson, postJson } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type OrderOption = {
   id: string;
@@ -44,9 +45,10 @@ export default function VendorCreditRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const pollErrorShown = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [orderData, requestData] = await Promise.all([
         apiFetch<{ orders: OrderOption[] }>('/api/vendor/orders?status=PENDING'),
@@ -54,16 +56,23 @@ export default function VendorCreditRequestsPage() {
       ]);
       setOrders(orderData.orders);
       setRequests(requestData.requests);
+      pollErrorShown.current = false;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load credit cases.');
+      if (!silent || !pollErrorShown.current) {
+        toast.error(error instanceof Error ? error.message : 'Could not load credit cases.');
+      }
+      pollErrorShown.current = true;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function submitClosingRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

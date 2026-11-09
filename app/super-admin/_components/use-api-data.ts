@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type ApiState<T> = {
   data: T | null;
@@ -61,6 +62,10 @@ export function useApiData<T>(url: string) {
       aliveRef.current = false;
     };
   }, [load]);
+
+  useAutoRefresh(() => {
+    void load({ silent: true });
+  });
 
   return { ...state, reload: load };
 }

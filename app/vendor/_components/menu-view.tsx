@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CheckCircle2,
   Eye,
@@ -93,21 +93,6 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
   }, [items, filter, category, search]);
 
   const filtersActive = filter !== 'ALL' || category !== ALL_CATEGORIES || search.trim() !== '';
-
-  // Keep the menu and staff-reported stock state current across staff and owner views.
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState === 'visible') reload();
-    };
-    const timer = window.setInterval(refresh, 30_000);
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
-    };
-  }, [reload]);
 
   const filterOptions: { value: MenuFilter; label: string; count: number }[] = [
     { value: 'ALL', label: 'All', count: summary.total },

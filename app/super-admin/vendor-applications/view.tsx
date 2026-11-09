@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check, RefreshCw, Trash2, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, deleteJson, patchJson } from '@/lib/client-api';
 import { formatDateTime } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type VendorApplication = {
   id: string;
@@ -64,9 +65,10 @@ export function VendorApplicationsView() {
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pollErrorShown = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const data = await apiFetch<ApplicationResponse>('/api/super-admin/vendor-applications');
@@ -75,11 +77,12 @@ export function VendorApplicationsView() {
       setRejectedApplications(data.rejectedApplications);
       setRejectedRequests(data.rejectedRequests);
       setUniversities(data.universities);
-      setVerifiedIds(new Set());
+      pollErrorShown.current = false;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Could not load applications.';
       setError(message);
-      toast.error(message);
+      if (!silent || !pollErrorShown.current) toast.error(message);
+      pollErrorShown.current = true;
     } finally {
       setLoading(false);
     }
@@ -88,6 +91,9 @@ export function VendorApplicationsView() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function decide(application: VendorApplication, decision: 'APPROVE' | 'REJECT') {
     const note = notes[application.id]?.trim();

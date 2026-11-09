@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton, TransactionSkeleton } from '@/components/ui/skeleton';
 import { PendingOrderCard } from '@/components/student/pending-order-card';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { cn, formatTZS } from '@/lib/utils';
 import type { OrderView } from '@/lib/orders/types';
 import { ErrorState } from './_components/error-state';
@@ -80,8 +81,8 @@ export default function StudentHomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       setData(await apiFetch<StudentDashboardData>('/api/student/dashboard'));
@@ -97,6 +98,9 @@ export default function StudentHomePage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   if (loading && !data) return <HomeSkeleton />;
 

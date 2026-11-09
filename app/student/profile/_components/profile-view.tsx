@@ -33,6 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { signOut } from '@/lib/logout';
 import { cn, formatDate, formatDateTime, formatTZS, relativeTime } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { ErrorState } from '../../_components/error-state';
 import type { StudentProfileData } from '../../_lib/types';
 
@@ -180,8 +181,8 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       setData(await apiFetch<StudentProfileData>('/api/student/profile'));
@@ -199,6 +200,9 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   if (loading && !data) return <ProfileSkeleton />;
 

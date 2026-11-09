@@ -64,6 +64,11 @@ export function OverviewView() {
   }
 
   const { platform, universities, chart } = data;
+  const updatedAt = new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(data.generatedAt));
 
   return (
     <div className="space-y-6">
@@ -143,9 +148,14 @@ export function OverviewView() {
               <Badge variant="outline" className="tabular">
                 {formatTZS(platform.gmv7d)} GMV
               </Badge>
-              <Badge variant="success" dot>
-                Live data
-              </Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge variant={refreshing ? 'outline' : 'success'} dot>
+                  {refreshing ? 'Updating sales…' : 'Auto-updates · 15s'}
+                </Badge>
+                <span className="text-[10px] text-slate-400" aria-live="polite">
+                  Updated {updatedAt}
+                </span>
+              </div>
             </div>
           </div>
           <div className="mt-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyRound, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { ApiClientError, apiFetch, patchJson, postJson } from '@/lib/client-api';
 import { MIN_WITHDRAWAL } from '@/lib/constants';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type VendorOption = {
   id: string;
@@ -51,43 +52,47 @@ export default function TeamAccountsPage() {
   const [loadingVendors, setLoadingVendors] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingLimit, setSavingLimit] = useState<string | null>(null);
+  const pollErrorShown = useRef(false);
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoadingVendors(true);
+    try {
+      const { vendors: options, accounts: financeAccounts, emergencyWithdrawals: withdrawals } =
+        await apiFetch<{
+          vendors: VendorOption[];
+          accounts: FinanceAccount[];
+          emergencyWithdrawals: EmergencyWithdrawal[];
+        }>('/api/super-admin/finance-users');
+      pollErrorShown.current = false;
+      setVendors(options);
+      setAccounts(financeAccounts);
+      setEmergencyWithdrawals(withdrawals);
+      setLimits((current) =>
+        Object.fromEntries(
+          financeAccounts.map((account) => [
+            account.id,
+            current[account.id] ?? String(account.emergencyWithdrawalLimit),
+          ]),
+        ),
+      );
+    } catch (error) {
+      if (!silent || !pollErrorShown.current) {
+        toast.error(
+          error instanceof ApiClientError ? error.message : 'Could not load active cafeterias.',
+        );
+      }
+      pollErrorShown.current = true;
+    } finally {
+      if (!silent) setLoadingVendors(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    apiFetch<{
-      vendors: VendorOption[];
-      accounts: FinanceAccount[];
-      emergencyWithdrawals: EmergencyWithdrawal[];
-    }>('/api/super-admin/finance-users')
-      .then(({ vendors: options, accounts: financeAccounts, emergencyWithdrawals: withdrawals }) => {
-        if (active) {
-          setVendors(options);
-          setAccounts(financeAccounts);
-          setEmergencyWithdrawals(withdrawals);
-          setLimits(
-            Object.fromEntries(
-              financeAccounts.map((account) => [
-                account.id,
-                String(account.emergencyWithdrawalLimit),
-              ]),
-            ),
-          );
-        }
-      })
-      .catch((error) => {
-        if (active) {
-          toast.error(
-            error instanceof ApiClientError ? error.message : 'Could not load active cafeterias.',
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setLoadingVendors(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    void load();
+  }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function createAccount(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

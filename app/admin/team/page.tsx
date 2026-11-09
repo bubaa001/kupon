@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Copy, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { formatDateTime } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type TeamRole = 'STAFF' | 'FINANCE';
 type VendorOption = { id: string; name: string; code: string };
@@ -43,12 +44,14 @@ export default function AdminTeamPage() {
   const [inviteUrl, setInviteUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const pollErrorShown = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const result = await apiFetch<TeamData>('/api/admin/team');
       setData(result);
+      pollErrorShown.current = false;
       setVendorId((current) =>
         result.vendors.some((vendor) => vendor.id === current)
           ? current
@@ -57,7 +60,10 @@ export default function AdminTeamPage() {
             : '',
       );
     } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not load team access.');
+      if (!silent || !pollErrorShown.current) {
+        toast.error(error instanceof ApiClientError ? error.message : 'Could not load team access.');
+      }
+      pollErrorShown.current = true;
     } finally {
       setLoading(false);
     }
@@ -66,6 +72,9 @@ export default function AdminTeamPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function createInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

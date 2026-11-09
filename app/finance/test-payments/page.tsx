@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiFetch } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type TestPayment = {
   reference: string;
@@ -55,9 +56,10 @@ export default function FinanceTestPaymentsPage() {
 
   useEffect(() => {
     void load();
-    const interval = window.setInterval(() => void load(true), 2500);
-    return () => window.clearInterval(interval);
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  }, 2500);
 
   return (
     <div className="space-y-5">

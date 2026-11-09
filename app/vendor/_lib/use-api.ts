@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/client-api';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 /**
  * Minimal read hook for the vendor screens. Keeps the previous payload visible
@@ -41,6 +42,7 @@ export function useApiData<T>(url: string) {
   }, [url, version]);
 
   const reload = useCallback(() => setVersion((current) => current + 1), []);
+  useAutoRefresh(reload);
 
   return { data, loading, error, reload };
 }

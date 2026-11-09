@@ -14,6 +14,7 @@ import { TransactionSkeleton } from '@/components/ui/skeleton';
 import { STATUS_BADGE, TX_STATUSES } from '@/lib/constants';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { formatDate, formatTZS } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { ErrorState } from '../_components/error-state';
 import { TransactionRow } from '../_components/transaction-row';
 import type { StudentTx, TransactionsData } from '../_lib/types';
@@ -34,8 +35,8 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ range });
@@ -53,6 +54,9 @@ export default function HistoryPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   const groups = useMemo(() => {
     if (!data) return [];

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -24,7 +23,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { StatCard } from '@/components/ui/stat-card';
-import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -56,15 +54,6 @@ export function HealthView() {
   const { data, error, loading, refreshing, reload } = useApiData<HealthData>(
     '/api/super-admin/health',
   );
-  const [autoRefresh, setAutoRefresh] = useState(false);
-
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = window.setInterval(() => {
-      void reload({ silent: true });
-    }, 30_000);
-    return () => window.clearInterval(interval);
-  }, [autoRefresh, reload]);
 
   if (loading) return <PageSkeleton />;
 
@@ -100,20 +89,9 @@ export function HealthView() {
         description="Ledger invariants, payment success and incidents are computed live from the Kupon database. Uptime history and service latency are labelled demo metrics."
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
-              <Switch
-                id="health-auto-refresh"
-                checked={autoRefresh}
-                onCheckedChange={setAutoRefresh}
-                aria-label="Auto-refresh every 30 seconds"
-              />
-              <label
-                htmlFor="health-auto-refresh"
-                className="cursor-pointer text-xs font-medium text-slate-600"
-              >
-                Auto-refresh
-              </label>
-            </div>
+            <Badge variant={refreshing ? 'outline' : 'success'} dot>
+              {refreshing ? 'Updating…' : 'Auto-updates · 15s'}
+            </Badge>
             <Button
               variant="outline"
               size="sm"

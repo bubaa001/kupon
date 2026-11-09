@@ -39,6 +39,7 @@ import { PendingOrderDeck } from '@/components/student/pending-order-deck';
 import { QrScanner } from '@/components/qr/qr-scanner';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { cn, formatTZS } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import type {
   OrderView,
   PlaceOrderInput,
@@ -220,11 +221,13 @@ export default function PayPage() {
     return () => window.clearInterval(timer);
   }, [phase, pendingPaymentOrders.length]);
 
-  useEffect(() => {
-    if (phase !== 'scan' || (pendingPaymentOrders.length === 0 && pendingOrders.length === 0)) return;
-    const timer = window.setInterval(() => void refreshPending(true), 3000);
-    return () => window.clearInterval(timer);
-  }, [phase, pendingOrders.length, pendingPaymentOrders.length, refreshPending]);
+  useAutoRefresh(
+    () => {
+      void refreshPending(true);
+    },
+    3000,
+    phase === 'scan' && (pendingPaymentOrders.length > 0 || pendingOrders.length > 0),
+  );
 
   const openCoupon = useCallback((next: OrderView) => {
     setOrder(next);

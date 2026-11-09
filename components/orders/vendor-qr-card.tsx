@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiFetch } from '@/lib/client-api';
 import { cn } from '@/lib/utils';
 import type { VendorQrData } from '@/lib/orders/types';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 /**
  * The counter QR that students scan. It is a short pointer containing the
@@ -21,8 +22,8 @@ export function VendorQrCard({ compact = false }: { compact?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       setData(await apiFetch<VendorQrData>('/api/vendor/qr'));
@@ -36,6 +37,9 @@ export function VendorQrCard({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function copyCode() {
     if (!data) return;

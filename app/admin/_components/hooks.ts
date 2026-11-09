@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type ApiState<T> = {
   data: T | null;
@@ -50,6 +51,7 @@ export function useApiData<T>(url: string | null) {
   }, [url, nonce]);
 
   const reload = useCallback(() => setNonce((value) => value + 1), []);
+  useAutoRefresh(reload, undefined, url !== null);
   const setData = useCallback(
     (updater: T | ((current: T | null) => T | null)) =>
       setState((previous) => ({

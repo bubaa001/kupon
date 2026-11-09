@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, patchJson, postJson } from '@/lib/client-api';
 import { MIN_WITHDRAWAL } from '@/lib/constants';
 import { formatDateTime, formatTZS } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type CreditRequest = {
   id: string;
@@ -75,13 +76,18 @@ export default function FinanceRequestsPage() {
   const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const pollErrorShown = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setData(await apiFetch<FinanceRequests>('/api/finance/requests'));
+      pollErrorShown.current = false;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load cases.');
+      if (!silent || !pollErrorShown.current) {
+        toast.error(error instanceof Error ? error.message : 'Could not load cases.');
+      }
+      pollErrorShown.current = true;
     } finally {
       setLoading(false);
     }
@@ -90,6 +96,9 @@ export default function FinanceRequestsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function decideSupport(ticket: SupportTicket, decision: 'APPROVE' | 'REJECT') {
     setReviewNote('');

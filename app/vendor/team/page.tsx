@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Copy, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { formatDateTime } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type TeamRole = 'STAFF' | 'FINANCE';
 type TeamAccount = {
@@ -40,16 +41,21 @@ export default function VendorTeamPage() {
   const [inviteUrl, setInviteUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const pollErrorShown = useRef(false);
 
-  const loadTeam = useCallback(async () => {
+  const loadTeam = useCallback(async (silent = false) => {
     try {
       const payload = await apiFetch<{ accounts: TeamAccount[]; invites: TeamInvite[] }>(
         '/api/vendor/team',
       );
       setAccounts(payload.accounts);
       setInvites(payload.invites);
+      pollErrorShown.current = false;
     } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not load team access.');
+      if (!silent || !pollErrorShown.current) {
+        toast.error(error instanceof ApiClientError ? error.message : 'Could not load team access.');
+      }
+      pollErrorShown.current = true;
     } finally {
       setLoading(false);
     }
@@ -58,6 +64,9 @@ export default function VendorTeamPage() {
   useEffect(() => {
     void loadTeam();
   }, [loadTeam]);
+  useAutoRefresh(() => {
+    void loadTeam(true);
+  });
 
   async function createInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

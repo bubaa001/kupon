@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { ApiClientError, apiFetch, patchJson } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
+import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type CreditRequest = {
   id: string;
@@ -34,13 +35,18 @@ export function CreditRequestsView() {
   const [data, setData] = useState<CreditRequestsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const pollErrorShown = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setData(await apiFetch<CreditRequestsResponse>('/api/super-admin/credit-requests'));
+      pollErrorShown.current = false;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load credit requests.');
+      if (!silent || !pollErrorShown.current) {
+        toast.error(error instanceof Error ? error.message : 'Could not load credit requests.');
+      }
+      pollErrorShown.current = true;
     } finally {
       setLoading(false);
     }
@@ -49,6 +55,9 @@ export function CreditRequestsView() {
   useEffect(() => {
     void load();
   }, [load]);
+  useAutoRefresh(() => {
+    void load(true);
+  });
 
   async function decide(requestId: string, decision: 'APPROVE' | 'REJECT') {
     const note = window.prompt(`Platform-admin note for ${requestId}:`, '');
