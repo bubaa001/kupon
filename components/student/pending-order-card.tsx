@@ -47,7 +47,7 @@ export function PendingOrderCard({
       <div className="flex min-w-0 flex-1 flex-col p-3.5">
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 truncate text-[9px] font-bold uppercase tracking-[0.15em] text-amber-700">
-            Coupon inasubiri • {order.vendor.code}
+            {order.cafeteriaNotice ? 'Needs your attention' : 'Waiting coupon'} • {order.vendor.code}
           </p>
           <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" aria-hidden />
         </div>
@@ -61,7 +61,7 @@ export function PendingOrderCard({
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="min-w-0">
             <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Umelipa
+              Paid
             </p>
             <p className="tabular text-sm font-semibold text-slate-900">{formatTZS(order.total)}</p>
           </div>
@@ -70,10 +70,14 @@ export function PendingOrderCard({
             <p
               className={cn(
                 'text-[9px] font-semibold uppercase tracking-[0.1em]',
-                expired ? 'text-red-600' : 'text-amber-700',
+                expired || order.cafeteriaNotice ? 'text-red-600' : 'text-amber-700',
               )}
             >
-              {expired ? 'Expired' : 'Waiting for cafeteria'}
+              {expired
+                ? 'Expired'
+                : order.cafeteriaNotice
+                  ? 'Meal unavailable'
+                  : 'Waiting for cafeteria'}
             </p>
           </div>
         </div>

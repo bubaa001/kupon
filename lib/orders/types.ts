@@ -36,6 +36,17 @@ export type OrderStudentView = {
   phone: string;
 };
 
+/** A message from the cafeteria about this order, shown to the student. */
+export type CafeteriaNotice = {
+  /** DECLINED: unpaid request turned down. UNAVAILABLE: paid order the cafeteria cannot serve. */
+  kind: 'DECLINED' | 'UNAVAILABLE';
+  reason: string;
+  caseReference: string | null;
+  /** Platform-admin review of an UNAVAILABLE case. */
+  caseStatus: 'OPEN' | 'APPROVED' | 'REJECTED' | null;
+  resolution: string | null;
+};
+
 export type OrderView = {
   id: string;
   reference: string;
@@ -56,6 +67,7 @@ export type OrderView = {
   kuponFee: number;
   creditApplied: number;
   useCafeteriaCredit: boolean;
+  cafeteriaNotice: CafeteriaNotice | null;
   vendor: OrderVendorView;
   student: OrderStudentView;
   items: OrderItemView[];

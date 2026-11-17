@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -36,6 +36,11 @@ import { FoodProductCard } from '@/components/food';
 import { FoodThumb } from '@/components/orders/food-thumb';
 import { FoodCoupon } from '@/components/orders/food-coupon';
 import { PendingOrderDeck } from '@/components/student/pending-order-deck';
+import {
+  CafeteriaNoticeAlert,
+  cafeteriaNoticeSummary,
+  cafeteriaNoticeTitle,
+} from '@/components/student/cafeteria-notice';
 import { QrScanner } from '@/components/qr/qr-scanner';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { cn, formatTZS } from '@/lib/utils';
@@ -139,6 +144,8 @@ export default function PayPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [order, setOrder] = useState<OrderView | null>(null);
+  // Cafeteria notices already shown as a toast, so polling does not repeat them.
+  const announcedNotices = useRef(new Set<string>());
 
   // Paid coupons waiting for the vendor live on the scan screen as a card deck.
   const [pendingOrders, setPendingOrders] = useState<OrderView[]>([]);
@@ -451,6 +458,16 @@ export default function PayPage() {
         const next = data.orders[0];
         if (next) {
           setOrder(next);
+          const notice = next.cafeteriaNotice;
+          const noticeKey = notice ? `${next.id}:${notice.kind}:${notice.caseStatus ?? ''}` : null;
+          if (notice && noticeKey && !announcedNotices.current.has(noticeKey)) {
+            announcedNotices.current.add(noticeKey);
+            vibrate([30, 40, 30]);
+            toast.warning(cafeteriaNoticeTitle(notice), {
+              description: `${notice.reason} ${cafeteriaNoticeSummary(notice)}`,
+              duration: 10_000,
+            });
+          }
           if (next.status === 'PAYMENT_FAILED') {
             setPendingPaymentOrders((previous) => previous.filter((entry) => entry.id !== next.id));
             if (testPaymentSecondsRemaining(next.createdAt) === 0) {
@@ -509,7 +526,7 @@ export default function PayPage() {
           }
           if (next.status === 'CANCELLED') {
             setPendingOrders((previous) => previous.filter((entry) => entry.id !== next.id));
-            toast.info('This order was cancelled.');
+            if (!notice) toast.info('This order was cancelled.');
             return;
           }
         }
@@ -806,7 +823,7 @@ export default function PayPage() {
                   {category === 'All' ? 'All dishes' : category}
                 </h2>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
-                  {visibleItems.length} {visibleItems.length === 1 ? 'chakula' : 'vyakula'}
+                  {visibleItems.length} {visibleItems.length === 1 ? 'dish' : 'dishes'}
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-3.5 pb-24 sm:grid-cols-2 lg:grid-cols-3 lg:pb-0">
@@ -959,20 +976,25 @@ export default function PayPage() {
                 ? 'Waiting for cafeteria approval'
                 : order.status === 'AWAITING_PAYMENT'
                   ? 'Approved — pay for your meal'
-                  : order.status === 'CANCELLED'
-                    ? 'Order declined'
-                    : 'Your coupon'
+                  : order.cafeteriaNotice
+                    ? cafeteriaNoticeTitle(order.cafeteriaNotice)
+                    : order.status === 'CANCELLED'
+                      ? 'Order declined'
+                      : 'Your coupon'
             }
             description={
               order.status === 'AWAITING_ACCEPTANCE'
                 ? 'No payment has been taken. The cafeteria is checking availability; you will pay only after approval.'
                 : order.status === 'AWAITING_PAYMENT'
                   ? 'The cafeteria approved your order. Complete payment now; your coupon will appear after confirmation.'
-                  : order.status === 'CANCELLED'
-                    ? 'The cafeteria could not fulfill this request, so it was declined before payment.'
-                    : 'Show this coupon to cafeteria staff. Its status updates when they verify it.'
+                  : order.cafeteriaNotice
+                    ? cafeteriaNoticeSummary(order.cafeteriaNotice)
+                    : order.status === 'CANCELLED'
+                      ? 'The cafeteria could not fulfill this request, so it was declined before payment.'
+                      : 'Show this coupon to cafeteria staff. Its status updates when they verify it.'
             }
           />
+          {order.cafeteriaNotice ? <CafeteriaNoticeAlert notice={order.cafeteriaNotice} /> : null}
           {order.status === 'AWAITING_ACCEPTANCE' ? (
             <Alert variant="warning">
               Your order is unpaid while it waits for approval. You can keep browsing, and the request will update here.
@@ -1014,7 +1036,9 @@ export default function PayPage() {
                 Pay and get coupon
               </Button>
             </Card>
-          ) : order.status === 'PENDING' || order.status === 'VERIFIED' ? (
+          ) : (order.status === 'PENDING' || order.status === 'VERIFIED') && order.couponCode ? (
+            <FoodCoupon order={order} onNewOrder={resetToScan} />
+          ) : order.status === 'PENDING' ? null : order.status === 'VERIFIED' ? (
             <FoodCoupon order={order} onNewOrder={resetToScan} />
           ) : (
             <Card className="p-5 text-sm text-slate-600">
@@ -1031,7 +1055,12 @@ export default function PayPage() {
             </Button>
           </div>
           <p className="flex items-center justify-center gap-2 pb-2 text-center text-[11px] text-slate-400">
-            {order.status === 'PENDING' ? (
+            {order.status === 'PENDING' && !order.couponCode ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                Coupon on hold while the case is reviewed…
+              </>
+            ) : order.status === 'PENDING' ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
                 Waiting for the cafeteria to verify it…
@@ -1134,7 +1163,7 @@ export default function PayPage() {
                 ) : null}
                 <div className="flex justify-between gap-3 border-t border-slate-200 pt-1.5">
                   <span className="text-slate-500">
-                    {amountDue > 0 ? 'Mobile-money amount' : 'Due after credit'}
+                    {amountDue > 0 ? 'Amount due' : 'Due after credit'}
                   </span>
                   <span className="font-semibold tabular text-slate-900">{formatTZS(amountDue)}</span>
                 </div>
@@ -1155,7 +1184,7 @@ export default function PayPage() {
               </div>
 
               <Alert variant="warning">
-                This sends an unpaid request to the cafeteria. You will pay only after staff confirm the food is available. The current Kupon gateway is test-only and does not collect real money.
+                Nothing is charged yet. You pay only after the cafeteria confirms the food is available. Test gateway: no real money moves.
               </Alert>
 
               <div className="space-y-1.5">
@@ -1178,7 +1207,7 @@ export default function PayPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={submitting}>
-                  Ghairi
+                  Cancel
                 </Button>
                 <Button onClick={() => void submitOrder()} loading={submitting} disabled={!canPay}>
                   <UtensilsCrossed aria-hidden />

@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -285,11 +286,12 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
         { reason: unavailableReason.trim() },
       );
       toast.success(
-        result.status === 'CANCELLED' ? 'Unpaid request declined' : 'Credit case sent for review',
+        result.status === 'CANCELLED' ? 'Request declined' : 'Student notified',
         {
           description:
-            result.message ??
-            'The finance team and platform admin can review the reason and case history.',
+            result.status === 'CANCELLED'
+              ? 'The student sees your reason. They were not charged.'
+              : 'The student sees your reason and their coupon is on hold while Kupon reviews the credit case.',
         },
       );
       setUnavailableOrder(null);
@@ -600,14 +602,16 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           <DialogHeader>
             <DialogTitle>Report food as unavailable</DialogTitle>
             <DialogDescription>
-              Send this paid order to the platform admin for a cafeteria credit decision. The
-              student will not receive a coupon while the case is open.
+              The student sees your reason right away and their coupon is put on hold. Kupon
+              then reviews the case and, if approved, gives the student credit at your cafeteria.
             </DialogDescription>
           </DialogHeader>
+          <Label htmlFor="unavailable-reason">Reason the student will see</Label>
           <Textarea
+            id="unavailable-reason"
             value={unavailableReason}
             onChange={(event) => setUnavailableReason(event.target.value.slice(0, 500))}
-            placeholder="Explain what could not be served"
+            placeholder="For example: Pilau is finished for today."
             maxLength={500}
             aria-label="Reason food is unavailable"
           />
@@ -628,7 +632,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
               loading={reportingUnavailable}
             >
               <PackageX className="h-4 w-4" />
-              Send to admin
+              Notify student
             </Button>
           </DialogFooter>
         </DialogContent>

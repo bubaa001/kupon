@@ -35,9 +35,9 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: 'Pay with QR',
-        short_name: 'Lipa',
-        description: 'Open your 2-minute payment code',
+        name: 'Scan & order',
+        short_name: 'Order',
+        description: 'Scan a cafeteria QR and order a meal',
         url: '/student/pay',
         icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }],
       },

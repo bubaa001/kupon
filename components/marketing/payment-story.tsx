@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { CircleCheck, LockKeyhole, RotateCcw, TicketCheck } from 'lucide-react';
 
 const steps = [
@@ -10,38 +11,25 @@ const steps = [
   'Coupon issued',
 ];
 
-function DecorativeQr() {
-  const side = 25;
-  const cells = Array.from({ length: side * side }, (_, index) => {
-    const x = index % side;
-    const y = Math.floor(index / side);
-    const finder =
-      (x < 8 && y < 8) ||
-      (x >= side - 8 && y < 8) ||
-      (x < 8 && y >= side - 8);
-    if (finder) {
-      const originX = x >= side - 8 ? side - 8 : 0;
-      const originY = y >= side - 8 ? side - 8 : 0;
-      const ring = Math.max(Math.abs(x - originX - 3), Math.abs(y - originY - 3));
-      return ring === 3 || ring <= 1;
-    }
-    return ((x * 17 + y * 29 + x * y * 7) % 100) > 49;
-  });
-
+/**
+ * A real, scannable QR code. It encodes the site's own address rather than a coupon,
+ * so scanning the sample never touches the order system.
+ */
+function SampleQr() {
+  const [value, setValue] = useState('https://kupon.co.tz/');
+  useEffect(() => {
+    setValue(`${window.location.origin}/`);
+  }, []);
   return (
-    <span
-      className="payment-story__qr-grid"
+    <QRCodeSVG
+      value={value}
+      level="M"
+      marginSize={0}
+      fgColor="#0A1730"
+      bgColor="#FFFFFF"
+      className="payment-story__qr-code"
       aria-hidden="true"
-      style={{ gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))` }}
-    >
-      {cells.map((filled, index) => (
-        <i
-          key={index}
-          className={filled ? 'is-filled' : ''}
-          style={{ '--cell-delay': index % 320 } as CSSProperties}
-        />
-      ))}
-    </span>
+    />
   );
 }
 
@@ -146,7 +134,7 @@ export function PaymentStory() {
         </div>
         <h2 className="payment-story__meal">Meal coupon</h2>
         <div className={`payment-story__details ${isUnlocked ? 'is-unlocked' : ''}`}>
-          <div className="payment-story__qr"><DecorativeQr /></div>
+          <div className="payment-story__qr"><SampleQr /><span className="payment-story__scan" aria-hidden="true" /></div>
           <div>
             <p className="payment-story__code-label">Coupon code</p>
             <p className="payment-story__code">{couponCode}</p>

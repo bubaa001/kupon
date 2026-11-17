@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { maskPhone } from '@/lib/utils';
-import type { OrderView } from './types';
+import type { CafeteriaNotice, OrderView } from './types';
 
 export const orderInclude = {
   items: { orderBy: { name: 'asc' } },
@@ -26,18 +26,65 @@ export const orderInclude = {
     },
   },
   university: { select: { id: true, name: true, code: true } },
+  creditRequests: {
+    where: { kind: 'VENDOR_CLOSING' },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    select: { reference: true, status: true, reason: true, adminNote: true },
+  },
 } satisfies Prisma.OrderInclude;
+
+const OPEN_CASE_STATUSES = ['PENDING_VENDOR', 'PENDING_ADMIN', 'PENDING_FINANCE'];
 
 export type OrderRecord = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 
-export function serializeOrder(order: OrderRecord, couponToken: string | null = null): OrderView {
+function cafeteriaNotice(order: OrderRecord, declineReason: string | null): CafeteriaNotice | null {
+  const unavailableCase = order.creditRequests[0];
+  if (unavailableCase) {
+    return {
+      kind: 'UNAVAILABLE',
+      reason: unavailableCase.reason,
+      caseReference: unavailableCase.reference,
+      caseStatus: OPEN_CASE_STATUSES.includes(unavailableCase.status)
+        ? 'OPEN'
+        : unavailableCase.status === 'APPROVED'
+          ? 'APPROVED'
+          : 'REJECTED',
+      resolution: unavailableCase.adminNote,
+    };
+  }
+  if (order.status === 'CANCELLED' && declineReason) {
+    return {
+      kind: 'DECLINED',
+      reason: declineReason,
+      caseReference: null,
+      caseStatus: null,
+      resolution: null,
+    };
+  }
+  return null;
+}
+
+/**
+ * `declineReason` is the cafeteria's reason for declining an unpaid request.
+ * Student endpoints pass it so the student sees why, not just "declined".
+ */
+export function serializeOrder(
+  order: OrderRecord,
+  couponToken: string | null = null,
+  declineReason: string | null = null,
+): OrderView {
   const expired = order.status === 'PENDING' && order.expiresAt <= new Date();
+  const notice = cafeteriaNotice(order, declineReason);
+  // While the cafeteria's "food unavailable" case is open the coupon cannot be redeemed.
+  const couponOnHold = notice?.kind === 'UNAVAILABLE' && notice.caseStatus !== 'REJECTED';
   const paymentUnconfirmed =
     order.status === 'PAYMENT_PENDING' ||
     order.status === 'PAYMENT_FAILED' ||
     order.status === 'AWAITING_ACCEPTANCE' ||
     order.status === 'AWAITING_PAYMENT' ||
-    expired;
+    expired ||
+    couponOnHold;
   return {
     id: order.id,
     reference: order.reference,
@@ -57,6 +104,7 @@ export function serializeOrder(order: OrderRecord, couponToken: string | null = 
     kuponFee: order.transaction?.platformFee ?? 0,
     creditApplied: order.creditApplied,
     useCafeteriaCredit: order.useCafeteriaCredit,
+    cafeteriaNotice: notice,
     vendor: {
       id: order.vendor.id,
       name: order.vendor.name,

@@ -5,6 +5,7 @@ import { requireApiUser, requireStudent } from '@/lib/auth';
 import { forbidden, notFound, tooManyRequests } from '@/lib/errors';
 import { rateLimit } from '@/lib/rate-limit';
 import { signCouponToken } from '@/lib/orders/coupon';
+import { getDeclineReasons } from '@/lib/orders/decline-reasons';
 import { orderInclude, serializeOrder } from '@/lib/orders/serialize';
 import { placeOrder } from '@/lib/orders/place-order';
 import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
@@ -88,7 +89,11 @@ export async function GET(request: Request) {
         include: orderInclude,
       });
       if (!order) throw notFound('Coupon not found.');
-      return ok({ orders: [serializeOrder(order, await withCoupon(order))], active: null });
+      const declined = await getDeclineReasons([order]);
+      return ok({
+        orders: [serializeOrder(order, await withCoupon(order), declined.get(order.id) ?? null)],
+        active: null,
+      });
     }
 
     const orders = await prisma.order.findMany({
@@ -106,8 +111,11 @@ export async function GET(request: Request) {
       take: 20,
     });
 
+    const declined = await getDeclineReasons(orders);
     const serialized = await Promise.all(
-      orders.map(async (order) => serializeOrder(order, await withCoupon(order))),
+      orders.map(async (order) =>
+        serializeOrder(order, await withCoupon(order), declined.get(order.id) ?? null),
+      ),
     );
     // Only an unverified coupon is "active". Verified coupons live in history
     // and should not block the student from scanning a new vendor.
