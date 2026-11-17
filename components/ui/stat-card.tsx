@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils';
 
 const accents = {
   emerald: 'bg-emerald-50 text-emerald-600 ring-emerald-100',
-  navy: 'bg-slate-100 text-slate-700 ring-slate-200',
+  navy: 'bg-navy-50 text-navy ring-navy-100',
+  gold: 'bg-gold-50 text-gold-600 ring-gold-100',
   amber: 'bg-amber-50 text-amber-600 ring-amber-100',
   sky: 'bg-sky-50 text-sky-600 ring-sky-100',
   violet: 'bg-violet-50 text-violet-600 ring-violet-100',
@@ -29,25 +30,23 @@ export function StatCard({
   className?: string;
 }) {
   return (
-    <div className={cn('card-surface group relative overflow-hidden p-5', className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-            {label}
-          </p>
-          <p className="mt-2.5 truncate text-[1.45rem] font-semibold tracking-[-0.035em] text-slate-900 tabular">
-            {value}
-          </p>
-        </div>
+    <div className={cn('card-surface relative overflow-hidden p-4 sm:p-5', className)}>
+      <div className="flex items-center gap-2">
         <span
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-200 group-hover:scale-105',
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1',
             accents[accent],
           )}
         >
-          <Icon className="h-[18px] w-[18px]" />
+          <Icon className="h-3.5 w-3.5" />
         </span>
+        <p className="min-w-0 text-[11px] font-semibold uppercase leading-tight tracking-[0.1em] text-ink-muted">
+          {label}
+        </p>
       </div>
+      <p className="mt-3 break-words text-[1.35rem] font-medium leading-tight tracking-[-0.04em] text-navy tabular sm:text-[1.6rem]">
+        {value}
+      </p>
       <div className="mt-3 flex items-center gap-2">
         {typeof delta === 'number' ? (
           <span
@@ -64,7 +63,7 @@ export function StatCard({
             {Math.abs(delta).toFixed(1)}%
           </span>
         ) : null}
-        {hint ? <span className="truncate text-[11px] text-slate-400">{hint}</span> : null}
+        {hint ? <span className="truncate text-[11px] text-ink-muted">{hint}</span> : null}
       </div>
     </div>
   );

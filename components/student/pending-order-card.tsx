@@ -73,7 +73,7 @@ export function PendingOrderCard({
                 expired ? 'text-red-600' : 'text-amber-700',
               )}
             >
-              {expired ? 'Expired' : 'Inasubiri vendor'}
+              {expired ? 'Expired' : 'Waiting for cafeteria'}
             </p>
           </div>
         </div>
@@ -86,7 +86,7 @@ export function PendingOrderCard({
       <Link
         href={openHref}
         className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/70 focus-visible:ring-offset-2"
-        aria-label={`Fungua coupon ya ${order.vendor.name}, ${formatTZS(order.total)}`}
+        aria-label={`Open the ${order.vendor.name} coupon, ${formatTZS(order.total)}`}
       >
         {body}
       </Link>

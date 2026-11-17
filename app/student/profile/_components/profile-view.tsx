@@ -190,7 +190,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
       setError(
         reason instanceof ApiClientError
           ? reason.message
-          : 'Imeshindikana kupakia wasifu wako.',
+          : 'We could not load your profile.',
       );
     } finally {
       setLoading(false);
@@ -211,10 +211,10 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
       <div className="space-y-5">
         <PageHeader
           eyebrow="Akaunti"
-          title="Wasifu wangu"
-          description="Taarifa zako za chuo, oda na usalama wa akaunti."
+          title="My profile"
+          description="Your university details, orders and account security."
         />
-        <ErrorState message={error ?? 'Imeshindikana kupakia wasifu.'} onRetry={() => void load()} />
+        <ErrorState message={error ?? 'We could not load your profile.'} onRetry={() => void load()} />
       </div>
     );
   }
@@ -224,28 +224,27 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
   const googleState = identity.googleLinked
     ? { label: 'Google session', variant: 'success' as const, dot: true }
     : identity.email
-      ? { label: 'Google haijaunganishwa', variant: 'warning' as const, dot: true }
-      : { label: 'Google haijawekwa', variant: 'neutral' as const, dot: false };
+      ? { label: 'Google not linked', variant: 'warning' as const, dot: true }
+      : { label: 'No Google account', variant: 'neutral' as const, dot: false };
 
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Akaunti • Profile"
-        title="Wasifu wangu"
-        description="Taarifa zako za chuo, oda zako na usalama wa kikao."
+        eyebrow="Account"
+        title="My profile"
+        description="Your university details, orders and session security."
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
             <RefreshCcw aria-hidden />
-            Sasisha
+            Refresh
           </Button>
         }
       />
 
       {/* Identity */}
-      <Card className="overflow-hidden rounded-[1.75rem] p-0 shadow-lift">
+      <Card className="overflow-hidden rounded-2xl p-0">
         <div className="relative overflow-hidden bg-navy px-5 pb-5 pt-5 text-white">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.1)_0.7px,transparent_0.7px)] bg-[length:18px_18px] opacity-60" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent" />
           <div className="relative flex items-start gap-3">
             <Avatar name={student.name} size="lg" className="ring-2 ring-white/20" />
             <div className="min-w-0 flex-1">
@@ -257,7 +256,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Badge variant="outline" className="border-white/20 bg-white/10 text-white">
-                  Mwaka {student.year}
+                  Year {student.year}
                 </Badge>
                 <Badge
                   variant={googleState.variant}
@@ -273,7 +272,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
           <div className="relative mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 pt-3 text-[11px] text-slate-300">
             <span className="inline-flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5" aria-hidden />
-              {googleEmail ?? 'Hakuna email iliyounganishwa'}
+              {googleEmail ?? 'No email linked'}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Phone className="h-3.5 w-3.5" aria-hidden />
@@ -285,21 +284,21 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
 
       <Card className="flex flex-col gap-4 rounded-2xl p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Lipa moja kwa moja</p>
+          <p className="text-sm font-semibold text-slate-900">Pay per order</p>
           <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
-            Hakuna salio la Kupon. Unalipa kwa mobile money wakati wa kuagiza; coupon hutolewa
-            baada ya malipo kuthibitishwa.
+            Kupon holds no balance for you. You pay when you order, and the coupon is issued once
+            the payment is confirmed.
           </p>
           <p className="mt-3 text-xs text-slate-500">
-            Matumizi yaliyorekodiwa: <strong className="text-slate-800">{formatTZS(stats.totalSpent)}</strong>
+            Recorded spend: <strong className="text-slate-800">{formatTZS(stats.totalSpent)}</strong>
             <span className="px-1.5 text-slate-300">•</span>
-            {stats.transactionsCount} shughuli
+            {stats.transactionsCount} transactions
           </p>
         </div>
         <Button asChild className="shrink-0">
           <Link href="/student/pay">
             <ScanLine aria-hidden />
-            Anza kuagiza
+            Start an order
           </Link>
         </Button>
       </Card>
@@ -310,9 +309,9 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
           href="/student/pay"
           label="Coupons"
           value={String(stats.pendingCoupons)}
-          hint="Zinasubiri vendor"
+          hint="Waiting for cafeteria"
           icon={Ticket}
-          tone="bg-amber-50 text-amber-600"
+          tone="bg-navy-50 text-navy"
         />
         <StatLink
           href="/student/credit-requests"
@@ -320,64 +319,64 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
           value={String(stats.pendingCreditRequests)}
           hint="Open cafeteria cases"
           icon={Ticket}
-          tone="bg-violet-50 text-violet-600"
+          tone="bg-navy-50 text-navy"
         />
         <StatLink
           href="/student/history"
-          label="Matumizi"
+          label="Spending"
           value={formatTZS(stats.totalSpent)}
-          hint={`${stats.mealsCount} oda zilizolipwa`}
+          hint={`${stats.mealsCount} paid orders`}
           icon={UtensilsCrossed}
-          tone="bg-rose-50 text-rose-600"
+          tone="bg-navy-50 text-navy"
         />
       </div>
 
       {/* Quick links */}
       <Card className="p-3">
         <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-400">
-          Njia za haraka • Shortcuts
+          Shortcuts
         </p>
         <div className="divide-y divide-slate-100">
           <ActionRow
             href="/student/pay"
             icon={Ticket}
-            title="Coupons zangu"
-            description="Onyesha coupon kwa vendor au ghairi order inayosubiri"
-            tone="bg-amber-50 text-amber-600"
+            title="My coupons"
+            description="Show a coupon at the counter or cancel a waiting order"
+            tone="bg-navy-50 text-navy"
           />
           <ActionRow
             href="/student/history"
             icon={History}
-            title="Historia ya oda"
-            description="Malipo ya mobile money, coupons na refunds"
-            tone="bg-sky-50 text-sky-600"
+            title="Order history"
+            description="Payments, coupons and credits"
+            tone="bg-navy-50 text-navy"
           />
           <ActionRow
             href="/student/credit-requests"
             icon={Ticket}
             title="Credit & support"
-            description="Ripoti oda isiyokamilika au omba mapitio zaidi"
-            tone="bg-violet-50 text-violet-600"
+            description="Report an unfulfilled order or ask for a further review"
+            tone="bg-navy-50 text-navy"
           />
         </div>
       </Card>
 
       {/* Campus details */}
       <Card className="p-5">
-        <p className="text-sm font-semibold text-slate-900">Taarifa za chuo</p>
+        <p className="text-sm font-semibold text-slate-900">University details</p>
         <div className="mt-2 divide-y divide-slate-100">
-          <DetailRow icon={Hash} label="Namba ya mwanafunzi" value={student.studentId} />
+          <DetailRow icon={Hash} label="Student number" value={student.studentId} />
           <DetailRow
             icon={Building2}
-            label="Chuo"
+            label="University"
             value={`${university.name}${university.city ? ` • ${university.city}` : ''}`}
           />
-          <DetailRow icon={BookOpen} label="Kozi" value={student.course} />
-          <DetailRow icon={GraduationCap} label="Mwaka wa masomo" value={`Mwaka ${student.year}`} />
-          <DetailRow icon={Phone} label="Simu" value={student.phone} />
+          <DetailRow icon={BookOpen} label="Course" value={student.course} />
+          <DetailRow icon={GraduationCap} label="Year of study" value={`Year ${student.year}`} />
+          <DetailRow icon={Phone} label="Phone" value={student.phone} />
           <DetailRow
             icon={CalendarDays}
-            label="Mwanachama tangu"
+            label="Member since"
             value={formatDate(student.joinedAt, 'dd MMM yyyy')}
           />
         </div>
@@ -390,10 +389,10 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
             <ShieldCheck className="h-4 w-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Kikao chako • Your session</p>
+            <p className="text-sm font-semibold text-slate-900">Your session</p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-              Kupon inatumia <span className="font-semibold text-slate-700">Google Sign-In</span>.
-              Huhitaji OTP wala password — Google ndiyo inathibitisha akaunti yako.
+              Kupon uses <span className="font-semibold text-slate-700">Google Sign-In</span>.
+              You need no OTP or password: Google verifies your account.
             </p>
           </div>
         </div>
@@ -411,16 +410,16 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
           <div className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-1.5 text-slate-500">
               <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-              Hali
+              Status
             </span>
             <Badge variant={googleState.variant} dot={googleState.dot}>
-              {identity.googleLinked ? 'Imeunganishwa' : 'Haijaunganishwa'}
+              {identity.googleLinked ? 'Linked' : 'Not linked'}
             </Badge>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-1.5 text-slate-500">
               <Clock3 className="h-3.5 w-3.5" aria-hidden />
-              Kuingia kwa mwisho
+              Last sign-in
             </span>
             <span
               className="font-medium text-slate-800"
@@ -433,14 +432,14 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
 
         <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
           {identity.googleLinked
-            ? 'Umeingia kwa Google kwenye kifaa hiki. Ukitoka, utahitaji kuchagua akaunti yako ya Google tena.'
+            ? 'You are signed in with Google on this device. If you sign out, you will choose your Google account again.'
             : identity.email
-              ? 'Tumia email hii ya chuo kuingia na Google. Kama Google yako ina email tofauti, mwone admin wa chuo ili waiunganishe.'
-              : 'Hakuna email ya Google iliyounganishwa. Mwone admin wa chuo ili waiunganishe kabla ya kujaribu kuingia na Google.'}
+              ? 'Use this email to sign in with Google. If your Google account uses a different email, ask your university admin to link it.'
+              : 'No Google email is linked. Ask your university admin to link one before you sign in with Google.'}
         </p>
         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-          Usitoe coupon code yako kwa mtu yeyote isipokuwa vendor wa counter unayochukua chakula.
-          Malipo ya oda yanaonekana baada ya kuthibitishwa na mfumo wa malipo.
+          Never share your coupon code with anyone except the cafeteria counter serving your meal.
+          Order payments appear once the payment system confirms them.
         </p>
 
         <Button
@@ -449,27 +448,27 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
           onClick={() => void signOut()}
         >
           <LogOut aria-hidden />
-          Toka • Sign out
+          Sign out
         </Button>
       </Card>
 
       {/* PWA */}
       <Card className="p-5">
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-navy-50 text-navy">
             <Smartphone className="h-4 w-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">Sakinisha Kupon kwenye simu</p>
+            <p className="text-sm font-semibold text-slate-900">Install Kupon on your phone</p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-              Kupon ni Progressive Web App (PWA): unaiongeza kwenye home screen na kuitumia kama
-              app ya kawaida — bila Play Store.
+              Kupon is a Progressive Web App (PWA): add it to your home screen and use it like a
+              normal app, with no Play Store needed.
             </p>
           </div>
         </div>
         <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600">
           <p>
-            <span className="font-semibold text-slate-800">Android (Chrome):</span> menyu ⋮ → “Add
+            <span className="font-semibold text-slate-800">Android (Chrome):</span> menu ⋮ → “Add
             to Home screen”.
           </p>
           <p>
@@ -480,10 +479,10 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge variant="neutral">
             <ShieldCheck className="h-3 w-3" aria-hidden />
-            Salama
+            Secure
           </Badge>
           <Badge variant="neutral">Scan &amp; order</Badge>
-          <Badge variant="neutral">Bila OTP</Badge>
+          <Badge variant="neutral">No OTP</Badge>
         </div>
       </Card>
     </div>

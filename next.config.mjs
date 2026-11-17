@@ -9,6 +9,18 @@ const nextConfig = {
     // Prisma's native engine must stay external to the server bundle.
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
+  // Retired wallet-era pages. Old bookmarks land on the page that replaced them.
+  async redirects() {
+    return [
+      { source: '/student/topup', destination: '/student/pay', permanent: true },
+      { source: '/student/withdrawals', destination: '/student/credit-requests', permanent: true },
+      { source: '/student/refunds', destination: '/student/credit-requests', permanent: true },
+      { source: '/admin/refunds', destination: '/admin', permanent: true },
+      { source: '/admin/withdrawals', destination: '/admin', permanent: true },
+      { source: '/admin/menu', destination: '/admin/vendors', permanent: true },
+      { source: '/ussd', destination: '/student/pay', permanent: true },
+    ];
+  },
   async headers() {
     const headers = [
       {

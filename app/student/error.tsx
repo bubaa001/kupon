@@ -22,13 +22,13 @@ export default function StudentError({
       <PageHeader
         eyebrow="Student account"
         title="Kuna hitilafu"
-        description="Hatukuweza kuonyesha ukurasa huu. Maelezo ya oda yako hayajabadilika."
+        description="We could not show this page. Your order details have not changed."
       />
-      <Alert variant="danger" title="Imeshindikana kupakia ukurasa">
-        {error.message || 'Jaribu tena. Kama tatizo linaendelea, toka na uingie tena.'}
+      <Alert variant="danger" title="This page did not load">
+        {error.message || 'Try again. If the problem continues, sign out and sign back in.'}
       </Alert>
       <Button className="w-full" size="lg" onClick={reset}>
-        Jaribu tena
+        Try again
       </Button>
     </div>
   );

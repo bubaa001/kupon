@@ -25,7 +25,7 @@ export function SetupForm() {
     setSaving(true);
     setError(null);
     try {
-      await postJson('/api/auth/bootstrap-super-admin', {
+      const result = await postJson<{ redirectTo?: string }>('/api/auth/bootstrap-super-admin', {
         setupToken,
         username,
         name,
@@ -34,7 +34,7 @@ export function SetupForm() {
         password,
       });
       toast.success('Platform owner account created.');
-      router.replace('/admin');
+      router.replace(result.redirectTo ?? '/super-admin');
       router.refresh();
     } catch (reason) {
       const message =

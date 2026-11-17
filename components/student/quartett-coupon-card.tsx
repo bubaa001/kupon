@@ -101,7 +101,7 @@ export function QuartettCouponCard({
         </div>
         <dl className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
           <MetaRow label="Tarehe" value={formatDate(order.createdAt, 'dd.MM.yyyy')} />
-          <MetaRow label="Muda" value={formatTime(order.createdAt)} />
+          <MetaRow label="Time" value={formatTime(order.createdAt)} />
           <MetaRow label="Ref" value={order.reference.replace('ORD-', '')} mono />
           <MetaRow label="Total" value={formatTZS(order.total)} />
           <MetaRow
@@ -136,7 +136,7 @@ export function QuartettCouponCard({
               ? 'Waiting for cafe'
               : awaitingPayment
                 ? 'Pay now'
-                : 'Inasubiri'}
+                : 'Waiting'}
         </p>
       </div>
     </article>

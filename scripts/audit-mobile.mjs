@@ -51,10 +51,9 @@ async function main() {
   };
   const routes = [
     ['student', '/student'],
-    ['student', '/student/topup'],
     ['student', '/student/pay'],
     ['student', '/student/history'],
-    ['student', '/student/refunds'],
+    ['student', '/student/credit-requests'],
     ['student', '/student/profile'],
     ['vendor', '/vendor'],
     ['vendor', '/vendor/scan'],
@@ -66,8 +65,6 @@ async function main() {
     ['admin', '/admin/reports'],
     ['admin', '/admin/vendors'],
     ['admin', '/admin/students'],
-    ['admin', '/admin/refunds'],
-    ['admin', '/admin/menu'],
     ['admin', '/admin/settings'],
     ['super', '/super-admin'],
     ['super', '/super-admin/tenants'],

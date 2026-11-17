@@ -149,18 +149,18 @@ async function main() {
   );
 
   const wallet = await request('/api/student/wallet', { cookie: student.cookie });
-  check('legacy wallet endpoint is disabled', wallet.status === 410);
+  check('legacy wallet endpoint is removed', wallet.status === 404);
   const topup = await request('/api/student/topup', {
     method: 'POST',
     body: { amount: 1000 },
     cookie: student.cookie,
   });
-  check('legacy wallet top-ups are disabled', topup.status === 410);
+  check('legacy wallet top-ups are removed', topup.status === 404);
   const paymentToken = await request('/api/student/payment-token', {
     method: 'POST',
     cookie: student.cookie,
   });
-  check('legacy wallet payment codes are disabled', paymentToken.status === 410);
+  check('legacy wallet payment codes are removed', paymentToken.status === 404);
 
   console.log('\nVendor + meal order + coupon flow');
   const vendor = await loginVendor('V-UDSM-001', '1234');
@@ -326,7 +326,7 @@ async function main() {
   check('reports include fee breakdown', Boolean(reports.json?.data?.fees));
 
   const refunds = await request('/api/admin/refunds', { cookie: admin.cookie });
-  check('admin refunds respond', refunds.status === 200 && Array.isArray(refunds.json?.data?.requests));
+  check('legacy admin refunds endpoint is removed', refunds.status === 404);
 
   const settings = await request('/api/admin/settings', { cookie: admin.cookie });
   check('settings expose Lipa Namba', settings.json?.data?.university?.paymentRouteCode === '555111');
@@ -352,11 +352,7 @@ async function main() {
     method: 'POST',
     body: { action: 'balance', phone: '+255712345678' },
   });
-  check(
-    'USSD endpoint is paused behind the feature flag',
-    ussd.status === 404 && ussd.json?.error?.code === 'USSD_DISABLED',
-    JSON.stringify(ussd.json),
-  );
+  check('legacy USSD endpoint is removed', ussd.status === 404);
 
   console.log('\nLedger integrity');
   const { PrismaClient } = await import('@prisma/client');

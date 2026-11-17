@@ -127,7 +127,7 @@ function VerifiedCelebration({ order, message }: { order: OrderView; message: st
         </div>
 
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-          Malipo yamekamilika
+          Payment complete
         </p>
         <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
           Coupon verified

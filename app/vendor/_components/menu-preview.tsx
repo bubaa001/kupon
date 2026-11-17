@@ -39,16 +39,16 @@ export function MenuPreview({
 }) {
   const visibleItems = useMemo(() => items.filter((item) => item.available), [items]);
 
-  const [category, setCategory] = useState('Zote');
+  const [category, setCategory] = useState('All');
   const [cart, setCart] = useState<Record<string, number>>({});
 
   const categories = useMemo(
-    () => ['Zote', ...Array.from(new Set(visibleItems.map((item) => item.category)))],
+    () => ['All', ...Array.from(new Set(visibleItems.map((item) => item.category)))],
     [visibleItems],
   );
 
   const shown =
-    category === 'Zote'
+    category === 'All'
       ? visibleItems
       : visibleItems.filter((item) => item.category === category);
 
@@ -73,7 +73,7 @@ export function MenuPreview({
 
   function shortcutImage(categoryName: string): string | null {
     const pool =
-      categoryName === 'Zote'
+      categoryName === 'All'
         ? visibleItems
         : visibleItems.filter((item) => item.category === categoryName);
     return pool.find((item) => item.imageUrl)?.imageUrl ?? null;
@@ -153,10 +153,10 @@ export function MenuPreview({
 
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold tracking-tight text-slate-900">
-              {category === 'Zote' ? 'Vyakula vyote' : category}
+              {category === 'All' ? 'All dishes' : category}
             </h3>
             <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
-              {shown.length} {shown.length === 1 ? 'chakula' : 'vyakula'}
+              {shown.length} {shown.length === 1 ? 'dish' : 'dishes'}
             </span>
           </div>
 
@@ -217,7 +217,7 @@ function CategoryShortcut({
   active: boolean;
   onClick: () => void;
 }) {
-  const Icon = label === 'Zote' ? UtensilsCrossed : (CATEGORY_ICONS[label] ?? UtensilsCrossed);
+  const Icon = label === 'All' ? UtensilsCrossed : (CATEGORY_ICONS[label] ?? UtensilsCrossed);
 
   return (
     <button

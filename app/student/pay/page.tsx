@@ -104,13 +104,13 @@ function PayingPanel() {
           <UtensilsCrossed className="h-7 w-7" aria-hidden />
         </span>
       </span>
-      <p className="mt-4 text-base font-semibold text-slate-900">Tunatuma ombi la chakula…</p>
+      <p className="mt-4 text-base font-semibold text-slate-900">Sending your meal request…</p>
       <p className="mt-1 max-w-[16rem] text-xs leading-relaxed text-slate-500">
-        Hakuna malipo yatakayochukuliwa mpaka cafeteria ikubali ombi lako.
+        No payment is taken until the cafeteria accepts your request.
       </p>
       <p className="mt-4 flex items-center gap-2 text-[11px] text-slate-400">
         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        Inafanya kazi…
+        Working…
       </p>
     </div>
   );
@@ -132,7 +132,7 @@ export default function PayPage() {
   const [codeInput, setCodeInput] = useState('');
 
   const [menu, setMenu] = useState<VendorMenuData | null>(null);
-  const [category, setCategory] = useState('Zote');
+  const [category, setCategory] = useState('All');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [reviewOpen, setReviewOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -177,12 +177,12 @@ export default function PayPage() {
       setPendingError(
         error instanceof ApiClientError
           ? error.message
-          : 'Imeshindikana kupakia coupons zako. Angalia muunganisho wako kisha ujaribu tena.',
+          : 'We could not load your coupons. Check your connection and try again.',
       );
       setBootError(
         error instanceof ApiClientError
           ? error.message
-          : 'Imeshindikana kupakia taarifa zako. Angalia muunganisho wako kisha ujaribu tena.',
+          : 'We could not load your details. Check your connection and try again.',
       );
       setPendingLoading(false);
       setPhase('scan');
@@ -208,7 +208,7 @@ export default function PayPage() {
       setPendingError(
         err instanceof ApiClientError
           ? err.message
-          : 'Imeshindikana kupakia coupons zako. Jaribu tena.',
+          : 'We could not load your coupons. Try again.',
       );
     } finally {
       if (!silent) setPendingLoading(false);
@@ -246,7 +246,7 @@ export default function PayPage() {
         setMenu(data);
         setCart({});
         setUseCredit(false);
-        setCategory('Zote');
+        setCategory('All');
         setNote('');
         setFormError(null);
         setReviewOpen(false);
@@ -254,14 +254,14 @@ export default function PayPage() {
         setCodeInput('');
         setPhase('menu');
         vibrate(30);
-        toast.success(`${data.vendor.name} • menu imepakiwa`, {
-          description: `${data.items.length} vyakula vinapatikana. Chagua chakula chako.`,
+        toast.success(`${data.vendor.name} menu loaded`, {
+          description: `${data.items.length} ${data.items.length === 1 ? 'dish' : 'dishes'} available. Pick your meal.`,
         });
       } catch (err) {
         const message =
           err instanceof ApiClientError
             ? err.message
-            : 'Imeshindikana kupakia menu ya vendor. Jaribu tena.';
+            : 'We could not load this cafeteria menu. Try again.';
         setScanError(message);
         setScanActive(false);
         toast.error(message);
@@ -287,7 +287,7 @@ export default function PayPage() {
     setOrder(null);
     setMenu(null);
     setCart({});
-    setCategory('Zote');
+    setCategory('All');
     setNote('');
     setReviewOpen(false);
     setFormError(null);
@@ -303,7 +303,7 @@ export default function PayPage() {
     event.preventDefault();
     const code = codeInput.trim().toUpperCase();
     if (code.length < 3) {
-      setScanError('Weka vendor code, mfano V-CAMPUS-001.');
+      setScanError('Enter a cafeteria code, for example V-CAMPUS-001.');
       return;
     }
     void scanVendor({ code });
@@ -311,12 +311,12 @@ export default function PayPage() {
 
   const categories = useMemo(() => {
     if (!menu) return [];
-    return ['Zote', ...Array.from(new Set(menu.items.map((item) => item.category)))];
+    return ['All', ...Array.from(new Set(menu.items.map((item) => item.category)))];
   }, [menu]);
 
   const visibleItems = useMemo(() => {
     if (!menu) return [];
-    if (category === 'Zote') return menu.items;
+    if (category === 'All') return menu.items;
     return menu.items.filter((item) => item.category === category);
   }, [menu, category]);
 
@@ -378,13 +378,13 @@ export default function PayPage() {
       setPhase('coupon');
       toast.success(
         result.order.status === 'AWAITING_ACCEPTANCE'
-          ? 'Ombi lako limetumwa. Subiri cafeteria ithibitishe chakula kinapatikana.'
-          : 'Cafeteria imekubali ombi. Lipa sasa ili upate coupon.',
+          ? 'Request sent. Wait for the cafeteria to confirm the food is available.'
+          : 'The cafeteria accepted your request. Pay now to get your coupon.',
         { description: `${menu.vendor.name} • ${formatTZS(result.order.total)}` },
       );
     } catch (err) {
       const message =
-        err instanceof ApiClientError ? err.message : 'Malipo hayakufanikiwa. Jaribu tena.';
+        err instanceof ApiClientError ? err.message : 'Payment did not go through. Try again.';
       setFormError(message);
       toast.error(message);
     } finally {
@@ -407,14 +407,14 @@ export default function PayPage() {
           ...previous.filter((entry) => entry.id !== result.order.id),
         ]);
         setPhase('payment');
-        toast.info('Malipo yanaendelea. Coupon itatolewa baada ya uthibitisho.');
+        toast.info('Payment in progress. Your coupon is issued once it is confirmed.');
       } else {
         setPendingOrders((previous) => [
           result.order,
           ...previous.filter((entry) => entry.id !== result.order.id),
         ]);
         setPhase('coupon');
-        toast.success('Malipo yamekamilika. Coupon yako iko tayari.');
+        toast.success('Payment complete. Your coupon is ready.');
       }
     } catch (error) {
       const message = error instanceof ApiClientError ? error.message : 'Could not start payment.';
@@ -460,9 +460,9 @@ export default function PayPage() {
               return;
             }
             setPhase('payment-failed');
-            toast.error('Malipo hayakuthibitishwa.', {
+            toast.error('Payment not confirmed.', {
               description:
-                'Coupon haijatolewa. Hii ilikuwa test payment; hakuna pesa halisi iliyokusanywa.',
+                'No coupon was issued. This was a test payment; no real money was collected.',
             });
             return;
           }
@@ -480,7 +480,7 @@ export default function PayPage() {
             setPhase('coupon');
             vibrate([30, 40, 60]);
             toast.success(
-              'Malipo yamethibitishwa. Coupon yako iko tayari.',
+              'Payment confirmed. Your coupon is ready.',
             );
             return;
           }
@@ -489,27 +489,27 @@ export default function PayPage() {
               next,
               ...previous.filter((entry) => entry.id !== next.id),
             ]);
-            toast.success('Cafeteria imekubali order. Lipa sasa ili upate coupon.');
+            toast.success('The cafeteria accepted your order. Pay now to get your coupon.');
           }
           if (next.status === 'PENDING' && orderStatus !== 'PENDING') {
             setPendingOrders((previous) => [
               next,
               ...previous.filter((entry) => entry.id !== next.id),
             ]);
-            toast.success('Coupon yako iko tayari.');
+            toast.success('Your coupon is ready.');
             return;
           }
           if (next.status === 'VERIFIED') {
             setPendingOrders((previous) => previous.filter((entry) => entry.id !== next.id));
             vibrate([40, 40, 90]);
-            toast.success('Coupon imethibitishwa!', {
-              description: 'Vendor amekagua coupon yako. Chukua chakula chako sasa.',
+            toast.success('Coupon verified', {
+              description: 'The cafeteria verified your coupon. Collect your meal now.',
             });
             return;
           }
           if (next.status === 'CANCELLED') {
             setPendingOrders((previous) => previous.filter((entry) => entry.id !== next.id));
-            toast.info('Order hii imeghairiwa.');
+            toast.info('This order was cancelled.');
             return;
           }
         }
@@ -540,7 +540,7 @@ export default function PayPage() {
             description="Scan a cafeteria QR, request your meal, then pay after the cafeteria confirms it is available."
             actions={
               <Button asChild variant="outline" size="sm">
-                <Link href="/student/history">Historia</Link>
+                <Link href="/student/history">History</Link>
               </Button>
             }
           />
@@ -582,9 +582,9 @@ export default function PayPage() {
               {scanningBusy ? (
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-14 text-center">
                   <Loader2 className="h-7 w-7 animate-spin text-primary-600" aria-hidden />
-                  <p className="mt-3 text-sm font-semibold text-slate-800">Tunapakia menu…</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-800">Loading the menu…</p>
                   <p className="mt-1 max-w-[16rem] text-[11px] leading-relaxed text-slate-500">
-                    Tunathibitisha vendor na kuchukua vyakula vinavyopatikana.
+                    Checking the cafeteria and fetching what is available.
                   </p>
                 </div>
               ) : scanActive ? (
@@ -607,10 +607,10 @@ export default function PayPage() {
                     <ScanLine className="h-8 w-8" aria-hidden />
                   </span>
                   <span className="text-sm font-semibold text-slate-800">
-                    Fungua kamera • Open camera
+                    Open camera
                   </span>
                   <span className="max-w-[16rem] text-[11px] leading-relaxed text-slate-500">
-                    Elekeza kamera kwenye QR iliyo kwenye counter ya vendor.
+                    Point your camera at the QR code on the cafeteria counter.
                   </span>
                 </button>
               )}
@@ -618,16 +618,16 @@ export default function PayPage() {
           </Card>
 
           {scanError ? (
-            <Alert variant="danger" title="Scan haikufanikiwa">
+            <Alert variant="danger" title="Scan did not work">
               {scanError}
             </Alert>
           ) : null}
 
           <Card className="p-4">
-            <p className="text-sm font-semibold text-slate-900">Au weka code ya vendor</p>
+            <p className="text-sm font-semibold text-slate-900">Or enter the cafeteria code</p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-              Vendor code iko chini ya QR ya counter yao. Unaweza pia kuichagua kutoka vendors
-              walio kwenye campus yako hapa chini.
+              The code is printed under the counter QR. You can also pick a cafeteria on your
+              campus below.
             </p>
             <form onSubmit={submitCode} className="mt-3 flex gap-2">
               <Input
@@ -650,12 +650,12 @@ export default function PayPage() {
               </p>
               {vendorLoadError ? (
                 <p className="mt-2 text-xs leading-relaxed text-amber-700" role="status">
-                  Orodha ya cafeterias haikupatikana. Tumia QR au code iliyo kwenye counter.
+                  The cafeteria list did not load. Use the QR or the code on the counter.
                 </p>
               ) : null}
               {!vendorLoadError && campusVendors.length === 0 ? (
                 <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  Hakuna cafeteria zinazopatikana kwa sasa. Scan QR au code ya counter.
+                  No cafeterias are open right now. Scan the counter QR or enter its code.
                 </p>
               ) : null}
               <div className="mt-2 space-y-2">
@@ -695,7 +695,7 @@ export default function PayPage() {
         <>
           <PageHeader
             eyebrow={`${menu.vendor.universityName} • ${menu.vendor.code}`}
-            title="Chagua chakula"
+            title="Choose your meal"
             description={menu.vendor.description}
             actions={
               <Button variant="outline" size="sm" onClick={resetToScan} disabled={submitting}>
@@ -730,7 +730,7 @@ export default function PayPage() {
             <div className="relative z-10 mt-4 flex items-center justify-between rounded-xl border border-white/15 bg-white/10 px-3 py-2">
               <span className="flex items-center gap-1.5 text-[11px] text-emerald-100/80">
                 <Smartphone className="h-3.5 w-3.5" aria-hidden />
-                Lipia oda hii kwa simu
+                Pay for this order at checkout
               </span>
               <span className="text-[11px] font-semibold text-white">Mobile money</span>
             </div>
@@ -744,7 +744,7 @@ export default function PayPage() {
             >
               {categories.map((item) => {
                 const sample =
-                  item === 'Zote'
+                  item === 'All'
                     ? menu.items[0]
                     : menu.items.find((entry) => entry.category === item);
                 const selected = category === item;
@@ -790,12 +790,12 @@ export default function PayPage() {
           {menu.items.length === 0 ? (
             <EmptyState
               icon={Store}
-              title="Hakuna chakula kwa sasa"
-              description="Vendor huyu hana vyakula vinavyopatikana kwa sasa. Jaribu vendor mwingine."
+              title="Nothing on the menu right now"
+              description="This cafeteria has no dishes available right now. Try another cafeteria."
               action={
                 <Button size="sm" onClick={resetToScan}>
                   <ScanLine aria-hidden />
-                  Scan vendor mwingine
+                  Scan another cafeteria
                 </Button>
               }
             />
@@ -803,7 +803,7 @@ export default function PayPage() {
             <>
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold tracking-tight text-slate-900">
-                  {category === 'Zote' ? 'Vyakula vyote' : category}
+                  {category === 'All' ? 'All dishes' : category}
                 </h2>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
                   {visibleItems.length} {visibleItems.length === 1 ? 'chakula' : 'vyakula'}
@@ -961,7 +961,7 @@ export default function PayPage() {
                   ? 'Approved — pay for your meal'
                   : order.status === 'CANCELLED'
                     ? 'Order declined'
-                    : 'Coupon yako'
+                    : 'Your coupon'
             }
             description={
               order.status === 'AWAITING_ACCEPTANCE'
@@ -1034,27 +1034,27 @@ export default function PayPage() {
             {order.status === 'PENDING' ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                Inasubiri vendor aweke verified…
+                Waiting for the cafeteria to verify it…
               </>
             ) : order.status === 'VERIFIED' ? (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-                Coupon imekamilika. Chukua chakula chako.
+                Coupon used. Collect your meal.
               </>
             ) : order.status === 'AWAITING_ACCEPTANCE' ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                Inasubiri cafeteria ikubali order…
+                Waiting for the cafeteria to accept your order…
               </>
             ) : order.status === 'AWAITING_PAYMENT' ? (
               <>
                 <Smartphone className="h-3.5 w-3.5 text-primary-600" aria-hidden />
-                Cafeteria imekubali. Lipa ili upate coupon.
+                Accepted. Pay to get your coupon.
               </>
             ) : (
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-                Order hii imeghairiwa.
+                This order was cancelled.
               </>
             )}
           </p>
@@ -1104,7 +1104,7 @@ export default function PayPage() {
 
               <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-500">Jumla</span>
+                  <span className="text-slate-500">Subtotal</span>
                   <span className="font-semibold tabular text-slate-900">{formatTZS(subtotal)}</span>
                 </div>
                 {menu && menu.student.cafeteriaCreditBalance > 0 ? (
@@ -1159,19 +1159,19 @@ export default function PayPage() {
               </Alert>
 
               <div className="space-y-1.5">
-                <Label htmlFor="order-note">Note kwa vendor (hiari)</Label>
+                <Label htmlFor="order-note">Note for the cafeteria (optional)</Label>
                 <Textarea
                   id="order-note"
                   value={note}
                   onChange={(event) => setNote(event.target.value.slice(0, 160))}
-                  placeholder="Mfano: Bila pilipili, chapati moja ya ziada…"
+                  placeholder="For example: no chilli, one extra chapati…"
                   className="min-h-[72px]"
                 />
                 <p className="text-right text-[10px] tabular text-slate-400">{note.length}/160</p>
               </div>
 
               {formError ? (
-                <Alert variant="danger" title="Malipo hayakufanikiwa">
+                <Alert variant="danger" title="Payment did not go through">
                   {formError}
                 </Alert>
               ) : null}

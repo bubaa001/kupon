@@ -30,11 +30,11 @@ export function PageHeader({
           </Link>
         ) : null}
         {eyebrow ? <p className="eyebrow mb-2">{eyebrow}</p> : null}
-        <h1 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.035em] text-slate-900 sm:text-3xl">
+        <h1 className="text-[1.65rem] font-medium leading-tight tracking-[-0.045em] text-navy sm:text-[2rem]">
           {title}
         </h1>
         {description ? (
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}

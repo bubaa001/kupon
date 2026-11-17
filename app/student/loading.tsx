@@ -3,7 +3,7 @@ import { Skeleton, TransactionSkeleton } from '@/components/ui/skeleton';
 
 export default function StudentLoading() {
   return (
-    <div className="space-y-6" aria-label="Inapakia ukurasa">
+    <div className="space-y-6" aria-label="Loading page">
       <div className="space-y-2">
         <Skeleton className="h-3 w-36" />
         <Skeleton className="h-8 w-56" />

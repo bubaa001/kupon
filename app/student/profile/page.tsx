@@ -5,8 +5,8 @@ import { prisma } from '@/lib/db';
 import { ProfileView, type ProfileIdentity } from './_components/profile-view';
 
 export const metadata: Metadata = {
-  title: 'Wasifu',
-  description: 'Taarifa zako za chuo, oda na usalama wa akaunti yako ya Google.',
+  title: 'Profile',
+  description: 'Your university details, orders and Google account security.',
 };
 
 export const dynamic = 'force-dynamic';

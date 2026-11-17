@@ -178,7 +178,7 @@ export function PendingOrderDeck({
             className="flex items-center gap-2 text-sm font-semibold tracking-tight text-slate-900"
           >
             <Ticket className="h-4 w-4 text-amber-600" aria-hidden />
-            Orders zinazosubiri
+            Waiting orders
             {orders.length > 0 ? (
               <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-800">
                 {orders.length}
@@ -190,14 +190,14 @@ export function PendingOrderDeck({
           </h2>
           <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
             {orders.length > 1
-              ? 'Telezesha kadi kwa kidole (au tumia vishale) kuchagua, kisha fungua maelezo ya order.'
-              : 'Order zinazohitaji kukubaliwa na cafeteria na coupon zilizo tayari zinaonekana hapa.'}
+              ? 'Swipe the cards (or use the arrow keys) to choose one, then open its details.'
+              : 'Orders waiting for the cafeteria and coupons that are ready show up here.'}
           </p>
         </div>
         {error && orders.length > 0 && onRetry ? (
           <Button variant="ghost" size="sm" className="shrink-0" onClick={onRetry}>
             <RefreshCcw aria-hidden />
-            Jaribu
+            Retry
           </Button>
         ) : null}
       </div>
@@ -209,7 +209,7 @@ export function PendingOrderDeck({
         >
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="font-semibold">Coupons hazikupakiwa</p>
+            <p className="font-semibold">Coupons did not load</p>
             <p className="mt-0.5">{error}</p>
           </div>
           {onRetry ? (
@@ -218,7 +218,7 @@ export function PendingOrderDeck({
               onClick={onRetry}
               className="shrink-0 rounded-md px-2 py-1 text-[11px] font-bold text-red-700 underline underline-offset-2 hover:bg-red-100"
             >
-              Jaribu tena
+              Try again
             </button>
           ) : null}
         </div>
@@ -234,9 +234,9 @@ export function PendingOrderDeck({
           </span>
           <p className="min-w-0 text-[11px] leading-relaxed text-slate-500">
             <span className="block text-xs font-semibold text-slate-700">
-              Hakuna coupon inayosubiri
+              No coupons waiting
             </span>
-            Scan QR ya vendor kuanza order mpya. Coupon zako zitaonekana hapa.
+            Scan a cafeteria QR to start a new order. Your coupons show up here.
           </p>
         </div>
       ) : (
@@ -247,7 +247,7 @@ export function PendingOrderDeck({
               orders.length === 1 ? 'w-[214px]' : 'w-[292px]',
             )}
             role="group"
-            aria-label="Coupons zinazosubiri — swipe kadi au chagua"
+            aria-label="Waiting coupons. Swipe the cards or pick one."
             style={{
               touchAction: 'pan-y',
               transform: dragX ? `translateX(${dragX}px)` : undefined,
@@ -273,8 +273,8 @@ export function PendingOrderDeck({
                   aria-current={isFront ? 'true' : undefined}
                   aria-label={
                     isFront
-                      ? `Fungua coupon ya ${order.vendor.name}, ${formatTZS(order.total)}`
-                      : `Chagua coupon ya ${order.vendor.name}, ${formatTZS(order.total)}`
+                      ? `Open the ${order.vendor.name} coupon, ${formatTZS(order.total)}`
+                      : `Select the ${order.vendor.name} coupon, ${formatTZS(order.total)}`
                   }
                   className="absolute left-0 top-0 h-[304px] w-[214px] rounded-[14px] text-left outline-none transition-transform duration-300 ease-out focus-visible:ring-2 focus-visible:ring-primary-500/70 focus-visible:ring-offset-2"
                   style={{
@@ -296,7 +296,7 @@ export function PendingOrderDeck({
                 size="icon"
                 className="h-11 w-11 rounded-full"
                 onClick={() => shift(-1)}
-                aria-label="Coupon iliyotangulia"
+                aria-label="Previous coupon"
               >
                 <ChevronLeft aria-hidden />
               </Button>
@@ -304,14 +304,14 @@ export function PendingOrderDeck({
                 className="min-w-[86px] text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500"
                 aria-live="polite"
               >
-                Kadi {activeIndex + 1} / {orders.length}
+                Card {activeIndex + 1} / {orders.length}
               </p>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-11 w-11 rounded-full"
                 onClick={() => shift(1)}
-                aria-label="Coupon inayofuata"
+                aria-label="Next coupon"
               >
                 <ChevronRight aria-hidden />
               </Button>
@@ -323,10 +323,10 @@ export function PendingOrderDeck({
               className="h-11 text-xs"
               onClick={() => active && onOpen(active)}
               disabled={!active}
-              aria-label={`Onyesha coupon ya ${active?.vendor.name ?? 'coupon'}`}
+              aria-label={`Show the ${active?.vendor.name ?? 'selected'} coupon`}
             >
               <Ticket aria-hidden />
-              Onyesha coupon
+              Show coupon
             </Button>
             {onCancel ? (
               <Button
@@ -334,14 +334,14 @@ export function PendingOrderDeck({
                 className="h-11 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                 onClick={() => active && onCancel(active)}
                 disabled={!active || (active ? cancelingId === active.id : false)}
-                aria-label={`Ghairi order ${active?.reference ?? ''}`}
+                aria-label={`Cancel order ${active?.reference ?? ''}`}
               >
                 {active && cancelingId === active.id ? (
                   <Loader2 className="animate-spin" aria-hidden />
                 ) : (
                   <XCircle aria-hidden />
                 )}
-                Ghairi order
+                Cancel order
               </Button>
             ) : null}
           </div>

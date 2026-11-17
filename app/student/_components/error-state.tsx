@@ -14,13 +14,13 @@ export function ErrorState({
 }) {
   return (
     <div className="space-y-3">
-      <Alert variant="danger" title="Imeshindikana kupakia taarifa">
+      <Alert variant="danger" title="Something did not load">
         {message}
       </Alert>
       {onRetry ? (
         <Button variant="outline" className="w-full" onClick={onRetry}>
           <AlertCircle aria-hidden />
-          Jaribu tena
+          Try again
         </Button>
       ) : null}
     </div>

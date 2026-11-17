@@ -22,9 +22,9 @@ import type { StudentTx, TransactionsData } from '../_lib/types';
 type RangeKey = 'today' | 'week' | 'month';
 
 const RANGES: { value: RangeKey; label: string }[] = [
-  { value: 'today', label: 'Leo' },
-  { value: 'week', label: 'Siku 7' },
-  { value: 'month', label: 'Mwezi' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: '7 days' },
+  { value: 'month', label: 'Month' },
 ];
 
 export default function HistoryPage() {
@@ -43,9 +43,7 @@ export default function HistoryPage() {
       if (status) params.set('status', status);
       setData(await apiFetch<TransactionsData>(`/api/student/transactions?${params.toString()}`));
     } catch (err) {
-      setError(
-        err instanceof ApiClientError ? err.message : 'Imeshindikana kupakia historia yako.',
-      );
+      setError(err instanceof ApiClientError ? err.message : 'We could not load your history.');
     } finally {
       setLoading(false);
     }
@@ -83,13 +81,13 @@ export default function HistoryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Miamala • Historia"
-        title="Historia ya oda na malipo"
-        description="Angalia oda za chakula na hali ya malipo kwa kipindi unachochagua."
+        eyebrow="History"
+        title="Orders and payments"
+        description="Your meal orders and payment status for the period you choose."
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
             <RefreshCcw aria-hidden />
-            Sasisha
+            Refresh
           </Button>
         }
       />
@@ -108,9 +106,9 @@ export default function HistoryPage() {
             <Select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              aria-label="Chuja kwa hali ya muamala"
+              aria-label="Filter by payment status"
             >
-              <option value="">Hali zote</option>
+              <option value="">All statuses</option>
               {TX_STATUSES.map((item) => (
                 <option key={item} value={item}>
                   {STATUS_BADGE[item].label}
@@ -121,31 +119,29 @@ export default function HistoryPage() {
 
           <Card className="overflow-hidden rounded-2xl p-4 shadow-card sm:p-6">
             <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">
-                  Jumla ya malipo ya chakula
-                </p>
-                <p className="mt-1 text-lg font-semibold tabular text-slate-900">
-                  {loading || !data ? '—' : formatTZS(data.totalSpent)}
-                </p>
+              <p className="eyebrow">Total spent on meals</p>
+              <p className="mt-1 text-2xl font-medium tracking-[-0.04em] tabular text-navy">
+                {loading || !data ? '—' : formatTZS(data.totalSpent)}
+              </p>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <Badge variant="neutral">Jumla {data?.counts.total ?? 0}</Badge>
+              <Badge variant="neutral">All {data?.counts.total ?? 0}</Badge>
               <Badge variant="success" dot>
-                Zilizokamilika {data?.counts.settled ?? 0}
+                Completed {data?.counts.settled ?? 0}
               </Badge>
               <Badge variant="warning" dot>
-                Zinasubiri {data?.counts.pending ?? 0}
+                Pending {data?.counts.pending ?? 0}
               </Badge>
               <Badge variant="danger" dot>
-                Zilizoshindikana {data?.counts.failed ?? 0}
+                Failed {data?.counts.failed ?? 0}
               </Badge>
               {hasFilters ? (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="ml-auto text-[11px] font-semibold text-primary-700 hover:text-primary-800"
+                  className="ml-auto text-xs font-semibold text-primary-700 hover:text-primary-800"
                 >
-                  Ondoa vichujio
+                  Clear filters
                 </button>
               ) : null}
             </div>
@@ -160,21 +156,21 @@ export default function HistoryPage() {
               ) : !data || data.transactions.length === 0 ? (
                 <EmptyState
                   icon={Receipt}
-                  title="Hakuna miamala"
+                  title="No transactions"
                   description={
                     hasFilters
-                      ? 'Hakuna muamala unaolingana na vichujio ulivyochagua. Jaribu kuviondoa.'
-                      : 'Bado hujaagiza chakula. Malipo na oda zako zitaonekana hapa.'
+                      ? 'Nothing matches the filters you chose. Try clearing them.'
+                      : 'You have not ordered yet. Your orders and payments will show up here.'
                   }
                   action={
                     <div className="flex flex-wrap justify-center gap-2">
                       {hasFilters ? (
                         <Button variant="outline" size="sm" onClick={resetFilters}>
-                          Ondoa vichujio
+                          Clear filters
                         </Button>
                       ) : null}
                       <Button asChild size="sm">
-                        <Link href="/student/pay">Agiza chakula</Link>
+                        <Link href="/student/pay">Order a meal</Link>
                       </Button>
                     </div>
                   }
@@ -184,14 +180,15 @@ export default function HistoryPage() {
                   {groups.map((group) => (
                     <section key={group.key}>
                       <div className="flex items-center justify-between gap-2">
-                        <h2 className="text-[11px] font-semibold uppercase tracking-[0.13em] text-slate-400">
+                        <h2 className="text-[11px] font-semibold uppercase tracking-[0.13em] text-ink-muted">
                           {group.label}
                         </h2>
-                        <span className="text-[10px] text-slate-400">
-                          {group.transactions.length} miamala
+                        <span className="text-[11px] text-ink-muted">
+                          {group.transactions.length}{' '}
+                          {group.transactions.length === 1 ? 'transaction' : 'transactions'}
                         </span>
                       </div>
-                      <div className="mt-1 divide-y divide-slate-100">
+                      <div className="mt-1 divide-y divide-navy/[0.07]">
                         {group.transactions.map((tx) => (
                           <TransactionRow key={tx.id} tx={tx} />
                         ))}

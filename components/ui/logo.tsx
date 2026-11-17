@@ -1,20 +1,30 @@
 import Link from 'next/link';
-import { ReceiptText, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** The Kupon ticket mark, shared with the marketing landing page. */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-400 via-primary-500 to-primary-700 text-white shadow-emerald-glow',
+        'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-navy ring-1 ring-inset ring-white/10',
         className,
       )}
       aria-hidden
     >
-      <Wallet className="h-[18px] w-[18px]" strokeWidth={2.1} />
-      <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-md border-2 border-white bg-navy text-white">
-        <ReceiptText className="h-2 w-2" strokeWidth={2.4} />
-      </span>
+      <svg viewBox="0 0 28 28" className="h-[70%] w-[70%]">
+        <path
+          d="M4 5h20a1 1 0 0 1 1 1v5.2a2.8 2.8 0 0 0 0 5.6V22a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5.2a2.8 2.8 0 0 0 0-5.6V6a1 1 0 0 1 1-1Z"
+          fill="#E3C36F"
+        />
+        <path
+          d="M10 9v10M10 14l6-5M10 14l6 5"
+          stroke="#0A1730"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
     </span>
   );
 }
@@ -44,15 +54,14 @@ export function Logo({
       />
       <span
         className={cn(
-          'font-semibold tracking-[-0.03em]',
-          variant === 'dark' ? 'text-slate-900' : 'text-white',
+          'font-semibold tracking-[-0.04em]',
+          variant === 'dark' ? 'text-navy' : 'text-[#F3F5F9]',
           size === 'sm' && 'text-lg',
           size === 'md' && 'text-xl',
           size === 'lg' && 'text-2xl',
         )}
       >
         Kupon
-        <span className="text-primary-500">.</span>
       </span>
     </Link>
   );
