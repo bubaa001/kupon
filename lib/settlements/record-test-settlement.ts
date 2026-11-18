@@ -1,10 +1,12 @@
 import { startOfDay, subDays } from 'date-fns';
 import { auditLog } from '@/lib/audit';
-import { conflict, forbidden } from '@/lib/errors';
+import { AppError, conflict, forbidden } from '@/lib/errors';
 import { prisma } from '@/lib/db';
 import { API_PAYOUT_FEE } from '@/lib/constants';
 import { getFeeSettings, kuponPayoutShare } from '@/lib/platform-settings';
 import { formatTZS, randomReference, safeJson } from '@/lib/utils';
+import { kuponBaseUrl, sendSnippePayout, snippeEnabled } from '@/lib/payments/snippe';
+import { formatPayoutAccount, parsePayoutAccount, snippeRecipient } from '@/lib/payouts/payout-account';
 
 export async function recordTestSettlement(input: {
   actorId: string;
@@ -27,6 +29,13 @@ export async function recordTestSettlement(input: {
   if (!snapshot || snapshot.universityId !== input.universityId) {
     throw conflict('Vendor account no longer exists in this university.');
   }
+  // Live mode sends real money through Snippe; otherwise the withdrawal is only recorded.
+  const live = snippeEnabled();
+  const payoutAccount = parsePayoutAccount(snapshot.settlementAccount);
+  if (live && !payoutAccount) {
+    throw conflict('Add where withdrawals go (mobile money or bank) on the cafeteria profile first.');
+  }
+  const accountLabel = formatPayoutAccount(snapshot.settlementAccount);
   const fees = await getFeeSettings();
   const MIN_WITHDRAWAL = fees.minWithdrawal;
   const VENDOR_PAYOUT_FEE = fees.withdrawalFee;
@@ -121,10 +130,10 @@ export async function recordTestSettlement(input: {
         apiFee: API_PAYOUT_FEE,
         kuponFee: KUPON_PAYOUT_FEE,
         netAmount,
-        status: 'SIMULATED',
+        status: live ? 'PENDING' : 'SIMULATED',
         periodStart,
         periodEnd: now,
-        paidAt: now,
+        paidAt: live ? null : now,
       },
     });
     await auditLog(
@@ -144,8 +153,8 @@ export async function recordTestSettlement(input: {
           kuponFee: KUPON_PAYOUT_FEE,
           netAmount,
           emergencyReason: input.emergencyReason ?? null,
-          mode: 'internal-test-simulation',
-          settlementAccount: snapshot.settlementAccount,
+          mode: live ? 'snippe-live' : 'internal-test-simulation',
+          settlementAccount: accountLabel,
           vendorName: snapshot.name,
           vendorCode: snapshot.code,
         },
@@ -173,9 +182,81 @@ export async function recordTestSettlement(input: {
       },
       pendingBalance: updated.pendingBalance,
       totalSettled: updated.totalSettled,
-      settlementAccount: snapshot.settlementAccount,
-      message: `Test settlement recorded for ${formatTZS(amount)} less a ${formatTZS(VENDOR_PAYOUT_FEE)} fee. ${formatTZS(netAmount)} is recorded; no money was sent to ${snapshot.settlementAccount}.`,
+      settlementAccount: accountLabel,
+      message: live
+        ? `Sending ${formatTZS(netAmount)} to ${accountLabel} (${formatTZS(amount)} less a ${formatTZS(VENDOR_PAYOUT_FEE)} fee).`
+        : `Test settlement recorded for ${formatTZS(amount)} less a ${formatTZS(VENDOR_PAYOUT_FEE)} fee. ${formatTZS(netAmount)} is recorded; no money was sent to ${accountLabel}.`,
     };
   });
+
+  if (live && payoutAccount) {
+    try {
+      const payout = await sendSnippePayout({
+        amount: netAmount,
+        recipient: snippeRecipient(payoutAccount),
+        kuponReference: result.settlement.reference,
+        webhookUrl: `${kuponBaseUrl()}/api/webhooks/snippe`,
+      });
+      await auditLog({
+        actorId: input.actorId,
+        universityId: input.universityId,
+        action: 'SNIPPE_PAYOUT_SENT',
+        entity: 'Settlement',
+        entityId: result.settlement.id,
+        metadata: { reference: result.settlement.reference, snippeReference: payout.reference, status: payout.status },
+      });
+    } catch (error) {
+      // Snippe refused it: nothing left our account, so give the balance back.
+      await failSettlement(result.settlement.reference, error instanceof Error ? error.message : 'Payout failed');
+      throw new AppError(
+        'The payout could not be sent right now. Your balance was not touched. Try again in a few minutes.',
+        502,
+        'PAYOUT_FAILED',
+      );
+    }
+  }
   return result;
+}
+
+/**
+ * Marks a live payout failed and returns the money to the cafeteria balance.
+ * Safe to call twice: only a PENDING or PAID settlement is reversed, once.
+ */
+export async function failSettlement(reference: string, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    const settlement = await tx.settlement.findUnique({ where: { reference } });
+    if (!settlement || settlement.status === 'SIMULATED') return false;
+    const marked = await tx.settlement.updateMany({
+      where: { id: settlement.id, status: { in: ['PENDING', 'PAID'] } },
+      data: { status: 'FAILED', paidAt: null },
+    });
+    if (!marked.count) return false;
+    await tx.vendor.update({
+      where: { id: settlement.vendorId },
+      data: {
+        pendingBalance: { increment: settlement.amount },
+        totalSettled: { decrement: settlement.netAmount },
+      },
+    });
+    await auditLog(
+      {
+        universityId: settlement.universityId,
+        action: 'SNIPPE_PAYOUT_FAILED',
+        entity: 'Settlement',
+        entityId: settlement.id,
+        metadata: { reference, reason, restored: settlement.amount },
+      },
+      tx,
+    );
+    return true;
+  });
+}
+
+/** Snippe confirmed the money arrived. */
+export async function completeSettlement(reference: string) {
+  const marked = await prisma.settlement.updateMany({
+    where: { reference, status: 'PENDING' },
+    data: { status: 'PAID', paidAt: new Date() },
+  });
+  return marked.count > 0;
 }

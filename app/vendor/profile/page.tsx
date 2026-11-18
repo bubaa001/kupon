@@ -21,6 +21,8 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { formatTZS } from '@/lib/utils';
+import { formatPayoutAccount } from '@/lib/payouts/payout-account';
+import { PayoutAccountForm } from '../_components/payout-account-form';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Account & settings' };
@@ -43,6 +45,8 @@ export default async function VendorProfilePage() {
         description="Your business details, sign-in session and support shortcuts in one place."
         backHref="/vendor"
       />
+
+      <PayoutAccountForm />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -81,7 +85,7 @@ export default async function VendorProfilePage() {
                 </p>
                 <p className="mt-1 flex items-center gap-1.5 text-slate-800">
                   <Wallet className="h-3.5 w-3.5 text-slate-400" />
-                  {record?.settlementAccount || 'Pending bank details'}
+                  {formatPayoutAccount(record?.settlementAccount)}
                 </p>
               </div>
             </div>

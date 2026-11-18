@@ -7,6 +7,8 @@ import { API_PAYOUT_FEE } from '@/lib/constants';
 import { getFeeSettings, kuponPayoutShare } from '@/lib/platform-settings';
 import { paymentSelect, saleRow, studentSummarySelect } from '../_lib/analytics';
 import { requireVendorAccess } from '../_lib/access';
+import { formatPayoutAccount, parsePayoutAccount } from '@/lib/payouts/payout-account';
+import { snippeEnabled } from '@/lib/payments/snippe';
 import { recordTestSettlement } from '@/lib/settlements/record-test-settlement';
 
 export const runtime = 'nodejs';
@@ -66,7 +68,9 @@ export async function GET() {
     return ok({
       pendingBalance: snapshot.pendingBalance,
       totalSettled: snapshot.totalSettled,
-      settlementAccount: snapshot.settlementAccount,
+      settlementAccount: formatPayoutAccount(snapshot.settlementAccount),
+      live: snippeEnabled(),
+      payoutReady: parsePayoutAccount(snapshot.settlementAccount) !== null,
       minimumPayout: fees.minWithdrawal,
       payoutFee: fees.withdrawalFee,
       apiFee: API_PAYOUT_FEE,

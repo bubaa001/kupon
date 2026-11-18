@@ -42,8 +42,9 @@ import { LoadError } from './feedback';
 import { CardBlockSkeleton } from './skeletons';
 
 function PayoutStatusBadge({ status }: { status: string }) {
-  if (status === 'SIMULATED' || status === 'PAID') return <Badge variant="success" dot>Test record</Badge>;
-  if (status === 'PENDING') return <Badge variant="warning" dot>Not processed</Badge>;
+  if (status === 'PAID') return <Badge variant="success" dot>Paid</Badge>;
+  if (status === 'SIMULATED') return <Badge variant="neutral" dot>Test record</Badge>;
+  if (status === 'PENDING') return <Badge variant="warning" dot>Sending</Badge>;
   if (status === 'FAILED') return <Badge variant="danger" dot>Failed</Badge>;
   return <Badge variant="neutral" dot>{status}</Badge>;
 }
@@ -60,6 +61,8 @@ export function SettlementView() {
   const pendingBalance = data?.pendingBalance ?? 0;
   const minimumPayout = data?.minimumPayout ?? 50_000;
   const payoutFee = data?.payoutFee ?? 2_000;
+  const live = data?.live ?? false;
+  const kind = live ? 'withdrawal' : 'test settlement';
 
   const parsedAmount = Math.floor(Number(amountInput.replace(/[^\d]/g, '')));
   const netPayout = Math.max(0, parsedAmount - payoutFee);
@@ -85,13 +88,13 @@ export function SettlementView() {
       });
       setDialogOpen(false);
       setJustPaid(result);
-      toast.success('Test settlement recorded', { description: result.message });
+      toast.success(live ? 'Withdrawal on its way' : 'Test settlement recorded', { description: result.message });
       reload();
     } catch (cause) {
       const message =
         cause instanceof Error && cause.message
           ? cause.message
-          : 'Could not record the test settlement. Please try again.';
+          : `Could not make the ${kind}. Please try again.`;
       setSubmitError(message);
       toast.error(message);
     } finally {
@@ -103,8 +106,12 @@ export function SettlementView() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Settlement"
-        title="Test settlements & balance"
-        description="Review simulated earnings and settlements. No bank or mobile-money payout is sent."
+        title={live ? 'Balance & withdrawals' : 'Test settlements & balance'}
+        description={
+          live
+            ? 'Withdraw your balance to the mobile money number or bank account saved on your profile.'
+            : 'Review simulated earnings and settlements. No bank or mobile-money payout is sent.'
+        }
         actions={
           <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
@@ -116,7 +123,7 @@ export function SettlementView() {
       {error && !data ? <LoadError message={error} onRetry={reload} /> : null}
 
       {justPaid ? (
-        <Alert variant="success" title={`Test settlement recorded · ${formatTZS(justPaid.settlement.netAmount)}`}>
+        <Alert variant="success" title={`${live ? 'Withdrawal sent' : 'Test settlement recorded'} · ${formatTZS(justPaid.settlement.netAmount)}`}>
           {justPaid.message}
           <span className="mt-1 block font-mono text-[11px]">{justPaid.settlement.reference}</span>
         </Alert>
@@ -171,7 +178,13 @@ export function SettlementView() {
                     <Landmark className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{data.settlementAccount}</span>
                   </p>
-                  <p className="mt-1 text-[10px] text-emerald-100/70">Not used by test settlements</p>
+                  <p className="mt-1 text-[10px] text-emerald-100/70">
+                    {live
+                      ? data.payoutReady
+                        ? 'Withdrawals are sent here'
+                        : 'Add details on your profile to withdraw'
+                      : 'Not used by test settlements'}
+                  </p>
                 </div>
                 <Button
                   size="sm"
@@ -180,7 +193,7 @@ export function SettlementView() {
                   className="w-full bg-white text-emerald-800 shadow-none hover:bg-emerald-50 disabled:bg-white/15 disabled:text-white/50"
                 >
                   <ArrowUpRight className="h-4 w-4" />
-                  Record test settlement
+                  {live ? 'Withdraw' : 'Record test settlement'}
                 </Button>
               </div>
             </div>
@@ -188,14 +201,17 @@ export function SettlementView() {
 
           {data.pendingBalance <= 0 ? (
             <Alert variant="info" title="Nothing to settle yet">
-              Test settlements unlock at {formatTZS(minimumPayout)}. A {formatTZS(payoutFee)} fee is split
+              {live ? 'Withdrawals' : 'Test settlements'} unlock at {formatTZS(minimumPayout)}. A {formatTZS(payoutFee)} fee is split
               between the API and Kupon.
             </Alert>
           ) : null}
 
           <div className="grid min-w-0 gap-4 lg:grid-cols-3">
             <section className="card-surface min-w-0 overflow-hidden p-5">
-              <SectionHeading title="How test settlement works" description="No real money moves" />
+              <SectionHeading
+                title={live ? 'How withdrawals work' : 'How test settlement works'}
+                description={live ? 'Sent by Snippe to your saved account' : 'No real money moves'}
+              />
               <ol className="mt-4 min-w-0 space-y-3.5">
                 {[
                   {
@@ -205,13 +221,15 @@ export function SettlementView() {
                   },
                   {
                     icon: Banknote,
-                    title: 'Record a test settlement',
+                    title: live ? 'Withdraw' : 'Record a test settlement',
                     body: `Withdraw at least ${formatTZS(minimumPayout)}. The ${formatTZS(payoutFee)} fee is split ${formatTZS(data.apiFee)} to the API and ${formatTZS(data.kuponFee)} to Kupon.`,
                   },
                   {
                     icon: BadgeCheck,
                     title: 'Review the record',
-                    body: 'The net amount and both fee shares are recorded with a test reference.',
+                    body: live
+                      ? 'The money is sent to your saved account. If it fails, your balance comes back.'
+                      : 'The net amount and both fee shares are recorded with a test reference.',
                   },
                 ].map((step, index) => {
                   const Icon = step.icon;
@@ -231,8 +249,9 @@ export function SettlementView() {
                 })}
               </ol>
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-[11px] leading-relaxed text-slate-500">
-                Test settlements are recorded immediately. No bank or mobile-money service is
-                contacted, and no funds are sent.
+                {live
+                  ? 'Mobile money usually arrives in minutes; bank transfers can take longer. Each withdrawal shows Sending until Snippe confirms it.'
+                  : 'Test settlements are recorded immediately. No bank or mobile-money service is contacted, and no funds are sent.'}
               </div>
             </section>
 
@@ -271,7 +290,7 @@ export function SettlementView() {
             <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 p-5">
               <div className="min-w-0">
                 <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                  Test settlement history
+                  {live ? 'Withdrawal history' : 'Test settlement history'}
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500">
                   {data.payouts.length} {data.payouts.length === 1 ? 'settlement' : 'settlements'}
@@ -289,13 +308,17 @@ export function SettlementView() {
               <div className="p-4">
                 <EmptyState
                   icon={Wallet}
-                  title="No test settlements yet"
-                  description="Your first simulated settlement will appear here with its reference and record date."
+                  title={live ? 'No withdrawals yet' : 'No test settlements yet'}
+                  description={
+                    live
+                      ? 'Your first withdrawal will appear here with its reference.'
+                      : 'Your first simulated settlement will appear here with its reference and record date.'
+                  }
                   compact
                   action={
                     data.pendingBalance >= minimumPayout ? (
                       <Button size="sm" onClick={openDialog}>
-                        Record test settlement
+                        {live ? 'Withdraw' : 'Record test settlement'}
                       </Button>
                     ) : undefined
                   }
@@ -383,11 +406,11 @@ export function SettlementView() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record test settlement</DialogTitle>
+            <DialogTitle>{live ? 'Withdraw' : 'Record test settlement'}</DialogTitle>
             <DialogDescription>
-              Simulate a withdrawal from your pending balance. The {formatTZS(payoutFee)} fee is
-              recorded as the API and Kupon split; no funds are sent to{' '}
-              {data?.settlementAccount ?? 'a payout account'}.
+              {live
+                ? `Send money from your balance to ${data?.settlementAccount ?? 'your payout account'}. A ${formatTZS(payoutFee)} fee is taken from the amount.`
+                : `Simulate a withdrawal from your pending balance. The ${formatTZS(payoutFee)} fee is recorded as the API and Kupon split; no funds are sent to ${data?.settlementAccount ?? 'a payout account'}.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -452,7 +475,7 @@ export function SettlementView() {
             </DialogClose>
             <Button onClick={submitSettlement} loading={submitting} disabled={!canSubmit}>
               <Banknote className="h-4 w-4" />
-              Record {amountValid ? formatTZS(netPayout) : 'test settlement'}
+              {live ? 'Send' : 'Record'} {amountValid ? formatTZS(netPayout) : kind}
             </Button>
           </DialogFooter>
         </DialogContent>

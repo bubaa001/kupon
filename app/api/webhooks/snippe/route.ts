@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { failOrderCheckout, settleOrderCheckout } from '@/lib/orders/settle-checkout';
 import { snippeEnabled, verifySnippeWebhook } from '@/lib/payments/snippe';
 import { safeJson } from '@/lib/utils';
+import { completeSettlement, failSettlement } from '@/lib/settlements/record-test-settlement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
         await failOrderCheckout({ reference, reason: 'The payment request expired.', stage: 'EXPIRED' });
       }
     } else if (name.startsWith('payout.')) {
+      const reference = event.data?.metadata?.kupon_reference;
+      if (reference && name === 'payout.completed') await completeSettlement(reference);
+      if (reference && (name === 'payout.failed' || name === 'payout.reversed')) {
+        await failSettlement(reference, event.data?.failure_reason ?? name);
+      }
       await auditLog({
         action: `SNIPPE_${name.replace('.', '_').toUpperCase()}`,
         entity: 'Payout',

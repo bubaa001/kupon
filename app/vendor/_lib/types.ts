@@ -105,6 +105,9 @@ export type SettlementResponse = {
   pendingBalance: number;
   totalSettled: number;
   settlementAccount: string;
+  /** True when withdrawals send real money through Snippe. */
+  live: boolean;
+  payoutReady: boolean;
   minimumPayout: number;
   payoutFee: number;
   apiFee: number;

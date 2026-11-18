@@ -103,8 +103,8 @@ export async function sendSnippePayout(input: {
     idempotencyKey: input.kuponReference,
     body: JSON.stringify({
       amount: input.amount,
-      currency: 'TZS',
       ...input.recipient,
+      narration: 'Kupon cafeteria withdrawal',
       webhook_url: input.webhookUrl,
       metadata: { kupon_reference: input.kuponReference },
     }),
