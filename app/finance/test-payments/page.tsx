@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, CircleDollarSign, Clock3, RefreshCw } from 'lucide-react';
+import { Check, CircleDollarSign, Clock3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { apiFetch } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type TestPayment = {
   reference: string;
@@ -68,10 +69,7 @@ export default function FinanceTestPaymentsPage() {
         title="Payment activity"
         description="Read-only view of the lifecycle automatically recorded by Kupon's test gateway."
         actions={
-          <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

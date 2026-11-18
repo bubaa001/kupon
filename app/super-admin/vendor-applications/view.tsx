@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Check, RefreshCw, Trash2, Undo2, X } from 'lucide-react';
+import { Check, Trash2, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, deleteJson, patchJson } from '@/lib/client-api';
 import { formatDateTime } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type VendorApplication = {
   id: string;
@@ -205,10 +206,7 @@ export function VendorApplicationsView() {
         title="Cafeteria applications"
         description="The Platform Admin provisions institutions, reviews business documents, and verifies each cafeteria before approval."
         actions={
-          <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

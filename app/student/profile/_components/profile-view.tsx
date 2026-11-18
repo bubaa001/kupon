@@ -16,7 +16,6 @@ import {
   LogOut,
   Mail,
   Phone,
-  RefreshCcw,
   RotateCcw,
   ScanLine,
   ShieldCheck,
@@ -36,6 +35,7 @@ import { cn, formatDate, formatDateTime, formatTZS, relativeTime } from '@/lib/u
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { ErrorState } from '../../_components/error-state';
 import type { StudentProfileData } from '../../_lib/types';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 export type ProfileIdentity = {
   /** Email already linked to this student account (masked in the UI). */
@@ -236,10 +236,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
         title="My profile"
         description="Your university details, orders and session security."
         actions={
-          <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
-            <RefreshCcw aria-hidden />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CircleDollarSign, RefreshCw } from 'lucide-react';
+import { CircleDollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 import type { OrderView, StudentOrdersData } from '@/lib/orders/types';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type CreditCase = {
   id: string;
@@ -101,10 +102,7 @@ export default function StudentCreditRequestsPage() {
         title="Credit & support"
         description="If a paid meal could not be served, talk to the counter staff first. You can also ask here: the cafeteria manager gives credit or your money back."
         actions={
-          <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Receipt, RefreshCw } from 'lucide-react';
+import { Receipt } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TransactionSkeleton } from '@/components/ui/skeleton';
 import type { TxStatus } from '@/lib/constants';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
-import { cn, formatDate, formatTZS, formatTime } from '@/lib/utils';
+import { cn, formatDate, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { useT } from '@/lib/i18n';
 import { ErrorState } from '../_components/error-state';
@@ -54,7 +55,6 @@ export default function HistoryPage() {
   const [data, setData] = useState<TransactionsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -66,7 +66,6 @@ export default function HistoryPage() {
         const params = new URLSearchParams({ range });
         if (status) params.set('status', status);
         setData(await apiFetch<TransactionsData>(`/api/student/transactions?${params.toString()}`));
-        setUpdatedAt(new Date());
       } catch (err) {
         if (!silent) setError(err instanceof ApiClientError ? err.message : 'We could not load your history.');
       } finally {
@@ -104,7 +103,6 @@ export default function HistoryPage() {
   const period = RANGES.find((item) => item.value === range)?.period ?? '';
   const settled = data?.counts.settled ?? 0;
   const average = data && settled > 0 ? Math.round(data.totalSpent / settled) : 0;
-  const busy = loading || syncing;
 
   return (
     <div className="space-y-5">
@@ -128,24 +126,7 @@ export default function HistoryPage() {
               {t('history.title')}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void load(true)}
-            disabled={busy}
-            aria-label="Refresh history"
-            className="group inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] py-1.5 pl-3 pr-2 text-[11px] font-medium text-navy-200 transition-colors hover:border-gold/50 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-default"
-          >
-            <span className="relative flex h-2 w-2" aria-hidden>
-              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            </span>
-            <span aria-live="polite">
-              {syncing ? 'Updating…' : updatedAt ? `Live · ${formatTime(updatedAt)}` : 'Live'}
-            </span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-gold transition-colors group-hover:bg-gold group-hover:text-navy">
-              <RefreshCw className={cn('h-3.5 w-3.5', busy && 'motion-safe:animate-spin')} aria-hidden />
-            </span>
-          </button>
+          <LiveIndicator syncing={syncing} tone="dark" />
         </div>
 
         <div

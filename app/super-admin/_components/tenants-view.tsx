@@ -8,7 +8,6 @@ import {
   Pencil,
   Play,
   Plus,
-  RefreshCw,
   Search,
   Store,
   Users,
@@ -35,6 +34,7 @@ import { OnboardTenantDialog } from './onboard-tenant-dialog';
 import { EditTenantDialog, TenantStatusDialog } from './tenant-dialogs';
 import type { TenantListData, TenantSummary } from './types';
 import { useApiData } from './use-api-data';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'SUSPENDED';
 
@@ -117,15 +117,7 @@ export function TenantsView() {
         description="Onboard, bill and manage every campus on the Kupon network."
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void reload({ silent: true })}
-              loading={refreshing}
-            >
-              {refreshing ? null : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
+            <LiveIndicator syncing={refreshing} />
             <Button size="sm" onClick={() => setOnboardOpen(true)}>
               <Plus className="h-4 w-4" />
               Onboard university

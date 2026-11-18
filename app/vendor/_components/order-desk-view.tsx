@@ -11,7 +11,6 @@ import {
   CheckCheck,
   PackageX,
   QrCode,
-  RefreshCw,
   ScanLine,
   Bell,
   BellOff,
@@ -43,6 +42,7 @@ import { toast } from 'sonner';
 import { LoadError } from './feedback';
 import { OrderCard } from './order-card';
 import { VerifyCouponDialog } from './verify-coupon-dialog';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type TabKey = 'REQUESTS' | 'AWAITING_PAYMENT' | 'PENDING' | 'VERIFIED' | 'ALL';
 type VerifyMode = 'code' | 'scan';
@@ -402,18 +402,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
             >
               {alerts.soundOn ? <Volume2 /> : <VolumeX />}
             </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => {
-                setRefreshing(true);
-                void load(true);
-              }}
-              disabled={refreshing}
-              aria-label="Refresh orders"
-            >
-              <RefreshCw className={cn(refreshing && 'animate-spin')} />
-            </Button>
+            <LiveIndicator syncing={refreshing} />
           </div>
         </div>
         <Button size="lg" className="w-full sm:w-auto" onClick={() => openVerify(null, 'scan')}>

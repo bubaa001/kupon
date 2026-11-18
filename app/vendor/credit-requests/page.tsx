@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, LifeBuoy, Plus, RefreshCw, X } from 'lucide-react';
+import { Check, LifeBuoy, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, patchJson, postJson } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type OrderOption = {
   id: string;
@@ -121,10 +122,7 @@ export default function VendorCreditRequestsPage() {
         title="Credit cases"
         description="Review a student’s unfulfilled-order claim or send an operational credit case to Finance. Finance decides the credit; platform admins can see the full audit trail."
         actions={
-          <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

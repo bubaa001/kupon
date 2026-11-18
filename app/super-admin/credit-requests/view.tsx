@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, RefreshCw, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { ApiClientError, apiFetch, patchJson } from '@/lib/client-api';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 type CreditRequest = {
   id: string;
@@ -92,10 +93,7 @@ export function CreditRequestsView() {
         title="Cafeteria credit requests"
         description="Review credit cases and see Finance decisions across cafeterias. Finance can issue cafeteria-specific credit; every reason remains visible here."
         actions={
-          <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

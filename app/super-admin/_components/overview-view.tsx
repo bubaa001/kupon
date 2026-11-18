@@ -9,7 +9,6 @@ import {
   FlaskConical,
   Percent,
   Plus,
-  RefreshCw,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -34,6 +33,7 @@ import { cn, formatCompactTZS, formatNumber, formatTZS } from '@/lib/utils';
 import { InvoiceStatusBadge, TenantHealthBadge, UniversityStatusBadge } from './badges';
 import type { OverviewData, TenantSummary } from './types';
 import { useApiData } from './use-api-data';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 export function OverviewView() {
   const { data, error, loading, refreshing, reload } = useApiData<OverviewData>(
@@ -79,15 +79,7 @@ export function OverviewView() {
         description="Live GMV, fee revenue and tenant health across every Kupon university."
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void reload({ silent: true })}
-              loading={refreshing}
-            >
-              {refreshing ? null : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
+            <LiveIndicator syncing={refreshing} />
             <Button asChild size="sm">
               <Link href="/super-admin/tenants?onboard=1">
                 <Plus className="h-4 w-4" />

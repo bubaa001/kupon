@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   CreditCard,
   Percent,
-  RefreshCw,
   Scale,
   TrendingUp,
   Wallet,
@@ -31,6 +30,7 @@ import { RevenueMixChart } from './revenue-mix-chart';
 import { UniversityStatusBadge } from './badges';
 import type { MonthPoint, RevenueData, TenantRevenue } from './types';
 import { useApiData } from './use-api-data';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 export function RevenueView() {
   const { data, error, loading, refreshing, reload } = useApiData<RevenueData>(
@@ -71,15 +71,7 @@ export function RevenueView() {
         description="All-time fee waterfall, SaaS billing, top-up rail costs and the live double-entry ledger check. Includes test-gateway activity."
         actions={
           <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void reload({ silent: true })}
-              loading={refreshing}
-            >
-              {refreshing ? null : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
+            <LiveIndicator syncing={refreshing} />
             <Button asChild variant="outline" size="sm">
               <Link href="/super-admin/health">
                 <Scale className="h-4 w-4" />

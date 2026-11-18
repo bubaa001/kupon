@@ -7,7 +7,6 @@ import {
   BadgeCheck,
   Banknote,
   Landmark,
-  RefreshCw,
   ScanLine,
   ShieldCheck,
   Wallet,
@@ -40,6 +39,7 @@ import type { SettlementResponse, SettlementResult } from '../_lib/types';
 import { SaleList } from './sale-list';
 import { LoadError } from './feedback';
 import { CardBlockSkeleton } from './skeletons';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 function PayoutStatusBadge({ status }: { status: string }) {
   if (status === 'PAID') return <Badge variant="success" dot>Paid</Badge>;
@@ -113,10 +113,7 @@ export function SettlementView() {
             : 'Review simulated earnings and settlements. No bank or mobile-money payout is sent.'
         }
         actions={
-          <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
-            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

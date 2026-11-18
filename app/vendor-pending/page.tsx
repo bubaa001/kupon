@@ -9,6 +9,8 @@ import { getAuthUser, roleHome } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { SignOutButton } from './sign-out-button';
 import { ResubmitForm } from './resubmit-form';
+import { LiveIndicator } from '@/components/ui/live-indicator';
+import { PendingAutoRefresh } from './auto-refresh';
 
 export const metadata: Metadata = {
   title: 'Vendor approval pending',
@@ -171,9 +173,8 @@ export default async function VendorPendingPage() {
               )}
 
               <div className="flex flex-wrap gap-2">
-                <Button asChild>
-                  <a href="/vendor-pending">Refresh status</a>
-                </Button>
+                <PendingAutoRefresh />
+                <LiveIndicator />
                 <SignOutButton />
               </div>
             </div>

@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import {
   Banknote,
   ReceiptText,
-  RefreshCw,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -24,6 +23,7 @@ import { SaleList } from './sale-list';
 import { TopItemsList } from './top-items-list';
 import { LoadError } from './feedback';
 import { CardBlockSkeleton, StatCardsSkeleton } from './skeletons';
+import { LiveIndicator } from '@/components/ui/live-indicator';
 
 const RANGES: { value: VendorRange; label: string }[] = [
   { value: 'today', label: 'Today' },
@@ -65,10 +65,7 @@ export function SalesView() {
         title="Sales report"
         description="Order payments recorded in Kupon — settled, pending and failed."
         actions={
-          <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
-            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-            Refresh
-          </Button>
+          <LiveIndicator syncing={loading} />
         }
       />
 

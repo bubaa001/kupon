@@ -8,7 +8,6 @@ import {
   CreditCard,
   Database,
   QrCode,
-  RefreshCw,
   RotateCcw,
   Scale,
   Server,
@@ -92,15 +91,6 @@ export function HealthView() {
             <Badge variant={refreshing ? 'outline' : 'success'} dot>
               {refreshing ? 'Updating…' : 'Auto-updates · 15s'}
             </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void reload({ silent: true })}
-              loading={refreshing}
-            >
-              {refreshing ? null : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
           </div>
         }
       />
