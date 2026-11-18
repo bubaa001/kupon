@@ -1,9 +1,12 @@
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  ArrowDown,
   ArrowRight,
   ArrowUpRight,
   CircleCheck,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MarketingReveal } from '@/components/marketing/marketing-reveal';
@@ -61,8 +64,11 @@ function SiteHeader() {
           aria-label="Main navigation"
           className="hidden items-center gap-8 text-sm font-medium text-slate-600 lg:flex"
         >
-          <a className="transition-colors hover:text-navy" href="#why-kupon">
-            Why Kupon
+          <a className="transition-colors hover:text-navy" href="#about">
+            About
+          </a>
+          <a className="transition-colors hover:text-navy" href="#faq">
+            FAQ
           </a>
           <a className="transition-colors hover:text-navy" href="#how-it-works">
             How it works
@@ -128,8 +134,8 @@ function Hero() {
             <span className="landing-hero__line"><span>A record you can trust.</span></span>
           </h1>
           <p className="landing-hero__lede mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-            Replace handwritten sales books with searchable orders. Kupon is designed for direct
-            mobile-money checkout, with coupons issued after gateway confirmation.
+            Order ahead, pay with mobile money and collect with a coupon. Kupon replaces cash
+            and handwritten sales books in university cafeterias, starting at COICT.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="landing-hero__primary h-12 w-full rounded-full px-6 sm:w-auto">
@@ -138,14 +144,13 @@ function Hero() {
                 <ArrowRight aria-hidden className="h-4 w-4" />
               </Link>
             </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="landing-hero__secondary h-12 w-full rounded-full border-slate-300 bg-white px-6 sm:w-auto"
+            <Link
+              href="#account-access"
+              className="landing-hero__secondary group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold sm:w-auto"
             >
-              <Link href="#account-access">Choose your access</Link>
-            </Button>
+              Choose your access
+              <ArrowDown aria-hidden className="landing-hero__secondary-icon h-4 w-4" />
+            </Link>
           </div>
           <p className="landing-hero__note mt-5 text-xs leading-relaxed text-slate-500">
             Test gateway only · simulated payments · no real money is collected.
@@ -154,6 +159,123 @@ function Hero() {
         <PaymentStory />
       </div>
     </section>
+  );
+}
+
+const KEY_FACTS = [
+  { label: 'Payment', value: 'Mobile money, pushed to your phone through our partner Snippe' },
+  { label: 'Checkout charge', value: '2.5%, shown before you pay. Nothing hidden' },
+  { label: 'Pay window', value: '20 minutes after the cafeteria accepts your order' },
+  { label: 'Coupon', value: 'QR code and 6-digit code, valid for 24 hours' },
+  { label: 'Sold out after paying', value: 'Kupon credit by default, or your money back' },
+  { label: 'Languages', value: 'English and simple Kiswahili' },
+  { label: 'Devices', value: 'Any phone browser, with alerts even when Kupon is closed' },
+  { label: 'Cafeterias', value: 'Every one checked: TIN, NIDA and a site visit' },
+];
+
+function AboutSection() {
+  return (
+    <MarketingReveal>
+      <section
+        id="about"
+        aria-labelledby="about-title"
+        className="landing-about scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
+      >
+        <div className="mx-auto w-full max-w-[75rem]">
+          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-24">
+            <div className="max-w-lg">
+              <p className="eyebrow landing-eyebrow">About Kupon</p>
+              <MotionHeading
+                id="about-title"
+                className="landing-section-title mt-4 text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-5xl"
+                text="Built in Tanzania, for campus cafeterias."
+              />
+            </div>
+            <div className="landing-about__copy space-y-5 text-base leading-7">
+              <p>
+                Kupon started with a simple question: why does buying lunch on campus still depend on
+                cash, change and a notebook? Students keep their money on mobile money, yet many
+                must withdraw cash first, pay a fee, and hope the counter has change.
+              </p>
+              <p>
+                We built one platform for everyone behind a meal. Students order and pay from their
+                phone. Staff serve against a confirmed coupon. Owners see every sale and withdraw
+                earnings to mobile money or a bank account, with no cash to count.
+              </p>
+            </div>
+          </div>
+          <dl className="landing-facts mt-14">
+            {KEY_FACTS.map((fact, index) => (
+              <div key={fact.label} className="landing-fact" style={{ '--i': index } as CSSProperties}>
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+    </MarketingReveal>
+  );
+}
+
+const FAQS = [
+  {
+    q: 'Can I cancel an order after paying?',
+    a: 'No. Once paid, an order is final. If the cafeteria cannot serve a dish, you get Kupon credit by default, or your money back if you ask.',
+  },
+  {
+    q: 'What happens if I do not pay in time?',
+    a: 'You have 20 minutes to approve the payment after the cafeteria accepts. After that the order expires and no money is taken.',
+  },
+  {
+    q: 'How do I know my payment went through?',
+    a: 'Your coupon appears only after the payment is confirmed. Staff scan or type its code before handing over the meal.',
+  },
+  {
+    q: 'Do I need to install an app?',
+    a: 'No. Kupon opens in your phone browser. You can add it to your home screen for alerts that arrive even when it is closed.',
+  },
+  {
+    q: 'How do cafeterias get paid?',
+    a: 'Owners withdraw their balance to a mobile money number or bank account. The minimum is TZS 50,000 and each withdrawal costs TZS 2,000.',
+  },
+  {
+    q: 'Who can join as a cafeteria?',
+    a: 'Any campus cafeteria can apply. Kupon checks the business TIN and the owner’s NIDA, and visits the site before approval.',
+  },
+];
+
+function FaqSection() {
+  return (
+    <MarketingReveal>
+      <section
+        id="faq"
+        aria-labelledby="faq-title"
+        className="landing-faq scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
+      >
+        <div className="mx-auto grid w-full max-w-[75rem] gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-24">
+          <div className="max-w-lg">
+            <p className="eyebrow landing-eyebrow">Good to know</p>
+            <MotionHeading
+              id="faq-title"
+              className="landing-section-title mt-4 text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-5xl"
+              text="Questions people ask."
+            />
+          </div>
+          <div className="landing-faq__list">
+            {FAQS.map((item, index) => (
+              <details key={item.q} className="landing-faq__item" style={{ '--i': index } as CSSProperties}>
+                <summary>
+                  <span>{item.q}</span>
+                  <Plus aria-hidden className="landing-faq__icon h-5 w-5 shrink-0" />
+                </summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+    </MarketingReveal>
   );
 }
 
@@ -452,8 +574,11 @@ function SiteFooter() {
           </p>
         </div>
         <div className="landing-footer__nav flex flex-wrap gap-x-6 gap-y-3 text-sm">
-          <Link className="transition-colors hover:text-navy" href="#why-kupon">
-            Why Kupon
+          <Link className="transition-colors hover:text-navy" href="#about">
+            About
+          </Link>
+          <Link className="transition-colors hover:text-navy" href="#faq">
+            FAQ
           </Link>
           <Link className="transition-colors hover:text-navy" href="#how-it-works">
             How it works
@@ -485,10 +610,12 @@ export default async function HomePage() {
       <main id="main" className="flex-1">
         <Hero />
         <Metrics {...landingData} />
+        <AboutSection />
         <ProblemSection />
         <HowItWorksSection />
         <CafeteriaSection />
         <TrustSection />
+        <FaqSection />
         <AccountAccessSection />
         <FinalCta />
       </main>

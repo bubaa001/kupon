@@ -118,8 +118,42 @@
 .landing-hero__lede, .landing-hero__note { color: #a6b2cb; }
 .landing-hero__primary { background: #e3c36f; color: #0a1730; }
 .landing-hero__primary:hover { background: #eed385; }
-.landing-hero__secondary { color: #f3f5f9; background: transparent; border-color: rgb(243 245 249 / 0.3); }
-.landing-hero__secondary:hover { color: #fff; background: rgb(255 255 255 / 0.08); }
+.landing-hero__secondary { color: #f3f5f9; background: transparent; border-color: rgb(243 245 249 / 0.3); transition: border-color 150ms cubic-bezier(0.2, 0, 0, 1), background-color 150ms cubic-bezier(0.2, 0, 0, 1), color 150ms ease; }
+.landing-hero__secondary:hover { color: #fff; background: rgb(227 195 111 / 0.12); border-color: #e3c36f; }
+.landing-hero__secondary:focus-visible { outline: 2px solid #e3c36f; outline-offset: 3px; }
+.landing-hero__secondary-icon { color: #e3c36f; transition: transform 250ms cubic-bezier(0.2, 0.7, 0.1, 1); }
+.landing-hero__secondary:hover .landing-hero__secondary-icon { transform: translateY(2px); }
+.landing-about { position: relative; overflow: hidden; isolation: isolate; background: #fbf8f1; }
+.landing-about::before { position: absolute; z-index: -1; top: -20%; right: -10%; width: 60%; height: 80%; border-radius: 50%; background: radial-gradient(closest-side, rgb(227 195 111 / 0.22), transparent); content: ''; animation: landing-drift 18s ease-in-out infinite alternate; }
+@keyframes landing-drift { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-12%, 18%, 0) scale(1.08); } }
+.landing-about__copy { color: #53607a; }
+.landing-facts { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 2rem; }
+.landing-fact { border-top: 1px solid rgb(10 23 48 / 0.16); padding: 1.15rem 0 1.4rem; }
+.landing-fact dt { color: #a87b22; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.landing-fact dd { margin-top: 0.5rem; color: #0a1730; font-size: 1.02rem; font-weight: 500; letter-spacing: -0.015em; line-height: 1.45; }
+@media (min-width: 640px) { .landing-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .landing-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+[data-reveal='true'] .landing-fact { opacity: 0; transform: translateY(1rem); border-top-color: transparent; background-image: linear-gradient(#e3c36f, #e3c36f); background-repeat: no-repeat; background-position: left top; background-size: 0% 2px; transition: opacity 600ms cubic-bezier(0.2, 0.7, 0.1, 1), transform 600ms cubic-bezier(0.2, 0.7, 0.1, 1), background-size 900ms cubic-bezier(0.2, 0.7, 0.1, 1); transition-delay: calc(var(--i, 0) * 45ms + 150ms); }
+[data-reveal='true'][data-visible='true'] .landing-fact { opacity: 1; transform: none; background-size: 100% 2px; }
+.landing-faq { background: #fff; }
+.landing-faq__list { border-bottom: 1px solid rgb(10 23 48 / 0.16); }
+.landing-faq__item { border-top: 1px solid rgb(10 23 48 / 0.16); }
+.landing-faq__item summary { display: flex; min-height: 3.75rem; cursor: pointer; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 0; color: #0a1730; font-size: 1.08rem; font-weight: 500; letter-spacing: -0.02em; list-style: none; transition: color 150ms ease, padding 300ms cubic-bezier(0.2, 0.7, 0.1, 1); }
+.landing-faq__item summary::-webkit-details-marker { display: none; }
+.landing-faq__item summary:hover { color: #a87b22; padding-left: 0.35rem; }
+.landing-faq__item summary:focus-visible { outline: 2px solid #a87b22; outline-offset: 4px; border-radius: 4px; }
+.landing-faq__icon { color: #a87b22; transition: transform 300ms cubic-bezier(0.2, 0.7, 0.1, 1); }
+.landing-faq__item[open] .landing-faq__icon { transform: rotate(45deg); }
+.landing-faq__item p { max-width: 60ch; padding-bottom: 1.25rem; color: #53607a; font-size: 0.95rem; line-height: 1.7; }
+.landing-faq__item[open] p { animation: landing-faq-open 350ms cubic-bezier(0.2, 0.7, 0.1, 1); }
+@keyframes landing-faq-open { from { opacity: 0; transform: translateY(-0.4rem); } to { opacity: 1; transform: none; } }
+[data-reveal='true'] .landing-faq__item { opacity: 0; transform: translateY(0.75rem); transition: opacity 600ms cubic-bezier(0.2, 0.7, 0.1, 1), transform 600ms cubic-bezier(0.2, 0.7, 0.1, 1); transition-delay: calc(var(--i, 0) * 50ms + 120ms); }
+[data-reveal='true'][data-visible='true'] .landing-faq__item { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .landing-about::before, .landing-faq__item[open] p { animation: none; }
+  .landing-faq__icon, .landing-hero__secondary, .landing-hero__secondary-icon, .landing-faq__item summary { transition: none; }
+  [data-reveal='true'] .landing-fact, [data-reveal='true'] .landing-faq__item { opacity: 1; transform: none; transition: none; background-size: 100% 2px; }
+}
 .landing-ledger { background: #fbf8f1; border-color: rgb(10 23 48 / 0.13); }
 .landing-ledger__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .landing-ledger__item { border-top: 1px solid rgb(10 23 48 / 0.14); padding: 1.5rem 1.25rem 1.25rem; }
