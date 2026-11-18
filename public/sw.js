@@ -5,7 +5,7 @@
  * campus phone must never show another student's cached balance. Only static
  * assets and the offline fallback are cached.
  */
-const VERSION = 'kupon-v2';
+const VERSION = 'kupon-v3';
 const IMAGE_CACHE = `${VERSION}-images`;
 const IMAGE_CACHE_LIMIT = 120;
 const STATIC_CACHE = `${VERSION}-static`;
@@ -13,6 +13,7 @@ const OFFLINE_URL = '/offline';
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
   );
@@ -97,7 +98,13 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag: data.tag || 'kupon',
+      // Re-alert (sound and vibration) even when replacing a notification with the same tag.
       renotify: true,
+      silent: false,
+      vibrate: data.audience === 'counter' ? [400, 150, 400, 150, 400] : [250, 100, 250],
+      // Counter staff must not miss an order: it stays until they tap it.
+      requireInteraction: data.audience === 'counter',
+      timestamp: Date.now(),
       data: { url: data.url || '/' },
     }),
   );

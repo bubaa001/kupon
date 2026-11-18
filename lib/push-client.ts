@@ -43,14 +43,30 @@ export async function enablePush(): Promise<NotificationPermission | 'unsupporte
   return permission;
 }
 
-/** Re-sends an existing subscription after sign-in so it belongs to this account. */
+/**
+ * Keeps this device subscribed for whoever is signed in. If notifications were
+ * already allowed (for example before push existed) but there is no push
+ * subscription yet, it creates one silently: no prompt is needed once allowed.
+ */
 export async function refreshPushSubscription(): Promise<void> {
   if (!pushSupported() || Notification.permission !== 'granted') return;
   try {
-    const registration = await navigator.serviceWorker.getRegistration();
-    const subscription = await registration?.pushManager.getSubscription();
-    if (subscription) await postJson('/api/push/subscribe', subscription.toJSON());
+    const registration =
+      (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register('/sw.js'));
+    await navigator.serviceWorker.ready;
+    const subscription =
+      (await registration.pushManager.getSubscription()) ??
+      (await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string),
+      }));
+    await postJson('/api/push/subscribe', subscription.toJSON());
   } catch {
     /* Best effort. */
   }
+}
+
+/** Asks the server to send a test notification to this account's devices. */
+export async function sendTestPush(): Promise<{ devices: number; sent: number; failed: number; lastError: string | null }> {
+  return postJson('/api/push/test', {});
 }

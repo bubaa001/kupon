@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { refreshPushSubscription } from '@/lib/push-client';
+import { NotificationSettings } from '@/components/layout/notification-settings';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut, MoreHorizontal, type LucideIcon } from 'lucide-react';
@@ -335,6 +336,8 @@ export function AppShell({
               </div>
             </div>
           ) : null}
+
+          <NotificationSettings />
 
           {sheetExtra}
 

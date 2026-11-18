@@ -1,4 +1,5 @@
 import webpush from 'web-push';
+import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/db';
 
 /**
@@ -30,15 +31,25 @@ export type PushMessage = {
   url: string;
   /** Same tag replaces the previous notification instead of stacking. */
   tag?: string;
+  /** Counter alerts stay on screen until tapped; buyer updates do not. */
+  audience?: 'buyer' | 'counter';
 };
 
+export type PushResult = { devices: number; sent: number; removed: number; failed: number; lastError: string | null };
+
 /** Sends to every device of these users. Never throws. */
-export async function pushToUsers(userIds: string[], message: PushMessage): Promise<void> {
-  if (!userIds.length || !ready()) return;
+export async function pushToUsers(userIds: string[], message: PushMessage): Promise<PushResult> {
+  const result: PushResult = { devices: 0, sent: 0, removed: 0, failed: 0, lastError: null };
+  if (!userIds.length) return result;
+  if (!ready()) {
+    result.lastError = 'Push keys are not configured on the server.';
+    return result;
+  }
   try {
     const subscriptions = await prisma.pushSubscription.findMany({
       where: { userId: { in: Array.from(new Set(userIds)) } },
     });
+    result.devices = subscriptions.length;
     const gone: string[] = [];
     await Promise.all(
       subscriptions.map(async (sub) => {
@@ -48,17 +59,24 @@ export async function pushToUsers(userIds: string[], message: PushMessage): Prom
             JSON.stringify(message),
             { TTL: 60 * 60, urgency: 'high' },
           );
+          result.sent += 1;
         } catch (error) {
           const status = (error as { statusCode?: number }).statusCode;
           // The browser unsubscribed or the subscription expired.
           if (status === 404 || status === 410) gone.push(sub.id);
+          else result.failed += 1;
+          result.lastError = `${status ?? ''} ${(error as { body?: string; message?: string }).body ?? (error as Error).message}`.trim();
+          console.warn('[kupon] push send failed', status, result.lastError);
         }
       }),
     );
     if (gone.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: gone } } });
+    result.removed = gone.length;
   } catch (error) {
+    result.lastError = error instanceof Error ? error.message : 'Push failed';
     console.warn('[kupon] push failed', error);
   }
+  return result;
 }
 
 /** The owner and every active staff and Finance member of a cafeteria. */
@@ -82,24 +100,34 @@ export async function buyerUserId(studentProfileId: string): Promise<string | nu
   return profile?.userId ?? null;
 }
 
-/** Waits for the sends, but never longer than this, so a slow push service never slows checkout. */
-const SEND_BUDGET_MS = 1500;
-
-function withinBudget(work: Promise<unknown>): Promise<void> {
-  return Promise.race([
-    work.then(() => undefined).catch(() => undefined),
-    new Promise<void>((resolve) => setTimeout(resolve, SEND_BUDGET_MS)),
-  ]);
+/**
+ * Sends after the response without being cut off: on Vercel, waitUntil keeps the
+ * function alive until the push service has the message. The caller never waits,
+ * so a slow push service never slows checkout. Elsewhere it simply runs in the
+ * background.
+ */
+function deliver(work: Promise<unknown>): Promise<void> {
+  const settled = work.then(() => undefined).catch(() => undefined);
+  try {
+    waitUntil(settled);
+  } catch {
+    /* Outside Vercel: the promise still runs. */
+  }
+  return Promise.resolve();
 }
 
-/** Notify a buyer about their order. Never throws. */
+/** Notify a buyer about their order. Never throws, never blocks the request. */
 export function notifyBuyer(studentProfileId: string, message: PushMessage): Promise<void> {
-  return withinBudget(
-    buyerUserId(studentProfileId).then((id) => (id ? pushToUsers([id], message) : undefined)),
+  return deliver(
+    buyerUserId(studentProfileId).then((id) =>
+      id ? pushToUsers([id], { ...message, audience: 'buyer' }) : undefined,
+    ),
   );
 }
 
-/** Notify a cafeteria's counter team and owner. Never throws. */
+/** Notify a cafeteria's counter team and owner. Never throws, never blocks the request. */
 export function notifyCafeteria(vendorId: string, message: PushMessage): Promise<void> {
-  return withinBudget(cafeteriaTeamIds(vendorId).then((ids) => pushToUsers(ids, message)));
+  return deliver(
+    cafeteriaTeamIds(vendorId).then((ids) => pushToUsers(ids, { ...message, audience: 'counter' })),
+  );
 }

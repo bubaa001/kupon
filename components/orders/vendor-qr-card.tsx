@@ -130,10 +130,10 @@ export function VendorQrCard({ compact = false }: { compact?: boolean }) {
           variant="ghost"
           size="sm"
           className="flex-1"
-          onClick={() => window.print()}
+          onClick={() => window.open('/qr-poster', '_blank', 'noopener')}
         >
           <Printer className="h-3.5 w-3.5" />
-          Print
+          Print poster
         </Button>
       </div>
     </section>
