@@ -17,8 +17,8 @@ type Hours = { openTime: string | null; closeTime: string | null; label: string 
  */
 export function OpeningHoursCard() {
   const [hours, setHours] = useState<Hours | null>(null);
-  const [openTime, setOpenTime] = useState('07:00');
-  const [closeTime, setCloseTime] = useState('18:00');
+  const [openTime, setOpenTime] = useState('');
+  const [closeTime, setCloseTime] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
