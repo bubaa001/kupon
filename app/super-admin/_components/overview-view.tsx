@@ -293,7 +293,6 @@ export function OverviewView() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>University</TableHead>
-                    <TableHead>Lipa Namba</TableHead>
                     <TableHead className="text-right">Students / Vendors</TableHead>
                     <TableHead className="text-right">GMV today</TableHead>
                     <TableHead className="text-right">Fees (30d)</TableHead>
@@ -330,7 +329,7 @@ export function OverviewView() {
           href="/super-admin/tenants"
           icon={Building2}
           title="Manage tenants"
-          description="Suspend, reactivate or reassign a Lipa Namba route code."
+          description="Add, suspend or reactivate universities."
         />
         <QuickAction
           href="/super-admin/revenue"
@@ -397,9 +396,6 @@ function TenantRow({ tenant }: { tenant: TenantSummary }) {
             </p>
           </div>
         </div>
-      </TableCell>
-      <TableCell>
-        <span className="tabular whitespace-nowrap text-sm text-slate-700">{tenant.routeCode}</span>
       </TableCell>
       <TableCell className="text-right">
         <span className="tabular whitespace-nowrap text-sm text-slate-700">{tenant.students}</span>
@@ -505,9 +501,6 @@ function TenantCard({ tenant }: { tenant: TenantSummary }) {
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <TenantHealthBadge health={tenant.health} />
-        <Badge variant="outline" className="tabular">
-          Lipa Namba {tenant.routeCode}
-        </Badge>
         {tenant.lastInvoice ? <InvoiceStatusBadge status={tenant.lastInvoice.status} /> : null}
       </div>
 

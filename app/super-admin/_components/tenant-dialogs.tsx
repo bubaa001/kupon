@@ -30,7 +30,6 @@ export function EditTenantDialog({
   onOpenChange: (open: boolean) => void;
   onUpdated: () => void;
 }) {
-  const [routeCode, setRouteCode] = useState('');
   const [saasFee, setSaasFee] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export function EditTenantDialog({
 
   useEffect(() => {
     if (tenant) {
-      setRouteCode(tenant.routeCode);
       setSaasFee(String(tenant.saasFee));
     }
     setErrors({});
@@ -51,13 +49,12 @@ export function EditTenantDialog({
     if (!tenant) return;
 
     const fee = Number(saasFee.replace(/[^\d]/g, '')) || 0;
-    const body: { paymentRouteCode?: string; saasFee?: number } = {};
-    if (routeCode !== tenant.routeCode) body.paymentRouteCode = routeCode;
+    const body: { saasFee?: number } = {};
     if (fee !== tenant.saasFee) body.saasFee = fee;
 
     if (Object.keys(body).length === 0) {
       toast.info('Nothing to update', {
-        description: 'Change the Lipa Namba code or the SaaS fee first.',
+        description: 'Change the SaaS fee first.',
       });
       return;
     }
@@ -96,8 +93,8 @@ export function EditTenantDialog({
         <DialogHeader>
           <DialogTitle>Edit {tenant?.name ?? 'tenant'}</DialogTitle>
           <DialogDescription>
-            Reassign the Lipa Namba route code or change the monthly SaaS subscription. Route code
-            changes are audit-logged.
+            Change the monthly SaaS subscription. Changes are audit-logged. Each cafeteria sets its
+            own payout number on its profile.
           </DialogDescription>
         </DialogHeader>
 
@@ -108,23 +105,6 @@ export function EditTenantDialog({
             </Alert>
           ) : null}
 
-          <FormField
-            id="edit-route-code"
-            label="Lipa Namba route code"
-            error={errors.paymentRouteCode}
-            hint={`Currently ${tenant?.routeCode ?? '—'}. Must stay unique across all universities.`}
-          >
-            <Input
-              id="edit-route-code"
-              value={routeCode}
-              onChange={(event) => setRouteCode(event.target.value.replace(/[^\d]/g, ''))}
-              inputMode="numeric"
-              maxLength={6}
-              className="tabular tracking-[0.14em]"
-              error={Boolean(errors.paymentRouteCode)}
-              required
-            />
-          </FormField>
 
           <FormField
             id="edit-saas-fee"

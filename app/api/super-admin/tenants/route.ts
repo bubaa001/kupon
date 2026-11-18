@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { fail, ok, parseJson } from '@/lib/api';
 import { auditLog } from '@/lib/audit';
@@ -44,7 +45,8 @@ export async function GET() {
 /**
  * POST /api/super-admin/tenants — onboard a university.
  *
- * Creates the University (unique name, code and Lipa Namba route code) and an
+ * Creates the University (unique name and code; Kupon generates the internal
+ * route code) and an
  * audit-log entry. Universities get no admin account or invoice: Kupon serves
  * cafeterias directly.
  *
@@ -66,10 +68,13 @@ export async function POST(request: Request) {
     if (existing.some((tenant) => tenant.code === input.code)) {
       throw conflict(`The university code ${input.code} is already in use.`);
     }
-    if (existing.some((tenant) => tenant.paymentRouteCode === input.paymentRouteCode)) {
-      throw conflict(
-        `Lipa Namba ${input.paymentRouteCode} is already assigned to another university.`,
-      );
+    const taken = new Set(existing.map((tenant) => tenant.paymentRouteCode));
+    let paymentRouteCode = input.paymentRouteCode;
+    if (paymentRouteCode && taken.has(paymentRouteCode)) {
+      throw conflict(`Route code ${paymentRouteCode} is already assigned to another university.`);
+    }
+    while (!paymentRouteCode || taken.has(paymentRouteCode)) {
+      paymentRouteCode = String(randomInt(100_000, 1_000_000));
     }
     const saasFee = input.saasFee ?? 0;
 
@@ -78,7 +83,7 @@ export async function POST(request: Request) {
         data: {
           name: input.name,
           code: input.code,
-          paymentRouteCode: input.paymentRouteCode,
+          paymentRouteCode,
           city: input.city,
           saasFee,
           brandColor: input.brandColor,
@@ -113,7 +118,7 @@ export async function POST(request: Request) {
     return ok(data);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return fail(conflict('That university code or Lipa Namba was just taken. Please retry.'));
+      return fail(conflict('That university code was just taken. Please retry.'));
     }
     return fail(error);
   }

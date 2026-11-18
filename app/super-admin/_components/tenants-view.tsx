@@ -169,7 +169,7 @@ export function TenantsView() {
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name, code or Lipa Namba…"
+            placeholder="Search name or code…"
             className="pl-9"
             aria-label="Search universities"
           />
@@ -255,7 +255,6 @@ export function TenantsView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>University</TableHead>
-                  <TableHead>Lipa Namba</TableHead>
                   <TableHead className="text-right">Students / Vendors</TableHead>
                   <TableHead className="text-right">GMV (30d)</TableHead>
                   <TableHead className="text-right">Fees (30d)</TableHead>
@@ -289,11 +288,6 @@ export function TenantsView() {
                           </p>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="tabular whitespace-nowrap text-sm text-slate-700">
-                        {tenant.routeCode}
-                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="tabular whitespace-nowrap text-sm text-slate-700">
@@ -448,9 +442,6 @@ function TenantCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <Badge variant="outline" className="tabular">
-          Lipa Namba {tenant.routeCode}
-        </Badge>
         <TenantHealthBadge health={tenant.health} />
       </div>
 

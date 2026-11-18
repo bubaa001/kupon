@@ -21,14 +21,12 @@ import { zodFieldErrors, zodFormError } from './form-errors';
 type FormState = {
   name: string;
   code: string;
-  paymentRouteCode: string;
   city: string;
 };
 
 const EMPTY_FORM: FormState = {
   name: '',
   code: '',
-  paymentRouteCode: '',
   city: 'Dar es Salaam',
 };
 
@@ -75,7 +73,6 @@ export function OnboardTenantDialog({
       const result = await postJson<TenantMutationResult>('/api/super-admin/tenants', {
         name: form.name.trim(),
         code: form.code.trim().toUpperCase(),
-        paymentRouteCode: form.paymentRouteCode.trim(),
         city: form.city.trim(),
       });
 
@@ -152,26 +149,6 @@ export function OnboardTenantDialog({
               />
             </FormField>
 
-            <FormField
-              id="tenant-route"
-              label="Lipa Namba route code"
-              error={errors.paymentRouteCode}
-              hint="Exactly 6 digits. Must be unique across the platform."
-            >
-              <Input
-                id="tenant-route"
-                value={form.paymentRouteCode}
-                onChange={(event) =>
-                  update('paymentRouteCode', event.target.value.replace(/[^\d]/g, ''))
-                }
-                placeholder="555333"
-                inputMode="numeric"
-                maxLength={6}
-                className="tabular tracking-[0.14em]"
-                error={Boolean(errors.paymentRouteCode)}
-                required
-              />
-            </FormField>
 
             <FormField id="tenant-city" label="City" error={errors.city}>
               <Input

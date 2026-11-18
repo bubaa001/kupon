@@ -231,7 +231,8 @@ export const universitySchema = z.object({
     .trim()
     .regex(/^[A-Z]{2,10}$/, 'Use a short uppercase code like UDSM')
     .transform((value) => value.toUpperCase()),
-  paymentRouteCode: z.string().regex(/^\d{6}$/, 'Lipa Namba must be 6 digits'),
+  // Internal routing code; Kupon generates it. Cafeterias set their own payout number.
+  paymentRouteCode: z.string().regex(/^\d{6}$/, 'Route code must be 6 digits').optional(),
   city: z.string().trim().min(2).max(60).default('Dar es Salaam'),
   // Universities pay no SaaS fee for now; the column stays for a future plan.
   saasFee: z.number().int().min(0).max(10_000_000).default(0),
