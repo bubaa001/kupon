@@ -18,6 +18,7 @@
     "smoke": "node scripts/smoke-test.mjs",
     "audit:mobile": "node scripts/audit-mobile.mjs",
     "link:google": "tsx scripts/link-google-email.ts",
+    "reset:password": "tsx --env-file=.env scripts/reset-admin-password.ts",
     "screenshots:flow": "node scripts/screenshots-flow.mjs"
   },
   "dependencies": {
