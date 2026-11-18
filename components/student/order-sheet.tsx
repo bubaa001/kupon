@@ -110,6 +110,11 @@ export function OrderSheet({
             </div>
 
             {order.cafeteriaNotice ? <CafeteriaNoticeAlert notice={order.cafeteriaNotice} /> : null}
+            {order.expiryNote ? (
+              <Alert variant="warning" title="Expired at closing time">
+                {order.expiryNote}
+              </Alert>
+            ) : null}
 
             {showCoupon ? <FoodCoupon order={order} compact /> : null}
 

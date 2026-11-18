@@ -57,6 +57,8 @@ export type OrderView = {
   /** @deprecated Legacy signed coupon QR. New coupons use KPN:C:<code>. */
   couponToken: string | null;
   note: string | null;
+  /** Why the order expired at closing time, shown to the student. */
+  expiryNote: string | null;
   createdAt: string;
   verifiedAt: string | null;
   expiresAt: string;
@@ -77,6 +79,8 @@ export type VendorMenuData = {
   vendor: OrderVendorView & {
     universityId: string;
     universityName: string;
+    /** Opening hours; label null when the cafeteria has set none. */
+    hours: { label: string | null; openNow: boolean; closesAt: string | null; opensAt: string | null };
   };
   student: {
     name: string;

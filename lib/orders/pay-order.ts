@@ -1,3 +1,4 @@
+import { CLOSING_EXPIRY, capAtClosing } from '@/lib/cafeteria-hours';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit';
@@ -31,7 +32,9 @@ export async function payApprovedOrder(input: {
   }
   const useCredit = input.useCredit ?? order.useCafeteriaCredit;
 
-  const expiresAt = new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000);
+  // Coupons last 24 hours, or until the cafeteria closes if that comes first.
+  const cap = capAtClosing(order.vendor, new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000));
+  const expiresAt = cap.expiresAt;
   // Kupon's fee is fixed when the student pays, so a later settings change
   // never alters an order that is already in flight.
   const { kuponFeePercent } = await getFeeSettings();
@@ -67,6 +70,7 @@ export async function payApprovedOrder(input: {
         creditApplied,
         useCafeteriaCredit: useCredit,
         expiresAt,
+        expiryReason: cap.byClosing ? CLOSING_EXPIRY : null,
       },
     });
     if (!claimed.count) throw conflict('This request was already paid, expired, or changed.');

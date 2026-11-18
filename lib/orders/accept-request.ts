@@ -1,3 +1,4 @@
+import { CLOSING_EXPIRY, capAtClosing } from '@/lib/cafeteria-hours';
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit';
 import { conflict, forbidden, notFound } from '@/lib/errors';
@@ -26,6 +27,10 @@ export async function acceptOrderRequest(input: {
   if (order.status !== 'AWAITING_ACCEPTANCE') {
     throw conflict('This order request is no longer waiting for acceptance.');
   }
+  if (order.expiresAt <= new Date()) {
+    throw conflict('This order request expired. The student can place a new order.');
+  }
+  const cap = capAtClosing(order.vendor, new Date(Date.now() + PAY_WINDOW_MS));
 
   const pendingCredit = await prisma.creditRequest.findFirst({
     where: {
@@ -43,13 +48,15 @@ export async function acceptOrderRequest(input: {
         vendorId: input.vendorId,
         universityId: input.universityId,
         status: 'AWAITING_ACCEPTANCE',
+        expiresAt: { gt: new Date() },
         creditRequests: {
           none: { status: { in: ['PENDING_VENDOR', 'PENDING_ADMIN', 'PENDING_FINANCE'] } },
         },
       },
       data: {
         status: 'AWAITING_PAYMENT',
-        expiresAt: new Date(Date.now() + PAY_WINDOW_MS),
+        expiresAt: cap.expiresAt,
+        expiryReason: cap.byClosing ? CLOSING_EXPIRY : null,
       },
     });
     if (!claimed.count) throw conflict('This order request was just handled.');
@@ -83,11 +90,17 @@ export async function acceptAllOrderRequests(input: {
 }) {
   const now = new Date();
   const outcome = await prisma.$transaction(async (tx) => {
+    const hours = await tx.vendor.findUniqueOrThrow({
+      where: { id: input.vendorId },
+      select: { openTime: true, closeTime: true },
+    });
+    const cap = capAtClosing(hours, new Date(now.getTime() + PAY_WINDOW_MS), now);
     const requests = await tx.order.findMany({
       where: {
         vendorId: input.vendorId,
         universityId: input.universityId,
         status: 'AWAITING_ACCEPTANCE',
+        expiresAt: { gt: now },
         creditRequests: {
           none: { status: { in: ['PENDING_VENDOR', 'PENDING_ADMIN', 'PENDING_FINANCE'] } },
         },
@@ -108,7 +121,8 @@ export async function acceptAllOrderRequests(input: {
       },
       data: {
         status: 'AWAITING_PAYMENT',
-        expiresAt: new Date(now.getTime() + PAY_WINDOW_MS),
+        expiresAt: cap.expiresAt,
+        expiryReason: cap.byClosing ? CLOSING_EXPIRY : null,
       },
     });
     await auditLog(

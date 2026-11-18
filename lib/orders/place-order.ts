@@ -1,3 +1,4 @@
+import { CLOSING_EXPIRY, capAtClosing, isCafeteriaOpen } from '@/lib/cafeteria-hours';
 import { randomInt } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { AppError, conflict, notFound } from '@/lib/errors';
@@ -72,6 +73,9 @@ export async function placeOrder(input: {
     include: { university: { select: { id: true, code: true, status: true } } },
   });
   if (!vendor) throw notFound('Vendor not found.');
+  if (!isCafeteriaOpen(vendor)) {
+    throw conflict(`${vendor.name} is closed right now. It opens at ${vendor.openTime}.`);
+  }
   if (vendor.universityId !== student.universityId) {
     throw new AppError('This vendor belongs to another university.', 403, 'TENANT_MISMATCH');
   }
@@ -117,9 +121,11 @@ export async function placeOrder(input: {
   const couponCode = await uniqueCouponCode();
   // Auto-accepted orders get the 20-minute pay window; requests waiting for the
   // cafeteria keep 24 hours and get the pay window when accepted.
-  const expiresAt = new Date(
-    Date.now() + (requiresAcceptance ? COUPON_TTL_HOURS * 60 * 60 * 1000 : PAY_WINDOW_MS),
+  const cap = capAtClosing(
+    vendor,
+    new Date(Date.now() + (requiresAcceptance ? COUPON_TTL_HOURS * 60 * 60 * 1000 : PAY_WINDOW_MS)),
   );
+  const expiresAt = cap.expiresAt;
 
   const created = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({
@@ -138,6 +144,7 @@ export async function placeOrder(input: {
         couponCode,
         note: input.payload.note?.trim() || null,
         expiresAt,
+        expiryReason: cap.byClosing ? CLOSING_EXPIRY : null,
         items: { create: orderItems.map(({ autoAccept: _autoAccept, ...item }) => item) },
       },
       include: orderInclude,

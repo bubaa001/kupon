@@ -739,6 +739,14 @@ export default function PayPage() {
                   {menu.vendor.universityName} · {menu.items.length}{' '}
                   {t('menu.dishesToday')}
                 </p>
+                {menu.vendor.hours.label ? (
+                  <p className={cn('mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold', menu.vendor.hours.openNow ? 'text-emerald-300' : 'text-amber-300')}>
+                    <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', menu.vendor.hours.openNow ? 'bg-emerald-300' : 'bg-amber-300')} />
+                    {menu.vendor.hours.openNow
+                      ? `Open · closes ${menu.vendor.hours.closesAt}`
+                      : `Closed · opens ${menu.vendor.hours.opensAt}`}
+                  </p>
+                ) : null}
               </div>
               <Button
                 variant="outline"
@@ -1149,6 +1157,11 @@ export default function PayPage() {
               <Alert variant="warning">
                 Nothing is charged yet. You pay only after the cafeteria confirms the food is available. Test gateway: no real money moves.
               </Alert>
+              {menu?.vendor.hours.closesAt ? (
+                <Alert variant="info" title={`Collect before ${menu.vendor.hours.closesAt}`}>
+                  {menu.vendor.name} closes at {menu.vendor.hours.closesAt}. Coupons not collected by closing time expire and are not refunded.
+                </Alert>
+              ) : null}
 
               {noteOpen || note ? (
                 <div className="space-y-1.5">

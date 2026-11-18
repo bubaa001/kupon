@@ -1,3 +1,4 @@
+import { CLOSING_EXPIRY, formatTanzaniaTime } from '@/lib/cafeteria-hours';
 import type { Prisma } from '@prisma/client';
 import { maskPhone } from '@/lib/utils';
 import type { CafeteriaNotice, OrderView } from './types';
@@ -5,7 +6,7 @@ import type { CafeteriaNotice, OrderView } from './types';
 export const orderInclude = {
   items: { orderBy: { name: 'asc' } },
   vendor: {
-    select: { id: true, name: true, code: true, description: true },
+    select: { id: true, name: true, code: true, description: true, openTime: true, closeTime: true },
   },
   transaction: {
     select: {
@@ -76,7 +77,18 @@ export function serializeOrder(
   couponToken: string | null = null,
   declineReason: string | null = null,
 ): OrderView {
-  const expired = order.status === 'PENDING' && order.expiresAt <= new Date();
+  const expired =
+    (order.status === 'PENDING' ||
+      order.status === 'AWAITING_ACCEPTANCE' ||
+      order.status === 'AWAITING_PAYMENT') &&
+    order.expiresAt <= new Date();
+  const closedAt = formatTanzaniaTime(order.expiresAt);
+  const expiryNote =
+    expired && order.expiryReason === CLOSING_EXPIRY
+      ? order.status === 'PENDING'
+        ? `${order.vendor.name} closed at ${closedAt} before this coupon was collected. Uncollected coupons are not refunded.`
+        : `${order.vendor.name} closed at ${closedAt} before your order was completed. No money was taken.`
+      : null;
   const notice = cafeteriaNotice(order, declineReason);
   // While the cafeteria's "food unavailable" case is open the coupon cannot be redeemed.
   const couponOnHold = notice?.kind === 'UNAVAILABLE' && notice.caseStatus !== 'REJECTED';
@@ -96,6 +108,7 @@ export function serializeOrder(
     couponCode: paymentUnconfirmed ? '' : order.couponCode,
     couponToken: paymentUnconfirmed ? null : couponToken,
     note: order.note,
+    expiryNote,
     createdAt: order.createdAt.toISOString(),
     verifiedAt: order.verifiedAt ? order.verifiedAt.toISOString() : null,
     expiresAt: order.expiresAt.toISOString(),

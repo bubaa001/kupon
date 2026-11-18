@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       ...(query.status !== 'ALL'
         ? {
             status: query.status,
-            ...(query.status === 'PENDING' ? { expiresAt: { gt: new Date() } } : {}),
+            ...(query.status !== 'VERIFIED' ? { expiresAt: { gt: new Date() } } : {}),
           }
         : {}),
     };
@@ -60,6 +60,7 @@ export async function GET(request: Request) {
           vendorId: vendor.id,
           universityId: user.universityId,
           status: 'AWAITING_ACCEPTANCE',
+          expiresAt: { gt: new Date() },
         },
       }),
       prisma.order.count({

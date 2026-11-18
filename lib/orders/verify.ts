@@ -85,7 +85,7 @@ export async function verifyOrderCoupon(input: {
     throw conflict('This order has an open credit case and cannot be redeemed.');
   }
   if (order.expiresAt <= new Date()) {
-    throw conflict('This coupon has expired and can no longer be redeemed.');
+    throw conflict('This coupon has expired (24 hours passed or the cafeteria closed) and can no longer be redeemed.');
   }
   if (order.status !== 'PENDING') {
     throw conflict('This order can no longer be verified.');

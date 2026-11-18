@@ -1,3 +1,4 @@
+import { formatHours, formatTanzaniaTime, isCafeteriaOpen, nextClosingTime } from '@/lib/cafeteria-hours';
 import { prisma } from '@/lib/db';
 import { fail, ok, parseJson } from '@/lib/api';
 import { forbidden, notFound, tooManyRequests } from '@/lib/errors';
@@ -113,6 +114,16 @@ export async function POST(request: Request) {
         description: vendor.description,
         universityId: vendor.universityId,
         universityName: vendor.university.name,
+        hours: (() => {
+          const openNow = isCafeteriaOpen(vendor);
+          const closing = openNow ? nextClosingTime(vendor) : null;
+          return {
+            label: formatHours(vendor),
+            openNow,
+            closesAt: closing ? formatTanzaniaTime(closing) : null,
+            opensAt: openNow ? null : vendor.openTime,
+          };
+        })(),
       },
       student: {
         name: user.name,

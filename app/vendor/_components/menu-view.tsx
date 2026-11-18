@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import { useApiData } from '../_lib/use-api';
 import type { MenuItemRow, MenuResponse } from '../_lib/types';
 import { MenuItemDialog } from './menu-item-dialog';
+import { OpeningHoursCard } from './opening-hours-card';
 import { MenuPreview } from './menu-preview';
 import { LoadError } from './feedback';
 
@@ -220,6 +221,8 @@ export function MenuView({ audience = 'vendor' }: { audience?: 'vendor' | 'staff
             onPreview={() => setMode('preview')}
             audience={audience}
           />
+
+          <OpeningHoursCard />
 
           {audience === 'staff' && items.length > 0 ? (
             <Card className="flex items-center justify-between gap-4 p-4">

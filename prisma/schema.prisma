@@ -125,6 +125,9 @@ model Vendor {
   pendingBalance             Int       @default(0)
   totalSettled               Int       @default(0)
   status                     String    @default("ACTIVE") // PENDING | ACTIVE | SUSPENDED
+  // Opening hours in Tanzania time, "HH:MM". Both null = no hours set.
+  openTime                   String?
+  closeTime                  String?
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
@@ -289,6 +292,8 @@ model Order {
   verifiedById       String?
   verifiedAt         DateTime?
   expiresAt          DateTime
+  // "CLOSING" when the cafeteria's closing time set expiresAt.
+  expiryReason       String?
   createdAt          DateTime  @default(now())
 
   university      University       @relation(fields: [universityId], references: [id])

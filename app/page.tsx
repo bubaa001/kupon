@@ -166,7 +166,7 @@ const KEY_FACTS = [
   { label: 'Payment', value: 'Mobile money, pushed to your phone through our partner Snippe' },
   { label: 'Checkout charge', value: '2.5%, shown before you pay. Nothing hidden' },
   { label: 'Pay window', value: '20 minutes after the cafeteria accepts your order' },
-  { label: 'Coupon', value: 'QR code and 6-digit code, valid for 24 hours' },
+  { label: 'Coupon', value: 'QR code and 6-digit code, valid until the cafeteria closes' },
   { label: 'Sold out after paying', value: 'Kupon credit by default, or your money back' },
   { label: 'Languages', value: 'English and simple Kiswahili' },
   { label: 'Devices', value: 'Any phone browser, with alerts even when Kupon is closed' },
@@ -226,6 +226,10 @@ const FAQS = [
   {
     q: 'What happens if I do not pay in time?',
     a: 'You have 20 minutes to approve the payment after the cafeteria accepts. After that the order expires and no money is taken.',
+  },
+  {
+    q: 'What if I do not collect my meal?',
+    a: 'Collect before the cafeteria closes. Coupons not collected by closing time expire automatically and are not refunded.',
   },
   {
     q: 'How do I know my payment went through?',
