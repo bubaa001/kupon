@@ -7,9 +7,9 @@ import { getAuthUser, roleHome } from '@/lib/auth';
 import { LoginForm, type LoginRole } from './login-form';
 
 export const metadata: Metadata = {
-  title: 'Student sign in',
+  title: 'Order food',
   description:
-    'Students sign in with Google to order from a cafeteria.',
+    'Students, lecturers, workers and visitors sign in with Google to order from a campus cafeteria.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -116,32 +116,35 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card sm:p-7">
               <div className="mb-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-600">
-                  Kupon account
+                  Order food on campus
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-navy sm:text-3xl">
-                  Student sign in
+                  Sign in to order
                 </h1>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                  Sign in with Google to browse cafeteria menus, place orders, and keep your meal
-                  coupons together.
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  For <strong className="font-semibold text-navy">everyone</strong>: students,
+                  lecturers, workers, parents and visitors. One button, then choose your meal.
                 </p>
               </div>
 
               <LoginForm initialRole={initialRole} audience="student" />
-              <p className="mt-5 text-center text-sm text-slate-500">
-                Run a cafeteria?{' '}
-                <Link
-                  href="/vendor/login"
-                  className="font-semibold text-primary-700 hover:underline"
-                >
-                  Sign in or apply as a vendor
-                </Link>
-              </p>
+              <div className="mt-6 border-t border-slate-100 pt-4 text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  Only for cafeteria teams
+                </p>
+                <p className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
+                  <Link href="/vendor/login" className="font-medium text-slate-600 hover:text-navy hover:underline">
+                    Cafeteria owner
+                  </Link>
+                  <Link href="/staff/login" className="font-medium text-slate-600 hover:text-navy hover:underline">
+                    Cafeteria staff
+                  </Link>
+                </p>
+              </div>
             </div>
 
             <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-400">
-              Only payment status is simulated; no real money moves. Students sign in with Google
-              while SMS login is unavailable.
+              Only payment status is simulated; no real money moves.
             </p>
           </div>
         </section>

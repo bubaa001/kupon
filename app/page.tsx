@@ -78,8 +78,8 @@ function SiteHeader() {
           </a>
         </nav>
         <div className="landing-nav__actions">
-          <Link className="landing-nav__signin" href="/login">Student sign in</Link>
-          <Link className="landing-nav__apply" href="/vendor-apply">Apply as a cafeteria</Link>
+          <Link className="landing-nav__signin" href="/vendor-apply">Apply as a cafeteria</Link>
+          <Link className="landing-nav__apply" href="/login">Order food</Link>
         </div>
       </div>
     </header>
@@ -138,20 +138,23 @@ function Hero() {
             and handwritten sales books in university cafeterias, starting at COICT.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button asChild size="lg" className="landing-hero__primary h-12 w-full rounded-full px-6 sm:w-auto">
-              <Link href="/vendor-apply">
-                Apply as a cafeteria
-                <ArrowRight aria-hidden className="h-4 w-4" />
+            <Button asChild size="lg" className="landing-hero__primary h-14 w-full rounded-full px-8 text-base sm:w-auto">
+              <Link href="/login">
+                Order food
+                <ArrowRight aria-hidden className="h-5 w-5" />
               </Link>
             </Button>
             <Link
               href="#account-access"
               className="landing-hero__secondary group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border px-6 text-sm font-semibold sm:w-auto"
             >
-              Choose your access
+              I work at a cafeteria
               <ArrowDown aria-hidden className="landing-hero__secondary-icon h-4 w-4" />
             </Link>
           </div>
+          <p className="landing-hero__who mt-4 text-sm leading-relaxed">
+            For everyone on campus: students, lecturers, workers, parents and visitors.
+          </p>
           <p className="landing-hero__note mt-5 text-xs leading-relaxed text-slate-500">
             Test gateway only · simulated payments · no real money is collected.
           </p>
@@ -500,25 +503,19 @@ function FinalCta() {
 }
 
 function AccountAccessSection() {
-  const options = [
+  const team = [
     {
-      href: '/login',
-      title: 'Student',
-      description: 'Sign in with Google to browse meals, pay, and see your coupons.',
-      action: 'Student sign in',
-    },
-    {
-      href: '/vendor-apply',
       title: 'Cafeteria owner',
-      description: 'Submit your cafeteria for review. Google sign-in starts after approval.',
+      description: 'Register your cafeteria. After approval, sign in with Google.',
       action: 'Apply as a cafeteria',
-      signInHref: '/vendor/login',
+      href: '/vendor-apply',
+      secondary: { label: 'Already approved? Sign in', href: '/vendor/login' },
     },
     {
-      href: '/staff/login',
       title: 'Cafeteria staff',
-      description: 'Open your invited account to verify coupons and manage today’s menu.',
+      description: 'Use the account your manager created to check coupons and update the menu.',
       action: 'Staff sign in',
+      href: '/staff/login',
     },
   ];
 
@@ -533,14 +530,32 @@ function AccountAccessSection() {
           <MotionHeading
             id="account-access-title"
             className="landing-section-title max-w-2xl text-3xl font-semibold leading-[1.08] tracking-[-0.05em] sm:text-4xl"
-            text="One platform, the right doorway for each role."
+            text="Hungry? One button. Working here? Your own door."
           />
-          <div className="landing-access__grid mt-8 grid gap-3">
-            {options.map((option) => (
-              <article
-                key={option.title}
-                className="landing-access__item flex min-h-48 flex-col p-5 sm:p-6"
-              >
+
+          <Link href="/login" className="landing-eat group mt-8 block rounded-3xl p-6 sm:p-8">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">
+              To buy food
+            </p>
+            <p className="mt-3 text-2xl font-medium leading-tight tracking-[-0.04em] text-white sm:text-3xl">
+              Students, lecturers, workers, parents and visitors
+            </p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-navy-200">
+              Everyone who eats uses the same button. Sign in with Google, choose your meal, pay
+              with mobile money and show your coupon at the counter.
+            </p>
+            <span className="landing-eat__button mt-6 inline-flex h-14 w-full items-center justify-center gap-2 rounded-full px-8 text-base font-semibold sm:w-auto">
+              Order food
+              <ArrowRight aria-hidden className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </span>
+          </Link>
+
+          <p className="mt-10 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Only for cafeteria teams
+          </p>
+          <div className="landing-access__grid mt-3 grid gap-3">
+            {team.map((option) => (
+              <article key={option.title} className="landing-access__item flex flex-col p-5 sm:p-6">
                 <h3 className="text-lg font-semibold tracking-tight text-navy">{option.title}</h3>
                 <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{option.description}</p>
                 <Link
@@ -550,12 +565,12 @@ function AccountAccessSection() {
                   {option.action}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
-                {'signInHref' in option ? (
+                {option.secondary ? (
                   <Link
-                    href={option.signInHref ?? '/vendor/login'}
+                    href={option.secondary.href}
                     className="landing-access__secondary mt-2 text-xs font-medium hover:text-primary-800"
                   >
-                    Already approved? Sign in
+                    {option.secondary.label}
                   </Link>
                 ) : null}
               </article>
@@ -588,7 +603,7 @@ function SiteFooter() {
             How it works
           </Link>
           <Link className="transition-colors hover:text-navy" href="/login">
-            Student sign in
+            Order food
           </Link>
           <Link className="transition-colors hover:text-navy" href="/vendor/login">
             Vendor access

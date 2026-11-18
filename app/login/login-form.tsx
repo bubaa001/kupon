@@ -674,15 +674,6 @@ export function LoginForm({
               </>
             ) : (
               <div className="space-y-3">
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
-                  <p className="text-xs font-semibold text-emerald-900">
-                    Student sign-in is Google-only for now.
-                  </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
-                    OTP is temporarily disabled. Existing student accounts need their Google email linked by
-                    an admin; new students can create an account with Google.
-                  </p>
-                </div>
                 {studentError ? <InlineError>{studentError}</InlineError> : null}
               </div>
             )}
@@ -702,7 +693,7 @@ export function LoginForm({
               type="button"
               variant={OTP_LOGIN_ENABLED ? 'outline' : 'default'}
               size="lg"
-              className={OTP_LOGIN_ENABLED ? 'mt-4 w-full bg-white' : 'w-full'}
+              className={OTP_LOGIN_ENABLED ? 'mt-4 w-full bg-white' : 'h-14 w-full rounded-full text-base'}
               onClick={() => startGoogleSignIn('student')}
               loading={googleStarting}
               disabled={googleStarting || universities.length === 0}
@@ -710,9 +701,8 @@ export function LoginForm({
               {!googleStarting ? <GoogleGlyph className="h-[18px] w-[18px]" /> : null}
               Continue with Google
             </Button>
-            <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-500">
-              Google is the student sign-in method now. Existing students sign in if their Google
-              email is linked; new students can create an account in 30 seconds.
+            <p className="mt-3 text-center text-xs leading-relaxed text-slate-500">
+              First time? The same button creates your account in about 30 seconds.
             </p>
           </div>
         </TabsContent>
