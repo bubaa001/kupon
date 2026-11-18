@@ -6,6 +6,8 @@ import { randomReference, safeJson } from '@/lib/utils';
 import { TEST_PAYMENT_TTL_MS } from './payment-ttl';
 import { calcOrderCheckoutFees } from '@/lib/fees';
 import { getFeeSettings } from '@/lib/platform-settings';
+import { notifyBuyer, notifyCafeteria } from '@/lib/push';
+
 
 /**
  * Confirms a test order only after the Kupon test gateway records receipt and
@@ -43,20 +45,25 @@ export async function settleOrderCheckout(input: {
   if (metadata.channel !== 'MOBILE_MONEY_ORDER') {
     throw conflict('This payment is not a mobile-money order checkout.');
   }
-  if (!payment.isTest || payment.paymentEvents[0]?.stage !== 'RECEIVED') {
+  const live = !payment.isTest;
+  if (live && metadata.provider !== 'snippe') {
+    throw conflict('Only Snippe can confirm a live payment.');
+  }
+  if (!live && payment.paymentEvents[0]?.stage !== 'RECEIVED') {
     throw conflict('A test payment must be received before it can be confirmed.');
   }
   if (payment.status === 'FAILED') throw conflict('This order payment already failed.');
   if (payment.status === 'SETTLED') return { settled: false, orderId };
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.transaction.updateMany({
       where: {
         id: payment.id,
         type: 'PAYMENT',
         status: 'PENDING',
-        isTest: true,
-        createdAt: { gt: new Date(Date.now() - TEST_PAYMENT_TTL_MS) },
+        isTest: payment.isTest,
+        // Test payments expire after a minute; live ones wait for Snippe.
+        ...(live ? {} : { createdAt: { gt: new Date(Date.now() - TEST_PAYMENT_TTL_MS) } }),
       },
       data: {
         status: 'SETTLED',
@@ -98,12 +105,14 @@ export async function settleOrderCheckout(input: {
     await postJournal(tx, {
       transactionId: payment.id,
       universityId: payment.universityId,
-      description: `TEST PAYMENT • ${order.reference} (no money collected)`,
+      description: live
+        ? `SNIPPE PAYMENT • ${order.reference}`
+        : `TEST PAYMENT • ${order.reference} (no money collected)`,
       lines: [
         {
-          account: LEDGER_ACCOUNTS.TEST_PAYMENT_CLEARING,
+          account: live ? LEDGER_ACCOUNTS.CASH_TRUST : LEDGER_ACCOUNTS.TEST_PAYMENT_CLEARING,
           debit: payment.amount,
-          description: 'Simulated test confirmation; not cash',
+          description: live ? 'Collected by Snippe' : 'Simulated test confirmation; not cash',
         },
         {
           account: LEDGER_ACCOUNTS.VENDOR_PENDING,
@@ -133,19 +142,19 @@ export async function settleOrderCheckout(input: {
         transactionId: payment.id,
         sequence: (payment.paymentEvents[0]?.sequence ?? 0) + 1,
         stage: 'CONFIRMED',
-        source: 'KUPON_TEST_GATEWAY',
+        source: live ? 'SNIPPE' : 'KUPON_TEST_GATEWAY',
       },
     });
     await auditLog(
       {
         universityId: payment.universityId,
-        action: 'TEST_PAYMENT_CONFIRMED',
+        action: live ? 'SNIPPE_PAYMENT_CONFIRMED' : 'TEST_PAYMENT_CONFIRMED',
         entity: 'Transaction',
         entityId: payment.id,
         metadata: {
           reference: payment.reference,
           amount: payment.amount,
-          source: 'KUPON_TEST_GATEWAY',
+          source: live ? 'SNIPPE' : 'KUPON_TEST_GATEWAY',
         },
       },
       tx,
@@ -153,6 +162,24 @@ export async function settleOrderCheckout(input: {
 
     return { settled: true, orderId };
   });
+
+  if (result.settled) {
+    await Promise.all([
+      notifyBuyer(order.studentId, {
+        title: 'Your coupon is ready',
+        body: 'Payment confirmed. Show your coupon at the counter.',
+        url: '/student/pay',
+        tag: `order-${order.id}`,
+      }),
+      notifyCafeteria(order.vendorId, {
+        title: 'Paid order',
+        body: `Order ${order.reference} is paid. The buyer is coming to collect.`,
+        url: '/staff',
+        tag: 'kupon-paid-order',
+      }),
+    ]);
+  }
+  return result;
 }
 
 export async function failOrderCheckout(input: {
@@ -177,13 +204,12 @@ export async function failOrderCheckout(input: {
   if (!payment || payment.type !== 'PAYMENT' || !payment.order) {
     throw notFound('Order payment not found.');
   }
-  if (!payment.isTest) throw conflict('Only internal test payments can be failed here.');
   const order = payment.order;
   const orderId = order.id;
 
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.transaction.updateMany({
-      where: { id: payment.id, status: 'PENDING', isTest: true },
+      where: { id: payment.id, status: 'PENDING', isTest: payment.isTest },
       data: {
         status: 'FAILED',
         failureReason: input.reason,
@@ -231,14 +257,14 @@ export async function failOrderCheckout(input: {
         transactionId: payment.id,
         sequence: (payment.paymentEvents[0]?.sequence ?? 0) + 1,
         stage: input.stage,
-        source: 'KUPON_TEST_GATEWAY',
+        source: payment.isTest ? 'KUPON_TEST_GATEWAY' : 'SNIPPE',
         note: input.reason,
       },
     });
     await auditLog(
       {
         universityId: payment.universityId,
-        action: `TEST_PAYMENT_${input.stage}`,
+        action: `${payment.isTest ? 'TEST' : 'SNIPPE'}_PAYMENT_${input.stage}`,
         entity: 'Transaction',
         entityId: payment.id,
         metadata: {

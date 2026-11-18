@@ -20,16 +20,23 @@ import { PendingOrderCard } from '@/components/student/pending-order-card';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { cn, formatTZS } from '@/lib/utils';
-import { OrderSheet } from '@/components/student/order-sheet';
+import { useT } from '@/lib/i18n';
+import dynamic from 'next/dynamic';
+// Loaded only when a buyer opens an order, to keep the first screen light.
+const OrderSheet = dynamic(
+  () => import('@/components/student/order-sheet').then((mod) => mod.OrderSheet),
+  { ssr: false },
+);
+import { PushPrompt } from '@/components/student/push-prompt';
 import { ErrorState } from './_components/error-state';
 import { TransactionRow } from './_components/transaction-row';
 import type { StudentDashboardData } from './_lib/types';
 
-function greeting(): string {
+function greetingKey() {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return 'home.greetMorning' as const;
+  if (hour < 17) return 'home.greetAfternoon' as const;
+  return 'home.greetEvening' as const;
 }
 
 function HomeSkeleton() {
@@ -81,6 +88,7 @@ export default function StudentHomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  const { t } = useT();
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -123,25 +131,25 @@ export default function StudentHomePage() {
 
   const stats = [
     {
-      label: 'Spent today',
+      label: t('stats.today'),
       value: formatTZS(data.stats.todaySpent),
       hint: 'Since midnight',
       icon: UtensilsCrossed,
     },
     {
-      label: 'Last 7 days',
+      label: t('stats.week'),
       value: formatTZS(data.stats.weekSpent),
       hint: 'Weekly spend',
       icon: CalendarDays,
     },
     {
-      label: 'Meals this week',
+      label: t('stats.meals'),
       value: String(data.stats.mealsThisWeek),
       hint: 'Paid orders',
       icon: ChefHat,
     },
     {
-      label: 'Coupons used',
+      label: t('stats.coupons'),
       value: String(data.stats.couponsUsed),
       hint: 'Verified at the counter',
       icon: Receipt,
@@ -152,8 +160,8 @@ export default function StudentHomePage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow={`${data.student.university.code} · Cafeteria ordering`}
-        title={`${greeting()}, ${firstName}`}
-        description="Pick a meal, pay at checkout and show your coupon at the counter once payment is confirmed."
+        title={`${t(greetingKey())}, ${firstName}`}
+        description={t('home.lead')}
       />
 
       <section
@@ -167,15 +175,12 @@ export default function StudentHomePage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">
-              Order · Pay · Collect
+              {t('home.heroEyebrow')}
             </p>
             <p className="mt-3 text-2xl font-medium leading-tight tracking-[-0.045em] sm:text-3xl">
-              Good food, a clear order.
+              {t('home.heroTitle')}
             </p>
-            <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-navy-300">
-              Scan the cafeteria QR, choose what is available today and pay at checkout. Your
-              coupon appears once the payment is confirmed.
-            </p>
+            <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-navy-300">{t('home.heroBody')}</p>
           </div>
           <span className="hidden shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-[10px] font-semibold tracking-wide text-navy-200 sm:inline-flex">
             {data.student.university.code}
@@ -191,7 +196,7 @@ export default function StudentHomePage() {
           >
             <Link href="/student/pay">
               <ScanLine aria-hidden />
-              Scan cafeteria QR
+              {t('home.scan')}
               <ChevronRight className="h-4 w-4" aria-hidden />
             </Link>
           </Button>
@@ -199,21 +204,23 @@ export default function StudentHomePage() {
             href="/student/history"
             className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-navy-200 transition-colors hover:bg-white/10 hover:text-white"
           >
-            Order history
+            {t('home.history')}
             <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         </div>
       </section>
 
+      <PushPrompt />
+
       {data.pendingOrders.length > 0 ? (
         <div className="space-y-2 animate-fade-up">
           <div className="flex items-center justify-between gap-2">
-            <p className="eyebrow">Your latest coupon</p>
+            <p className="eyebrow">{t('home.latestCoupon')}</p>
             <Link
               href="/student/pay"
               className="inline-flex min-h-[32px] items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800"
             >
-              All coupons
+              {t('home.allCoupons')}
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
@@ -259,21 +266,21 @@ export default function StudentHomePage() {
 
       <Card className="p-5">
         <SectionHeading
-          title="Recent orders and payments"
-          description="Your latest meal purchases"
-          actionLabel="All history"
+          title={t('home.recent')}
+          description={t('home.recentLead')}
+          actionLabel={t('home.allHistory')}
           actionHref="/student/history"
         />
         <div className="mt-2">
           {data.recentTransactions.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title="Nothing here yet"
-              description="Once you pay for an order, the payment and your coupon status show up here."
+              title={t('home.empty')}
+              description={t('home.emptyLead')}
               compact
               action={
                 <Button asChild size="sm">
-                  <Link href="/student/pay">Order a meal</Link>
+                  <Link href="/student/pay">{t('home.orderMeal')}</Link>
                 </Button>
               }
             />

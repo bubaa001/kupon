@@ -6,6 +6,8 @@ import { conflict, notFound, tooManyRequests } from '@/lib/errors';
 import { issueCafeteriaCredit } from '@/lib/credits/issue-credit';
 import { CASH_REFUNDED, refundCash } from '@/lib/credits/refund-cash';
 import { getFeeSettings } from '@/lib/platform-settings';
+import { notifyBuyer } from '@/lib/push';
+
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -42,6 +44,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           note: body.note,
         }),
       );
+      await notifyBuyer(creditRequest.studentId, {
+        title: 'Credit added',
+        body: `The cafeteria added credit for your meal. ${body.note}`,
+        url: '/student/credit-requests',
+      });
       return ok({ status: 'APPROVED', creditBalance: account.balance });
     }
 
@@ -50,6 +57,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       const result = await prisma.$transaction((tx) =>
         refundCash({ tx, request: creditRequest, withdrawalFee, actorId: user.id, note: body.note }),
       );
+      await notifyBuyer(creditRequest.studentId, {
+        title: 'Your money is being returned',
+        body: body.note,
+        url: '/student/credit-requests',
+      });
       return ok({ status: CASH_REFUNDED, totalCost: result.totalCost });
     }
 

@@ -33,7 +33,12 @@ import {
 } from '@/components/ui/dialog';
 import { FoodProductCard } from '@/components/food';
 import { FoodThumb } from '@/components/orders/food-thumb';
-import { FoodCoupon } from '@/components/orders/food-coupon';
+import dynamic from 'next/dynamic';
+// The coupon (with its QR library) loads only once there is a coupon to show.
+const FoodCoupon = dynamic(
+  () => import('@/components/orders/food-coupon').then((mod) => mod.FoodCoupon),
+  { ssr: false },
+);
 import { PendingOrderDeck } from '@/components/student/pending-order-deck';
 import {
   CafeteriaNoticeAlert,
@@ -44,6 +49,7 @@ import { QrScanner } from '@/components/qr/qr-scanner';
 import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
 import { cn, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { useT } from '@/lib/i18n';
 import type {
   OrderView,
   PlaceOrderInput,
@@ -142,6 +148,7 @@ export default function PayPage() {
   const [note, setNote] = useState('');
   // The note is optional, so it stays collapsed and never opens the keyboard by itself.
   const [noteOpen, setNoteOpen] = useState(false);
+  const { t } = useT();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [order, setOrder] = useState<OrderView | null>(null);
@@ -730,7 +737,7 @@ export default function PayPage() {
                 <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-navy-300">
                   <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   {menu.vendor.universityName} · {menu.items.length}{' '}
-                  {menu.items.length === 1 ? 'dish' : 'dishes'} today
+                  {t('menu.dishesToday')}
                 </p>
               </div>
               <Button
@@ -741,7 +748,7 @@ export default function PayPage() {
                 className="shrink-0 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
               >
                 <ScanLine aria-hidden />
-                Change
+                {t('menu.change')}
               </Button>
             </div>
           </section>
@@ -767,7 +774,7 @@ export default function PayPage() {
                         : 'border-navy/15 bg-white text-navy hover:bg-navy-50',
                     )}
                   >
-                    {item}
+                    {item === 'All' ? t('menu.all') : item}
                   </button>
                 );
               })}
@@ -819,7 +826,7 @@ export default function PayPage() {
                 <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-gold px-2 text-sm font-bold text-navy tabular">
                   {itemCount}
                 </span>
-                <span className="flex-1 text-sm font-semibold">Review order</span>
+                <span className="flex-1 text-sm font-semibold">{t('menu.review')}</span>
                 <span className="text-sm font-semibold tabular">{formatTZS(subtotal)}</span>
                 <ChevronRight className="h-4 w-4 text-gold" aria-hidden />
               </button>
@@ -831,9 +838,13 @@ export default function PayPage() {
       {phase === 'payment' && order ? (
         <section className="mx-auto w-full max-w-lg space-y-4">
           <PageHeader
-            eyebrow="Kupon test gateway"
-            title="Payment is processing"
-            description="Kupon automatically records the test payment lifecycle. No mobile-money request is sent."
+            eyebrow={order.paymentTest ? 'Kupon test gateway' : 'Mobile money'}
+            title={order.paymentTest ? 'Payment is processing' : 'Approve the payment on your phone'}
+            description={
+              order.paymentTest
+                ? 'Kupon automatically records the test payment lifecycle. No mobile-money request is sent.'
+                : 'A prompt was sent to your phone. Enter your mobile money PIN to pay. Your coupon appears as soon as the payment is confirmed.'
+            }
           />
           <Card className="p-5">
             <div className="flex items-start gap-3">

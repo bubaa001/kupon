@@ -15,7 +15,13 @@ import { STATUS_BADGE, TX_STATUSES } from '@/lib/constants';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { formatDate, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
-import { OrderSheet } from '@/components/student/order-sheet';
+import { useT } from '@/lib/i18n';
+import dynamic from 'next/dynamic';
+// Loaded only when a buyer opens an order, to keep the first screen light.
+const OrderSheet = dynamic(
+  () => import('@/components/student/order-sheet').then((mod) => mod.OrderSheet),
+  { ssr: false },
+);
 import { ErrorState } from '../_components/error-state';
 import { TransactionRow } from '../_components/transaction-row';
 import type { StudentTx, TransactionsData } from '../_lib/types';
@@ -32,6 +38,7 @@ export default function HistoryPage() {
   const [range, setRange] = useState<RangeKey>('week');
   const [status, setStatus] = useState('');
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  const { t } = useT();
 
   const [data, setData] = useState<TransactionsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,8 +91,8 @@ export default function HistoryPage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="History"
-        title="Orders and payments"
-        description="Your meal orders and payment status for the period you choose."
+        title={t('history.title')}
+        description={t('history.lead')}
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()} loading={loading}>
             <RefreshCcw aria-hidden />

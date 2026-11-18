@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { enablePush, pushSupported } from '@/lib/push-client';
 
 const SOUND_KEY = 'kupon:order-sound';
 
@@ -129,7 +130,13 @@ export function useOrderAlerts() {
   const enableNotifications = useCallback(async () => {
     if (typeof Notification === 'undefined') return;
     try {
-      setPermission(await Notification.requestPermission());
+      // With push set up, alerts also reach this device when the tab is closed.
+      if (pushSupported()) {
+        const result = await enablePush();
+        setPermission(result === 'unsupported' ? Notification.permission : result);
+      } else {
+        setPermission(await Notification.requestPermission());
+      }
     } catch {
       /* Ignore: the page keeps sound and title alerts. */
     }

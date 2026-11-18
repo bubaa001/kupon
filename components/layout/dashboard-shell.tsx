@@ -32,7 +32,8 @@ const SUPER_NAV: AppNavGroup[] = [
     items: [
       { href: '/super-admin', label: 'Overview', icon: LayoutDashboard },
       { href: '/super-admin/tenants', label: 'Universities', icon: Building2 },
-      { href: '/super-admin/revenue', label: 'Revenue', icon: TrendingUp },
+      { href: '/super-admin/money', label: 'Money', icon: CircleDollarSign },
+      { href: '/super-admin/revenue', label: 'Revenue history', shortLabel: 'Revenue', icon: TrendingUp },
       { href: '/super-admin/health', label: 'System health', shortLabel: 'Health', icon: Activity },
       { href: '/super-admin/settings', label: 'Fees and limits', shortLabel: 'Fees', icon: Settings },
     ],
@@ -77,12 +78,7 @@ const CONFIG: Record<DashboardKind, { home: string; groups: AppNavGroup[]; tabs:
   super: {
     home: '/super-admin',
     groups: SUPER_NAV,
-    tabs: [
-      '/super-admin',
-      '/super-admin/tenants',
-      '/super-admin/vendor-applications',
-      '/super-admin/credit-requests',
-    ],
+    tabs: ['/super-admin', '/super-admin/money', '/super-admin/vendor-applications', '/super-admin/accounts'],
   },
   finance: {
     home: '/finance',

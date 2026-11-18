@@ -5,6 +5,8 @@ import { conflict, notFound } from '@/lib/errors';
 import { randomReference } from '@/lib/utils';
 import { calcOrderCheckoutFees } from '@/lib/fees';
 import { getFeeSettings } from '@/lib/platform-settings';
+import { createSnippePayment, kuponBaseUrl, snippeEnabled } from '@/lib/payments/snippe';
+import { failOrderCheckout } from './settle-checkout';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
 
@@ -33,6 +35,8 @@ export async function payApprovedOrder(input: {
   // Kupon's fee is fixed when the student pays, so a later settings change
   // never alters an order that is already in flight.
   const { kuponFeePercent } = await getFeeSettings();
+  // Live Snippe payments only when switched on with keys; otherwise the test gateway.
+  const live = snippeEnabled();
   const result = await prisma.$transaction(async (tx) => {
     const creditAccount = useCredit
       ? await tx.cafeteriaCredit.findUnique({
@@ -119,7 +123,7 @@ export async function payApprovedOrder(input: {
         vendorSettlement: fees.vendorSettlement,
         type: 'PAYMENT',
         status: 'PENDING',
-        isTest: true,
+        isTest: !live,
         metadata: JSON.stringify({
           channel: 'MOBILE_MONEY_ORDER',
           orderReference: order.reference,
@@ -137,7 +141,7 @@ export async function payApprovedOrder(input: {
           kuponFee: fees.kuponFee,
           kuponFeePercent,
           vendorSettlement: fees.vendorSettlement,
-          provider: 'kupon-test-gateway',
+          provider: live ? 'snippe' : 'kupon-test-gateway',
           stage: 'INITIATED',
         }),
       },
@@ -147,7 +151,7 @@ export async function payApprovedOrder(input: {
         transactionId: payment.id,
         sequence: 1,
         stage: 'INITIATED',
-        source: 'KUPON_TEST_GATEWAY',
+        source: live ? 'SNIPPE' : 'KUPON_TEST_GATEWAY',
       },
     });
     await tx.order.update({
@@ -167,6 +171,10 @@ export async function payApprovedOrder(input: {
     );
     return { paymentReference, creditApplied };
   });
+
+  if (live && result.paymentReference) {
+    await startSnippeCollection(result.paymentReference, input.studentProfileId);
+  }
 
   const updatedOrder = await prisma.order.findUnique({
     where: { id: order.id },
@@ -195,9 +203,11 @@ export async function payApprovedOrder(input: {
     payment: {
       status: result.paymentReference ? 'PENDING' : 'SETTLED',
       message: result.paymentReference
-        ? `Kupon test gateway is simulating TZS ${serializedOrder.amountPaid.toLocaleString()} payment. No real money is collected.`
+        ? live
+          ? `Approve the TZS ${serializedOrder.amountPaid.toLocaleString()} payment on your phone.`
+          : `Kupon test gateway is simulating TZS ${serializedOrder.amountPaid.toLocaleString()} payment. No real money is collected.`
         : 'Your cafeteria credit covered the approved order. No new money was collected.',
-      demo: true,
+      demo: !live,
       amountCharged: serializedOrder.amountPaid,
       apiFee: serializedOrder.apiFee,
       kuponFee: serializedOrder.kuponFee,
@@ -205,4 +215,48 @@ export async function payApprovedOrder(input: {
       paymentStage: paymentStage ?? null,
     },
   };
+}
+
+/**
+ * Asks Snippe to send the buyer a USSD push for this payment. If Snippe refuses,
+ * the payment is marked failed straight away so the buyer can try again.
+ */
+async function startSnippeCollection(paymentReference: string, studentProfileId: string) {
+  const payment = await prisma.transaction.findUnique({
+    where: { reference: paymentReference },
+    select: { id: true, amount: true, metadata: true },
+  });
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id: studentProfileId },
+    select: { user: { select: { name: true, phone: true, email: true } } },
+  });
+  if (!payment || !profile) throw notFound('Payment could not be started.');
+  const [firstname, ...rest] = profile.user.name.trim().split(/\s+/);
+  try {
+    if (!profile.user.phone) throw new Error('Add a mobile money number to your profile first.');
+    const started = await createSnippePayment({
+      amount: payment.amount,
+      phone: profile.user.phone,
+      customer: {
+        firstname: firstname || 'Kupon',
+        lastname: rest.join(' ') || 'Buyer',
+        email: profile.user.email ?? 'buyer@kupon.app',
+      },
+      kuponReference: paymentReference,
+      webhookUrl: `${kuponBaseUrl()}/api/webhooks/snippe`,
+    });
+    await prisma.transaction.update({
+      where: { id: payment.id },
+      data: {
+        metadata: JSON.stringify({
+          ...JSON.parse(payment.metadata ?? '{}'),
+          snippeReference: started.reference,
+        }),
+      },
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Snippe could not start the payment.';
+    await failOrderCheckout({ reference: paymentReference, reason, stage: 'FAILED' });
+    throw conflict(`Payment could not start: ${reason}`);
+  }
 }

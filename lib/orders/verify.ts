@@ -4,6 +4,8 @@ import { badRequest, conflict, forbidden, notFound, tooManyRequests } from '@/li
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyCouponToken } from './coupon';
 import { orderInclude, serializeVendorOrder } from './serialize';
+import { notifyBuyer } from '@/lib/push';
+
 
 async function rejectInvalidCodeAttempt(vendorId: string): Promise<never> {
   const limit = await rateLimit(`vendor:invalid-coupon:${vendorId}`, 20, 15 * 60_000);
@@ -121,5 +123,11 @@ export async function verifyOrderCoupon(input: {
     },
   });
 
+  await notifyBuyer(verified.studentId, {
+    title: 'Coupon verified',
+    body: `Collect your meal at ${verified.vendor.name}. Enjoy!`,
+    url: '/student/history',
+    tag: `order-${verified.id}`,
+  });
   return serializeVendorOrder(verified);
 }

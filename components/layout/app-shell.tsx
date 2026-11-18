@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { refreshPushSubscription } from '@/lib/push-client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut, MoreHorizontal, type LucideIcon } from 'lucide-react';
@@ -44,6 +45,8 @@ export type AppShellProps = {
   sidebarExtra?: React.ReactNode;
   /** Extra links in the account sheet (profile, help). */
   accountLinks?: AppNavItem[];
+  /** Extra controls in the account sheet, e.g. the language switch. */
+  sheetExtra?: React.ReactNode;
   /** `narrow` keeps phone-first pages readable on desktop. */
   width?: 'wide' | 'narrow';
   children: React.ReactNode;
@@ -98,11 +101,17 @@ export function AppShell({
   signOutTo,
   sidebarExtra,
   accountLinks = [],
+  sheetExtra,
   width = 'wide',
   children,
 }: AppShellProps) {
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Keep this device's push subscription tied to whoever is signed in now.
+  useEffect(() => {
+    void refreshPushSubscription();
+  }, []);
 
   const allItems = groups.flatMap((group) => group.items);
   const current =
@@ -326,6 +335,8 @@ export function AppShell({
               </div>
             </div>
           ) : null}
+
+          {sheetExtra}
 
           <button
             type="button"

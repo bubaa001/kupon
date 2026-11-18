@@ -2,16 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import {
-  Check,
-  CheckCircle2,
-  ChefHat,
-  Clock3,
-  ShieldCheck,
-  Sparkles,
-  Store,
-  UtensilsCrossed,
-} from 'lucide-react';
+import { Check, Clock3, ShieldCheck, Sparkles } from 'lucide-react';
 import { cn, formatDateTime, formatTZS } from '@/lib/utils';
 import type { OrderStatus, OrderView } from '@/lib/orders/types';
 import { couponQrValue } from '@/lib/orders/qr-payload';
@@ -44,7 +35,7 @@ const STATUS: Record<
   },
   AWAITING_ACCEPTANCE: {
     label: 'Waiting for cafeteria',
-    short: 'Needs acceptance',
+    short: 'Waiting for cafeteria',
     tone: 'border-sky-200 bg-sky-50 text-sky-800',
     dot: 'bg-sky-500',
     description:
@@ -66,14 +57,14 @@ const STATUS: Record<
   },
   PENDING: {
     label: 'Waiting for vendor',
-    short: 'Pending',
+    short: 'Ready to collect',
     tone: 'border-amber-200 bg-amber-50 text-amber-800',
     dot: 'bg-amber-500',
     description: 'Show this coupon at the counter. The vendor will verify it before handing over your meal.',
   },
   VERIFIED: {
     label: 'Coupon verified',
-    short: 'Verified',
+    short: 'Collected',
     tone: 'border-emerald-200 bg-emerald-50 text-emerald-800',
     dot: 'bg-emerald-500',
     description: 'The vendor has verified this coupon. Collect your meal and enjoy!',
@@ -133,9 +124,6 @@ export function FoodCoupon({
   const previousStatus = useRef<OrderStatus | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const status = STATUS[order.status] ?? STATUS.PENDING;
-  const hero = order.items[0];
-  const itemLabel =
-    order.itemCount > 1 ? `${order.itemCount} items` : `${order.items[0]?.quantity ?? 1} item`;
 
   useEffect(() => {
     const previous = previousStatus.current;
@@ -151,321 +139,149 @@ export function FoodCoupon({
     return undefined;
   }, [order.status]);
 
+  const buyerLabel = order.student.studentId.startsWith('GUEST-')
+    ? order.student.name
+    : `${order.student.name} · ${order.student.studentId}`;
+
   return (
     <article
-      className={cn(
-        'relative mx-auto w-full max-w-md animate-coupon-in',
-        compact && 'max-w-sm',
-      )}
+      className={cn('relative mx-auto w-full max-w-md animate-coupon-in', compact && 'max-w-sm')}
       aria-label={`Meal coupon ${order.reference}`}
     >
       {celebrate ? <Confetti /> : null}
 
-      <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white shadow-lift">
-        {/* Header */}
-        <div className="relative overflow-hidden bg-navy px-5 pb-5 pt-4 text-white">
-          <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-primary-500/20 blur-3xl" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.1)_0.7px,transparent_0.7px)] bg-[length:18px_18px] opacity-60" />
-          <div className="relative flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/20 text-primary-300">
-                <UtensilsCrossed className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary-300">
-                  Kupon meal coupon
-                </p>
-                <p className="text-[11px] font-medium text-slate-300">{order.reference}</p>
-              </div>
+      <div className="relative overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-lift">
+        {/* Header: where and for whom. */}
+        <div className="relative bg-navy px-5 pb-4 pt-4 text-white">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent"
+          />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">
+                Meal coupon
+              </p>
+              <h2 className="mt-1 truncate text-xl font-medium tracking-[-0.03em]">{order.vendor.name}</h2>
+              <p className="mt-0.5 truncate text-xs text-navy-300">{buyerLabel}</p>
             </div>
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold',
-                order.status === 'VERIFIED'
-                  ? 'border-emerald-300/30 bg-emerald-400/15 text-emerald-200'
-                  : 'border-amber-300/30 bg-amber-400/15 text-amber-200',
+                'inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                order.status === 'VERIFIED' ? 'bg-white/10 text-white' : 'bg-gold text-navy',
               )}
             >
               <span
                 className={cn(
                   'h-1.5 w-1.5 rounded-full',
-                  order.status === 'VERIFIED' ? 'bg-emerald-300' : 'animate-pulse bg-amber-300',
+                  order.status === 'VERIFIED' ? 'bg-primary-400' : 'animate-pulse bg-navy',
                 )}
+                aria-hidden
               />
               {status.short}
             </span>
           </div>
+        </div>
 
-          <div className="relative mt-5 flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                <Store className="h-3 w-3" />
-                {order.vendor.code}
+        {/* The part staff need: QR and code, first and large. */}
+        <div className="flex flex-col items-center px-5 pb-2 pt-5">
+          {order.status === 'PENDING' ? (
+            <>
+              <div className="rounded-2xl border border-navy/10 bg-white p-2">
+                <QRCodeSVG
+                  value={couponQrValue(order.couponCode)}
+                  size={compact ? 200 : 232}
+                  level="Q"
+                  marginSize={2}
+                  bgColor="#FFFFFF"
+                  fgColor="#0A1730"
+                  title="Kupon coupon QR"
+                />
+              </div>
+              <div className="mt-4 flex gap-1.5" aria-label={`Coupon code ${order.couponCode}`}>
+                {order.couponCode.split('').map((digit, index) => (
+                  <span
+                    key={index}
+                    className="flex h-12 w-10 items-center justify-center rounded-lg border border-navy/15 bg-paper text-2xl font-semibold tabular text-navy"
+                  >
+                    {digit}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-2 text-center text-xs text-ink-muted">
+                Show this at the counter. Staff scan the QR or type the code.
               </p>
-              <h2 className="mt-1 truncate text-2xl font-semibold tracking-[-0.035em]">
-                {order.vendor.name}
-              </h2>
-              <p className="mt-1 text-xs text-slate-300">
-                {order.student.name} • {order.student.studentId}
+              <p className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-muted">
+                <Clock3 className="h-3 w-3" aria-hidden />
+                Valid until {formatDateTime(order.expiresAt)}
               </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[10px] uppercase tracking-[0.13em] text-slate-400">Food total</p>
-              <p className="mt-1 text-lg font-semibold tabular text-emerald-300">
-                {formatTZS(order.total)}
-              </p>
-              {order.amountPaid > 0 ? (
-                <p className="mt-0.5 text-[9px] text-slate-300">
-                  Paid {formatTZS(order.amountPaid)}
-                  {order.apiFee > 0 ? ` · includes ${formatTZS(order.apiFee)} API fee` : ''}
-                </p>
+            </>
+          ) : order.status === 'VERIFIED' ? (
+            <div className="stamp-in flex flex-col items-center gap-2 py-4 text-primary-700">
+              <span className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-primary-600">
+                <Check className="h-11 w-11" strokeWidth={3.2} aria-hidden />
+              </span>
+              <span className="text-sm font-semibold">Collected. Enjoy your meal.</span>
+              {order.verifiedAt ? (
+                <span className="text-[11px] text-ink-muted">{formatDateTime(order.verifiedAt)}</span>
               ) : null}
             </div>
-          </div>
-        </div>
-
-        {/* Hero food image */}
-        <div className="relative px-5 pt-4">
-          <div className="relative h-40 overflow-hidden rounded-2xl bg-slate-100">
-            {hero?.imageUrl ? (
-              <img
-                src={hero.imageUrl}
-                alt={hero.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-amber-100 to-emerald-100">
-                <UtensilsCrossed className="h-10 w-10 text-amber-900/25" aria-hidden />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent" />
-            <div className="absolute inset-x-4 bottom-3 flex items-end justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65">
-                  {itemLabel}
-                </p>
-                <p className="truncate text-base font-semibold text-white">
-                  {order.items.map((item) => item.name).join(' · ')}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold text-emerald-800">
-                {order.status === 'VERIFIED'
-                  ? 'Collected soon'
-                  : order.status === 'AWAITING_ACCEPTANCE'
-                    ? 'Waiting for cafe'
-                    : order.status === 'PENDING'
-                      ? 'Show at counter'
-                      : status.short}
-              </span>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-6 text-center text-ink-muted">
+              <Clock3 className="h-8 w-8" aria-hidden />
+              <p className="text-sm font-semibold text-navy">{status.label}</p>
+              <p className="max-w-[16rem] text-xs leading-relaxed">{status.description}</p>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Item list */}
-        <div className="px-5 pt-4">
+        {/* Perforation */}
+        <div className="relative my-4 h-px border-t border-dashed border-navy/15">
+          <span className="coupon-notch -left-3.5" />
+          <span className="coupon-notch -right-3.5" />
+        </div>
+
+        {/* What was ordered. */}
+        <div className="px-5 pb-5">
           <ul className="space-y-2.5">
             {order.items.map((item) => (
               <li key={item.id} className="flex items-center gap-2.5">
-                <FoodThumb
-                  imageUrl={item.imageUrl}
-                  name={item.name}
-                  className="h-10 w-10 rounded-lg"
-                />
+                <FoodThumb imageUrl={item.imageUrl} name={item.name} className="h-11 w-11 rounded-lg" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-slate-800">{item.name}</p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="truncate text-sm font-semibold text-navy">{item.name}</p>
+                  <p className="text-[11px] text-ink-muted">
                     {formatTZS(item.price)} × {item.quantity}
                   </p>
                 </div>
-                <span className="tabular text-xs font-semibold text-slate-700">
+                <span className="tabular text-sm font-semibold text-navy">
                   {formatTZS(item.price * item.quantity)}
                 </span>
               </li>
             ))}
           </ul>
           {order.note ? (
-            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-              Note: {order.note}
+            <p className="mt-3 rounded-lg bg-navy-50 px-3 py-2 text-xs text-ink-muted">
+              <span className="font-semibold text-navy">Note:</span> {order.note}
             </p>
           ) : null}
-        </div>
-
-        {/* Perforation */}
-        <div className="relative my-4 h-px border-t border-dashed border-slate-200">
-          <span className="coupon-notch -left-3.5" />
-          <span className="coupon-notch -right-3.5" />
-        </div>
-
-        {/* Coupon code + QR */}
-        <div className="px-5 pb-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                Coupon ID
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] font-medium text-slate-500">
-                {order.reference}
-              </p>
-            </div>
-            <p className="flex shrink-0 items-center gap-1.5 text-[10px] text-slate-400">
-              <Clock3 className="h-3 w-3" />
-              Valid until {formatDateTime(order.expiresAt)}
-            </p>
-          </div>
-
-          <div className="mt-3 flex flex-col items-center rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-            {order.status === 'PENDING' ? (
-              <>
-                <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-                  <QRCodeSVG
-                    value={couponQrValue(order.couponCode)}
-                    size={224}
-                    level="Q"
-                    marginSize={4}
-                    bgColor="#FFFFFF"
-                    fgColor="#000000"
-                    title="Kupon coupon QR"
-                  />
-                </div>
-                <p className="mt-2 text-center text-[10px] text-slate-400">
-                  Vendor scans this QR, or enters the 6-digit code below.
-                </p>
-              </>
-            ) : order.status === 'AWAITING_ACCEPTANCE' ? (
-              <div className="flex h-[184px] w-[184px] flex-col items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-4 text-center text-sky-800">
-                <Clock3 className="h-8 w-8" aria-hidden />
-                <p className="mt-2 text-xs font-semibold">Waiting for availability</p>
-                <p className="mt-1 text-[10px] leading-relaxed">
-                  The cafeteria must accept before Kupon issues your coupon.
-                </p>
-              </div>
-            ) : (
-              <div
-                className={cn(
-                  'flex h-[184px] w-[184px] items-center justify-center rounded-xl border',
-                  order.status === 'VERIFIED'
-                    ? 'border-emerald-200 bg-emerald-50'
-                    : 'border-slate-200 bg-white',
-                )}
-              >
-                {order.status === 'VERIFIED' ? (
-                  <div className="stamp-in flex flex-col items-center gap-2 text-emerald-700">
-                    <span className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-emerald-600">
-                      <Check className="h-9 w-9" strokeWidth={3.4} />
-                    </span>
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.18em]">
-                      Verified
-                    </span>
-                  </div>
-                ) : (
-                  <span className="px-5 text-center text-[11px] leading-relaxed text-slate-400">
-                    This coupon is no longer active.
-                  </span>
-                )}
-              </div>
-            )}
-
-            {order.status === 'PENDING' ? (
-              <>
-                <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  Or give this 6-digit code to the vendor
-                </p>
-                <div className="mt-1.5 flex gap-1.5" aria-label={`Coupon code ${order.couponCode}`}>
-                  {order.couponCode.split('').map((digit, index) => (
-                    <span
-                      key={index}
-                      className="flex h-10 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold tabular text-slate-900 shadow-sm"
-                    >
-                      {digit}
-                    </span>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </div>
-
-          <div
-            className={cn(
-              'mt-4 flex items-start gap-2.5 rounded-xl border p-3',
-              status.tone,
-            )}
-            role="status"
-          >
-            <span className="relative mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
-              {order.status === 'VERIFIED' ? (
-                <CheckCircle2 className="h-5 w-5" />
-              ) : (
-                <>
-                  <span className={cn('absolute h-2.5 w-2.5 rounded-full opacity-40', status.dot)} />
-                  <span className={cn('relative h-2 w-2 animate-ping rounded-full opacity-70', status.dot)} />
-                  <span className={cn('absolute h-2 w-2 rounded-full', status.dot)} />
-                </>
-              )}
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold">{status.label}</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed opacity-80">{status.description}</p>
-            </div>
-          </div>
-
-          {/* Status timeline */}
-          <div className="mt-4 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.12em]">
-            <span className="flex items-center gap-1 text-emerald-700">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-white">
-                <Check className="h-2.5 w-2.5" strokeWidth={4} />
-              </span>
-              Paid
-            </span>
-            <span className="h-px flex-1 bg-slate-200" />
-            <span
-              className={cn(
-                'flex items-center gap-1',
-                order.status === 'VERIFIED'
-                  ? 'text-emerald-700'
-                  : order.status === 'AWAITING_ACCEPTANCE'
-                    ? 'text-sky-700'
-                    : 'text-amber-600',
-              )}
-            >
-              <span
-                className={cn(
-                  'flex h-4 w-4 items-center justify-center rounded-full text-white',
-                  order.status === 'VERIFIED'
-                    ? 'bg-emerald-600'
-                    : order.status === 'AWAITING_ACCEPTANCE'
-                      ? 'bg-sky-600'
-                      : 'bg-amber-500',
-                )}
-              >
-                {order.status === 'VERIFIED' ? (
-                  <Check className="h-2.5 w-2.5" strokeWidth={4} />
-                ) : (
-                  <Clock3 className="h-2.5 w-2.5" />
-                )}
-              </span>
-              {order.status === 'AWAITING_ACCEPTANCE' ? 'Cafe acceptance' : 'Verified'}
-            </span>
-            <span className="h-px flex-1 bg-slate-200" />
-            <span className="flex items-center gap-1 text-slate-400">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-200 text-slate-500">
-                <ChefHat className="h-2.5 w-2.5" />
-              </span>
-              Enjoy
+          <div className="mt-4 flex items-center justify-between border-t border-navy/[0.08] pt-3 text-sm">
+            <span className="text-ink-muted">{order.amountPaid > 0 ? 'You paid' : 'Food total'}</span>
+            <span className="font-semibold tabular text-navy">
+              {formatTZS(order.amountPaid > 0 ? order.amountPaid : order.total)}
             </span>
           </div>
-
-          <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-            <p className="flex items-center gap-1.5 text-[10px] text-slate-400">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              Single-use coupon • {order.vendor.name}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="flex min-w-0 items-center gap-1.5 truncate text-[11px] text-ink-muted">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden />
+              Single use · {order.reference}
             </p>
             {onNewOrder ? (
               <button
                 type="button"
                 onClick={onNewOrder}
-                className="inline-flex min-h-[34px] items-center gap-1 rounded-lg bg-primary-50 px-3 text-[11px] font-bold text-primary-700 transition-colors hover:bg-primary-100"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg bg-navy-50 px-3 text-xs font-semibold text-navy transition-colors hover:bg-navy-100"
               >
-                <Sparkles className="h-3.5 w-3.5" />
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 New order
               </button>
             ) : null}

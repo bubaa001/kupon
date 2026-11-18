@@ -7,6 +7,8 @@ import { prisma } from '@/lib/db';
 import { randomReference } from '@/lib/utils';
 import { rateLimit } from '@/lib/rate-limit';
 import { assertOrderRequestAccess } from '@/lib/orders/accept-request';
+import { notifyBuyer } from '@/lib/push';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +72,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
           tx,
         );
       });
+      await notifyBuyer(order.studentId, {
+        title: 'The cafeteria declined your request',
+        body: `${body.reason} You were not charged.`,
+        url: '/student/pay',
+        tag: `order-${order.id}`,
+      });
       return ok({ status: 'CANCELLED', message: 'The request was declined before payment.' });
     }
     const paid =
@@ -109,6 +117,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return created;
     });
 
+    await notifyBuyer(order.studentId, {
+      title: 'The cafeteria cannot serve your meal',
+      body: `${body.reason} Talk to the counter staff: a swap, credit or your money back.`,
+      url: '/student/pay',
+      tag: `order-${order.id}`,
+    });
     return ok({ request: creditRequest }, { status: 201 });
   } catch (error) {
     return fail(error);

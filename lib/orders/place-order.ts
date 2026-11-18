@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 import { prisma } from '@/lib/db';
 import { AppError, conflict, notFound } from '@/lib/errors';
 import { randomReference } from '@/lib/utils';
+import { notifyBuyer, notifyCafeteria } from '@/lib/push';
 import { signCouponToken } from './coupon';
 import { PAY_WINDOW_MS } from './accept-request';
 import { orderInclude, serializeOrder } from './serialize';
@@ -165,6 +166,14 @@ export async function placeOrder(input: {
         )
       : null;
   const serializedOrder = serializeOrder(updatedOrder, couponToken);
+
+  const dishes = serializedOrder.items.map((item) => `${item.quantity}× ${item.name}`).join(', ');
+  await notifyCafeteria(updatedOrder.vendorId, {
+    title: updatedOrder.status === 'AWAITING_ACCEPTANCE' ? 'New meal request' : 'New order',
+    body: `${dishes} · ${serializedOrder.student.name}`,
+    url: '/staff',
+    tag: 'kupon-new-order',
+  });
 
   return {
     order: serializedOrder,

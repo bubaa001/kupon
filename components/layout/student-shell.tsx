@@ -2,6 +2,7 @@
 
 import { CircleDollarSign, Clock3, Home, ScanLine, UserRound } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
+import { LanguageProvider, LanguageToggle, useT } from '@/lib/i18n';
 
 export type StudentShellUser = {
   name: string;
@@ -19,38 +20,51 @@ export function StudentShell({
   children: React.ReactNode;
 }) {
   return (
+    <LanguageProvider>
+      <BuyerShell user={user}>{children}</BuyerShell>
+    </LanguageProvider>
+  );
+}
+
+function BuyerShell({ user, children }: { user: StudentShellUser; children: React.ReactNode }) {
+  const { t } = useT();
+  const guest = user.studentId.startsWith('GUEST-');
+  return (
     <AppShell
       homeHref="/student"
-      roleLabel={user.studentId.startsWith('GUEST-') ? 'Campus guest' : 'Student'}
+      roleLabel={guest ? t('role.guest') : t('role.student')}
       orgLabel={user.universityName}
       groups={[
         {
           items: [
-            { href: '/student', label: 'Home', icon: Home },
+            { href: '/student', label: t('nav.home'), icon: Home },
             {
               href: '/student/pay',
-              label: 'Scan & order',
-              shortLabel: 'Order',
+              label: t('nav.order'),
+              shortLabel: t('nav.orderShort'),
               icon: ScanLine,
               primary: true,
             },
-            { href: '/student/history', label: 'Order history', shortLabel: 'History', icon: Clock3 },
+            {
+              href: '/student/history',
+              label: t('nav.history'),
+              shortLabel: t('nav.historyShort'),
+              icon: Clock3,
+            },
             {
               href: '/student/credit-requests',
-              label: 'Credit & help',
-              shortLabel: 'Credit',
+              label: t('nav.credit'),
+              shortLabel: t('nav.creditShort'),
               icon: CircleDollarSign,
             },
-            { href: '/student/profile', label: 'Profile', icon: UserRound },
+            { href: '/student/profile', label: t('nav.profile'), icon: UserRound },
           ],
         },
       ]}
       mobileTabs={['/student', '/student/pay', '/student/history', '/student/credit-requests']}
-      user={{
-        name: user.name,
-        detail: user.studentId.startsWith('GUEST-') ? user.universityName : user.studentId,
-      }}
+      user={{ name: user.name, detail: guest ? user.universityName : user.studentId }}
       signOutTo="/login"
+      sheetExtra={<LanguageToggle />}
       width="narrow"
     >
       {children}

@@ -2,6 +2,8 @@ import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit';
 import { conflict, forbidden, notFound } from '@/lib/errors';
 import { orderInclude, serializeVendorOrder } from './serialize';
+import { notifyBuyer } from '@/lib/push';
+
 
 /** Once accepted, the buyer has 20 minutes to pay before the request expires. */
 export const PAY_WINDOW_MS = 20 * 60 * 1000;
@@ -65,6 +67,12 @@ export async function acceptOrderRequest(input: {
     return tx.order.findUniqueOrThrow({ where: { id: order.id }, include: orderInclude });
   });
 
+  await notifyBuyer(accepted.studentId, {
+    title: `${accepted.vendor.name} accepted your order`,
+    body: 'Pay within 20 minutes to get your coupon.',
+    url: '/student/pay',
+    tag: `order-${accepted.id}`,
+  });
   return serializeVendorOrder(accepted);
 }
 
@@ -74,7 +82,7 @@ export async function acceptAllOrderRequests(input: {
   actorId: string;
 }) {
   const now = new Date();
-  return prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     const requests = await tx.order.findMany({
       where: {
         vendorId: input.vendorId,
@@ -84,9 +92,9 @@ export async function acceptAllOrderRequests(input: {
           none: { status: { in: ['PENDING_VENDOR', 'PENDING_ADMIN', 'PENDING_FINANCE'] } },
         },
       },
-      select: { id: true, reference: true },
+      select: { id: true, reference: true, studentId: true },
     });
-    if (requests.length === 0) return { accepted: 0 };
+    if (requests.length === 0) return { accepted: 0, studentIds: [] as string[] };
 
     const result = await tx.order.updateMany({
       where: {
@@ -114,8 +122,19 @@ export async function acceptAllOrderRequests(input: {
       },
       tx,
     );
-    return { accepted: result.count };
+    return { accepted: result.count, studentIds: requests.map((request) => request.studentId) };
   });
+
+  await Promise.all(
+    Array.from(new Set(outcome.studentIds)).map((studentId) =>
+      notifyBuyer(studentId, {
+        title: 'Your order was accepted',
+        body: 'Pay within 20 minutes to get your coupon.',
+        url: '/student/pay',
+      }),
+    ),
+  );
+  return { accepted: outcome.accepted };
 }
 
 export async function assertOrderRequestAccess(
