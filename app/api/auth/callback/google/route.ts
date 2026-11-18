@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (state.role === 'staff') {
-      if (!['STAFF', 'FINANCE', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+      if (!['STAFF', 'FINANCE', 'SUPER_ADMIN'].includes(user.role)) {
         return clearState(loginError(request, 'google_role_conflict', 'staff'));
       }
       if (

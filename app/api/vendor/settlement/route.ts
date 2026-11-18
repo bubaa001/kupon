@@ -3,12 +3,8 @@ import { prisma } from '@/lib/db';
 import { fail, ok, parseJson } from '@/lib/api';
 import { notFound, tooManyRequests } from '@/lib/errors';
 import { rateLimit } from '@/lib/rate-limit';
-import {
-  API_PAYOUT_FEE,
-  KUPON_PAYOUT_FEE,
-  MIN_WITHDRAWAL,
-  VENDOR_PAYOUT_FEE,
-} from '@/lib/constants';
+import { API_PAYOUT_FEE } from '@/lib/constants';
+import { getFeeSettings, kuponPayoutShare } from '@/lib/platform-settings';
 import { paymentSelect, saleRow, studentSummarySelect } from '../_lib/analytics';
 import { requireVendorAccess } from '../_lib/access';
 import { recordTestSettlement } from '@/lib/settlements/record-test-settlement';
@@ -21,7 +17,7 @@ const settlementRequestSchema = z.object({
   amount: z
     .number()
     .int('Enter a whole shilling amount')
-    .min(MIN_WITHDRAWAL, `Minimum payout is TZS ${MIN_WITHDRAWAL.toLocaleString()}`)
+    .min(1)
     .max(5_000_000)
     .optional(),
 });
@@ -35,7 +31,7 @@ export async function GET() {
   try {
     const { vendor, universityId } = await requireVendorAccess();
 
-    const [snapshot, payouts, recentPayments] = await Promise.all([
+    const [snapshot, payouts, recentPayments, fees] = await Promise.all([
       prisma.vendor.findUnique({
         where: { id: vendor.id },
         select: {
@@ -62,6 +58,7 @@ export async function GET() {
         orderBy: { settledAt: 'desc' },
         take: 8,
       }),
+      getFeeSettings(),
     ]);
 
     if (!snapshot) throw notFound('Vendor account no longer exists.');
@@ -70,10 +67,10 @@ export async function GET() {
       pendingBalance: snapshot.pendingBalance,
       totalSettled: snapshot.totalSettled,
       settlementAccount: snapshot.settlementAccount,
-      minimumPayout: MIN_WITHDRAWAL,
-      payoutFee: VENDOR_PAYOUT_FEE,
+      minimumPayout: fees.minWithdrawal,
+      payoutFee: fees.withdrawalFee,
       apiFee: API_PAYOUT_FEE,
-      kuponFee: KUPON_PAYOUT_FEE,
+      kuponFee: kuponPayoutShare(fees),
       payouts: payouts.map((payout) => ({
         id: payout.id,
         reference: payout.reference,

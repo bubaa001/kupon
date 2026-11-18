@@ -121,7 +121,8 @@ export async function POST(request: Request) {
           vendorId: order.vendorId,
           universityId: order.universityId,
           kind: 'STUDENT_UNFULFILLED',
-          status: 'PENDING_VENDOR',
+          // The cafeteria's Finance manager decides credit or cash directly.
+          status: 'PENDING_FINANCE',
           amount: order.total,
           reason: body.reason,
         },

@@ -233,11 +233,9 @@ export const universitySchema = z.object({
     .transform((value) => value.toUpperCase()),
   paymentRouteCode: z.string().regex(/^\d{6}$/, 'Lipa Namba must be 6 digits'),
   city: z.string().trim().min(2).max(60).default('Dar es Salaam'),
-  saasFee: z.number().int().min(0).max(10_000_000).default(250000),
+  // Universities pay no SaaS fee for now; the column stays for a future plan.
+  saasFee: z.number().int().min(0).max(10_000_000).default(0),
   brandColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#10B981'),
-  adminName: z.string().trim().min(2).max(80),
-  adminPhone: phoneSchema,
-  adminPassword: z.string().min(8, 'Use at least 8 characters'),
 });
 
 export const ussdPaySchema = z.object({

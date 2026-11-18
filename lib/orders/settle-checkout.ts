@@ -5,6 +5,7 @@ import { LEDGER_ACCOUNTS, postJournal } from '@/lib/ledger';
 import { randomReference, safeJson } from '@/lib/utils';
 import { TEST_PAYMENT_TTL_MS } from './payment-ttl';
 import { calcOrderCheckoutFees } from '@/lib/fees';
+import { getFeeSettings } from '@/lib/platform-settings';
 
 /**
  * Confirms a test order only after the Kupon test gateway records receipt and
@@ -27,12 +28,18 @@ export async function settleOrderCheckout(input: {
   const order = payment.order;
   const orderId = order.id;
   const cashDue = order.total - order.creditApplied;
-  const fees = calcOrderCheckoutFees(cashDue);
+  const metadata = safeJson<Record<string, unknown>>(payment.metadata, {});
+  // Use the Kupon fee locked in when the student paid; older payments fall back
+  // to the current setting.
+  const lockedPercent = Number(metadata.kuponFeePercent);
+  const kuponFeePercent = Number.isFinite(lockedPercent)
+    ? lockedPercent
+    : (await getFeeSettings()).kuponFeePercent;
+  const fees = calcOrderCheckoutFees(cashDue, kuponFeePercent);
   if (payment.amount !== fees.amountCharged) {
     throw conflict('The amount due, including the API fee, does not match this payment.');
   }
 
-  const metadata = safeJson<Record<string, unknown>>(payment.metadata, {});
   if (metadata.channel !== 'MOBILE_MONEY_ORDER') {
     throw conflict('This payment is not a mobile-money order checkout.');
   }

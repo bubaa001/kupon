@@ -43,7 +43,7 @@ export type CafeteriaNotice = {
   reason: string;
   caseReference: string | null;
   /** Platform-admin review of an UNAVAILABLE case. */
-  caseStatus: 'OPEN' | 'APPROVED' | 'REJECTED' | null;
+  caseStatus: 'OPEN' | 'APPROVED' | 'REFUNDED' | 'REJECTED' | null;
   resolution: string | null;
 };
 

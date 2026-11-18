@@ -58,10 +58,9 @@ async function vendorSession() {
 }
 
 async function main() {
-  const [student, vendor, admin, superAdmin] = await Promise.all([
+  const [student, vendor, superAdmin] = await Promise.all([
     studentSession(),
     vendorSession(),
-    staffSession('+255745000001', 'admin1234'),
     staffSession('+255745000000', 'super1234'),
   ]);
 
@@ -155,10 +154,6 @@ async function main() {
     { name: '08-vendor-home-mobile', url: '/vendor', token: vendor, mobile: true },
     { name: '09-vendor-scan-mobile', url: '/vendor/scan', token: vendor, mobile: true },
     { name: '10-vendor-menu-mobile', url: '/vendor/menu', token: vendor, mobile: true },
-    { name: '11-admin-dashboard-desktop', url: '/admin', token: admin },
-    { name: '12-admin-transactions-desktop', url: '/admin/transactions', token: admin },
-    { name: '13-admin-reports-desktop', url: '/admin/reports', token: admin },
-    { name: '14-admin-dashboard-mobile', url: '/admin', token: admin, mobile: true },
     { name: '15-super-overview-desktop', url: '/super-admin', token: superAdmin },
     { name: '16-super-tenants-desktop', url: '/super-admin/tenants', token: superAdmin },
     { name: '17-super-revenue-desktop', url: '/super-admin/revenue', token: superAdmin },

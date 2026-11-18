@@ -4,14 +4,13 @@ import { requireApiUser } from '@/lib/auth';
 import { forbidden, tooManyRequests } from '@/lib/errors';
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
-import { MIN_WITHDRAWAL } from '@/lib/constants';
 import { recordTestSettlement } from '@/lib/settlements/record-test-settlement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const withdrawalSchema = z.object({
-  amount: z.number().int().min(MIN_WITHDRAWAL).max(5_000_000),
+  amount: z.number().int().min(1).max(5_000_000),
   reason: z.string().trim().min(5).max(500),
 }).strict();
 
@@ -29,8 +28,8 @@ export async function POST(request: Request) {
       select: { emergencyWithdrawalLimit: true },
     });
     const authorizedLimit = account?.emergencyWithdrawalLimit ?? 0;
-    if (authorizedLimit < MIN_WITHDRAWAL) {
-      throw forbidden('A platform admin has not enabled emergency withdrawals for this account.');
+    if (authorizedLimit <= 0) {
+      throw forbidden('The cafeteria owner has not allowed you to withdraw yet.');
     }
     const result = await recordTestSettlement({
       actorId: user.id,

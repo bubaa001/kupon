@@ -46,7 +46,6 @@ async function main() {
   const sessions = {
     student: await studentSession(),
     vendor: await vendorSession(),
-    admin: await staffSession('+255745000001', 'admin1234'),
     super: await staffSession('+255745000000', 'super1234'),
   };
   const routes = [
@@ -60,12 +59,6 @@ async function main() {
     ['vendor', '/vendor/sales'],
     ['vendor', '/vendor/menu'],
     ['vendor', '/vendor/settlement'],
-    ['admin', '/admin'],
-    ['admin', '/admin/transactions'],
-    ['admin', '/admin/reports'],
-    ['admin', '/admin/vendors'],
-    ['admin', '/admin/students'],
-    ['admin', '/admin/settings'],
     ['super', '/super-admin'],
     ['super', '/super-admin/tenants'],
     ['super', '/super-admin/revenue'],

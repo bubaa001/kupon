@@ -45,23 +45,23 @@ model University {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  phone           String?   @unique
-  username        String?   @unique
-  email           String?   @unique // university/Google email, linked for OAuth sign-in
-  googleId        String?   @unique // Google `sub` once the account is linked
-  name            String
-  role            String    @default("STUDENT") // STUDENT | VENDOR | ADMIN | SUPER_ADMIN | FINANCE | STAFF
-  universityId    String?
-  managedVendorId String?
-  emergencyWithdrawalLimit Int @default(0)
-  sessionVersion  Int       @default(0)
-  passwordHash    String?
-  otp             String?
-  otpExpiresAt    DateTime?
-  lastLoginAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                       String    @id @default(cuid())
+  phone                    String?   @unique
+  username                 String?   @unique
+  email                    String?   @unique // university/Google email, linked for OAuth sign-in
+  googleId                 String?   @unique // Google `sub` once the account is linked
+  name                     String
+  role                     String    @default("STUDENT") // STUDENT | VENDOR | ADMIN | SUPER_ADMIN | FINANCE | STAFF
+  universityId             String?
+  managedVendorId          String?
+  emergencyWithdrawalLimit Int       @default(0)
+  sessionVersion           Int       @default(0)
+  passwordHash             String?
+  otp                      String?
+  otpExpiresAt             DateTime?
+  lastLoginAt              DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   university             University?        @relation(fields: [universityId], references: [id])
   managedVendor          Vendor?            @relation("VendorTeamMembers", fields: [managedVendorId], references: [id], onDelete: Cascade)
@@ -618,4 +618,16 @@ model StoredFile {
   data        Bytes
   size        Int
   createdAt   DateTime @default(now())
+}
+
+/// Kupon-wide settings edited by platform admins. Values are JSON-free strings.
+
+model PlatformSetting {
+  key String @id
+
+  value String
+
+  updatedById String?
+
+  updatedAt DateTime @default(now()) @updatedAt
 }

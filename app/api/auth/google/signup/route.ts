@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
@@ -17,21 +18,48 @@ import { phoneSchema } from '@/lib/validators';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const signupSchema = z.object({
-  name: z.string().trim().min(2, 'Enter your full name').max(80),
-  phone: phoneSchema,
-  studentId: z
-    .string()
-    .trim()
-    .min(3, 'Enter your student number')
-    .max(40)
-    .transform((value) => value.toUpperCase()),
-  course: z.string().trim().max(80).optional().or(z.literal('')),
-  year: z.coerce.number().int().min(1).max(8),
-  confirm: z.literal(true, {
-    errorMap: () => ({ message: 'Confirm that these details are yours.' }),
-  }),
-});
+/** Label stored as the course of buyers who are not students. */
+const GUEST_COURSE = 'Campus guest';
+
+const signupSchema = z
+  .object({
+    name: z.string().trim().min(2, 'Enter your full name').max(80),
+    phone: phoneSchema,
+    /** STUDENT gives a student number; GUEST is a lecturer, worker, parent or visitor. */
+    buyerType: z.enum(['STUDENT', 'GUEST']).default('STUDENT'),
+    studentId: z
+      .string()
+      .trim()
+      .max(40)
+      .transform((value) => value.toUpperCase())
+      .optional()
+      .or(z.literal('')),
+    course: z.string().trim().max(80).optional().or(z.literal('')),
+    year: z.coerce.number().int().min(1).max(8).default(1),
+    confirm: z.literal(true, {
+      errorMap: () => ({ message: 'Confirm that these details are yours.' }),
+    }),
+  })
+  .superRefine((value, context) => {
+    if (value.buyerType === 'STUDENT' && (value.studentId ?? '').length < 3) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['studentId'],
+        message: 'Enter your student number',
+      });
+    }
+  })
+  .transform((value) =>
+    value.buyerType === 'GUEST'
+      ? {
+          ...value,
+          // Guests have no student number; a unique placeholder keeps the profile valid.
+          studentId: `GUEST-${randomBytes(5).toString('hex').toUpperCase()}`,
+          course: GUEST_COURSE,
+          year: 1,
+        }
+      : { ...value, studentId: value.studentId ?? '' },
+  );
 
 /**
  * POST /api/auth/google/signup
@@ -58,7 +86,8 @@ export async function POST(request: NextRequest) {
       throw forbidden('New student enrollment is temporarily closed. Ask your university administrator to verify your account.');
     }
 
-    const body = await parseJson(request, signupSchema);
+    // parseJson types the schema's input; the transform below makes the output concrete.
+    const body = (await parseJson(request, signupSchema)) as z.output<typeof signupSchema>;
 
     const university = await prisma.university.findUnique({
       where: { id: ticket.universityId },
@@ -92,7 +121,7 @@ export async function POST(request: NextRequest) {
     });
     if (studentIdOwner) {
       throw conflict(
-        'That student number is already registered at this university. Check it or ask your admin.',
+        'That student number is already registered at this university. Check it, or sign in with the Google account you used before.',
       );
     }
 
@@ -115,6 +144,7 @@ export async function POST(request: NextRequest) {
           universityId: university.id,
           studentId: body.studentId,
           course: body.course?.trim() || 'General Studies',
+          // Guests carry GUEST_COURSE; students keep their real course.
           year: body.year,
         },
       });
@@ -129,6 +159,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             email: ticket.email,
             studentId: body.studentId,
+            buyerType: body.buyerType,
             university: university.code,
             channel: 'google',
           },

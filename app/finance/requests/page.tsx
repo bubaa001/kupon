@@ -20,7 +20,6 @@ import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiClientError, apiFetch, patchJson, postJson } from '@/lib/client-api';
-import { MIN_WITHDRAWAL } from '@/lib/constants';
 import { formatDateTime, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
@@ -63,7 +62,7 @@ type ReviewTarget = {
   id: string;
   reference: string;
   kind: 'credit' | 'support';
-  decision: 'APPROVE' | 'REJECT';
+  decision: 'APPROVE' | 'CASH' | 'REJECT';
 };
 
 export default function FinanceRequestsPage() {
@@ -105,7 +104,7 @@ export default function FinanceRequestsPage() {
     setReviewTarget({ id: ticket.id, reference: ticket.reference, kind: 'support', decision });
   }
 
-  async function decideCredit(request: CreditRequest, decision: 'APPROVE' | 'REJECT') {
+  async function decideCredit(request: CreditRequest, decision: 'APPROVE' | 'CASH' | 'REJECT') {
     setReviewNote('');
     setReviewTarget({ id: request.id, reference: request.reference, kind: 'credit', decision });
   }
@@ -126,8 +125,10 @@ export default function FinanceRequestsPage() {
         );
         toast.success(
           result.status === 'APPROVED'
-            ? 'Cafeteria credit issued. The platform admin can see your note.'
-            : 'Credit case rejected. The platform admin can see your note.',
+            ? 'Credit given. The owner can see your note.'
+            : result.status === 'CASH_REFUNDED'
+              ? 'Money-back recorded. The owner can see your note.'
+              : 'Case rejected. The owner can see your note.',
         );
       } else {
         const result = await patchJson<{ message: string }>(
@@ -177,7 +178,7 @@ export default function FinanceRequestsPage() {
       <PageHeader
         eyebrow="Finance operations"
         title="Credit cases & support"
-        description="Review cafeteria credit requests for your assigned cafeteria, plus support cases. Platform admins can see every decision and its note."
+        description="When a paid meal cannot be served, you decide: credit at this cafeteria or money back. The owner sees every decision and withdrawal."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -187,20 +188,19 @@ export default function FinanceRequestsPage() {
       />
 
       <Alert variant="warning">
-        Approved credit is limited to the originating cafeteria; it is not cash or a student wallet. Finance decisions require a note and are visible to the platform admin. The TZS 1,500 escalation charge is test-recorded; no cash refund is sent here.
+        Prefer credit: money back costs the cafeteria the meal price plus the withdrawal charge. Test gateway: decisions are recorded, but no real money moves.
       </Alert>
 
       {data?.emergencySettlement ? (
         <Card className="space-y-4 p-4 sm:p-5">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Emergency cafeteria withdrawal</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Withdraw for the cafeteria</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              This is available only when a platform admin sets a limit for your account. Every request
-              requires a reason and is recorded for admin review. The current system only simulates
-              settlements; it does not send money.
+              For when the owner is away, for example to buy ingredients. The owner sets your daily
+              limit and sees every withdrawal. Test gateway: no real money is sent.
             </p>
             <p className="mt-2 text-xs font-medium text-slate-700">
-              Pending balance: {formatTZS(data.emergencySettlement.pendingBalance)} · Your limit:{' '}
+              Cafeteria balance: {formatTZS(data.emergencySettlement.pendingBalance)} · Your daily limit:{' '}
               {formatTZS(data.emergencySettlement.authorizedLimit)}
             </p>
           </div>
@@ -211,7 +211,6 @@ export default function FinanceRequestsPage() {
                 <Input
                   id="emergency-amount"
                   type="number"
-                  min={MIN_WITHDRAWAL}
                   max={Math.min(
                     data.emergencySettlement.pendingBalance,
                     data.emergencySettlement.authorizedLimit,
@@ -223,7 +222,7 @@ export default function FinanceRequestsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="emergency-reason">Emergency reason</Label>
+                <Label htmlFor="emergency-reason">What it is for</Label>
                 <Input
                   id="emergency-reason"
                   value={withdrawReason}
@@ -238,26 +237,24 @@ export default function FinanceRequestsPage() {
                   type="submit"
                   disabled={
                     withdrawing ||
-                    data.emergencySettlement.pendingBalance < MIN_WITHDRAWAL ||
                     Number(withdrawAmount) > data.emergencySettlement.authorizedLimit
                   }
                   loading={withdrawing}
                 >
-                  Record emergency test withdrawal
+                  Withdraw
                 </Button>
               </div>
             </form>
           ) : (
             <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-              Emergency withdrawal is disabled. Ask the platform admin to assign an account-specific
-              limit if this access is needed.
+              Withdrawals are off for you. Ask the cafeteria owner to set a daily limit.
             </p>
           )}
         </Card>
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-900">Credit decisions · history</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Meal cases</h2>
         {loading && !data ? (
           <Card className="p-5 text-sm text-slate-500">Loading requests…</Card>
         ) : data?.creditRequests.length ? (
@@ -267,7 +264,7 @@ export default function FinanceRequestsPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs font-semibold">{item.reference}</span>
-                    <Badge variant={item.status === 'APPROVED' ? 'success' : item.status === 'REJECTED' ? 'danger' : 'warning'}>
+                    <Badge variant={item.status === 'APPROVED' || item.status === 'CASH_REFUNDED' ? 'success' : item.status === 'REJECTED' ? 'danger' : 'warning'}>
                       {item.status.replaceAll('_', ' ')}
                     </Badge>
                   </div>
@@ -289,11 +286,14 @@ export default function FinanceRequestsPage() {
                   </p>
                 </div>
                 {item.status === 'PENDING_FINANCE' ? (
-                  <div className="flex shrink-0 gap-2">
+                  <div className="grid shrink-0 grid-cols-3 gap-2 sm:flex">
                     <Button size="sm" disabled={busy === item.id} onClick={() => void decideCredit(item, 'APPROVE')}>
-                      <Check className="h-4 w-4" /> Issue credit
+                      <Check className="h-4 w-4" /> Give credit
                     </Button>
-                    <Button size="sm" variant="outline" disabled={busy === item.id} onClick={() => void decideCredit(item, 'REJECT')}>
+                    <Button size="sm" variant="outline" disabled={busy === item.id} onClick={() => void decideCredit(item, 'CASH')}>
+                      Money back
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={busy === item.id} onClick={() => void decideCredit(item, 'REJECT')}>
                       <X className="h-4 w-4" /> Reject
                     </Button>
                   </div>
@@ -357,11 +357,16 @@ export default function FinanceRequestsPage() {
           <form onSubmit={submitReview} className="space-y-4">
             <DialogHeader>
               <DialogTitle>
-                {reviewTarget?.decision === 'APPROVE' ? 'Approve' : 'Reject'}{' '}
-                {reviewTarget?.kind === 'credit' ? 'credit case' : 'support case'}
+                {reviewTarget?.kind === 'credit'
+                  ? reviewTarget.decision === 'APPROVE'
+                    ? 'Give cafeteria credit'
+                    : reviewTarget.decision === 'CASH'
+                      ? 'Give the money back'
+                      : 'Reject this case'
+                  : `${reviewTarget?.decision === 'APPROVE' ? 'Approve' : 'Reject'} support case`}
               </DialogTitle>
               <DialogDescription>
-                Record a decision note for {reviewTarget?.reference}. Platform admins can review it.
+                {reviewTarget?.decision === 'CASH' ? 'The cafeteria pays the meal price plus the withdrawal charge. ' : ''}Add a short note for {reviewTarget?.reference}; the owner can see it.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-1.5">

@@ -1,9 +1,10 @@
-import { subDays } from 'date-fns';
+import { startOfDay, subDays } from 'date-fns';
 import { auditLog } from '@/lib/audit';
 import { conflict, forbidden } from '@/lib/errors';
 import { prisma } from '@/lib/db';
-import { API_PAYOUT_FEE, KUPON_PAYOUT_FEE, MIN_WITHDRAWAL, VENDOR_PAYOUT_FEE } from '@/lib/constants';
-import { formatTZS, randomReference } from '@/lib/utils';
+import { API_PAYOUT_FEE } from '@/lib/constants';
+import { getFeeSettings, kuponPayoutShare } from '@/lib/platform-settings';
+import { formatTZS, randomReference, safeJson } from '@/lib/utils';
 
 export async function recordTestSettlement(input: {
   actorId: string;
@@ -26,6 +27,10 @@ export async function recordTestSettlement(input: {
   if (!snapshot || snapshot.universityId !== input.universityId) {
     throw conflict('Vendor account no longer exists in this university.');
   }
+  const fees = await getFeeSettings();
+  const MIN_WITHDRAWAL = fees.minWithdrawal;
+  const VENDOR_PAYOUT_FEE = fees.withdrawalFee;
+  const KUPON_PAYOUT_FEE = kuponPayoutShare(fees);
   if (snapshot.pendingBalance <= 0) {
     throw conflict('There is no pending balance yet.');
   }
@@ -40,8 +45,26 @@ export async function recordTestSettlement(input: {
   if (amount < MIN_WITHDRAWAL) {
     throw conflict(`Minimum settlement is TZS ${MIN_WITHDRAWAL.toLocaleString()}.`);
   }
-  if (input.emergencyLimit !== undefined && amount > input.emergencyLimit) {
-    throw conflict(`This emergency withdrawal exceeds the admin-authorized limit of ${formatTZS(input.emergencyLimit)}.`);
+  if (input.emergencyLimit !== undefined) {
+    // The owner's limit is per day: count this Finance person's withdrawals since midnight.
+    const today = await prisma.auditLog.findMany({
+      where: {
+        actorId: input.actorId,
+        action: 'FINANCE_EMERGENCY_TEST_SETTLEMENT_RECORDED',
+        createdAt: { gte: startOfDay(new Date()) },
+      },
+      select: { metadata: true },
+    });
+    const usedToday = today.reduce((sum, row) => {
+      const value = Number(safeJson<{ amount?: unknown }>(row.metadata, {}).amount);
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+    const remaining = Math.max(0, input.emergencyLimit - usedToday);
+    if (amount > remaining) {
+      throw conflict(
+        `That is over your daily limit. You can withdraw ${formatTZS(remaining)} more today; ask the owner for more.`,
+      );
+    }
   }
 
   const netAmount = amount - VENDOR_PAYOUT_FEE;
@@ -64,12 +87,12 @@ export async function recordTestSettlement(input: {
           role: 'FINANCE',
           managedVendorId: input.vendorId,
           universityId: input.universityId,
-          emergencyWithdrawalLimit: { gte: amount },
+          emergencyWithdrawalLimit: { gte: 1 },
         },
         data: { emergencyWithdrawalLimit: { increment: 0 } },
       });
       if (!authorized.count) {
-        throw forbidden('The admin-authorized emergency withdrawal limit is insufficient or disabled.');
+        throw forbidden('The cafeteria owner has turned off withdrawals for this account.');
       }
     }
 

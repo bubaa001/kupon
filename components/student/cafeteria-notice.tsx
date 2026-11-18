@@ -6,6 +6,7 @@ import type { CafeteriaNotice } from '@/lib/orders/types';
 export function cafeteriaNoticeTitle(notice: CafeteriaNotice): string {
   if (notice.kind === 'DECLINED') return 'The cafeteria declined your request';
   if (notice.caseStatus === 'APPROVED') return 'Credit approved for this meal';
+  if (notice.caseStatus === 'REFUNDED') return 'Your money is being returned';
   if (notice.caseStatus === 'REJECTED') return 'Your coupon is valid again';
   return 'The cafeteria cannot serve this meal';
 }
@@ -14,8 +15,9 @@ export function cafeteriaNoticeTitle(notice: CafeteriaNotice): string {
 export function cafeteriaNoticeSummary(notice: CafeteriaNotice): string {
   if (notice.kind === 'DECLINED') return 'You were not charged.';
   if (notice.caseStatus === 'APPROVED') return 'Cafeteria credit was added to your account.';
+  if (notice.caseStatus === 'REFUNDED') return 'The cafeteria is sending your money back.';
   if (notice.caseStatus === 'REJECTED') return 'The review found the meal can be served.';
-  return 'Kupon is reviewing it. If approved, you get cafeteria credit.';
+  return 'Talk to the cafeteria staff: they can swap your meal, or their manager gives credit or your money back.';
 }
 
 /** Full explanation shown on the student's order. */
@@ -23,7 +25,7 @@ export function CafeteriaNoticeAlert({ notice }: { notice: CafeteriaNotice }) {
   const variant =
     notice.kind === 'DECLINED'
       ? 'warning'
-      : notice.caseStatus === 'APPROVED'
+      : notice.caseStatus === 'APPROVED' || notice.caseStatus === 'REFUNDED'
         ? 'success'
         : notice.caseStatus === 'REJECTED'
           ? 'info'
@@ -38,9 +40,13 @@ export function CafeteriaNoticeAlert({ notice }: { notice: CafeteriaNotice }) {
         <span className="mt-1 block">No payment was taken. You can order something else.</span>
       ) : notice.caseStatus === 'OPEN' ? (
         <span className="mt-1 block">
-          Your coupon is on hold while Kupon reviews case {notice.caseReference}. If it is
-          approved, the amount comes back as credit at this cafeteria. No action is needed from
-          you.
+          Your coupon is on hold (case {notice.caseReference}). Ask the staff at the counter for a
+          different meal, or the cafeteria manager will give you credit or your money back.
+        </span>
+      ) : notice.caseStatus === 'REFUNDED' ? (
+        <span className="mt-1 block">
+          The cafeteria is returning your money to your phone.{' '}
+          {notice.resolution ? `Note: ${notice.resolution}` : ''}
         </span>
       ) : notice.caseStatus === 'APPROVED' ? (
         <span className="mt-1 block">

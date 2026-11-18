@@ -23,6 +23,7 @@ export function GoogleSignupForm({
 }) {
   const [fullName, setFullName] = useState(name);
   const [phone, setPhone] = useState('');
+  const [buyerType, setBuyerType] = useState<'STUDENT' | 'GUEST'>('STUDENT');
   const [studentId, setStudentId] = useState('');
   const [course, setCourse] = useState('');
   const [year, setYear] = useState('1');
@@ -35,7 +36,9 @@ export function GoogleSignupForm({
     const next: FieldErrors = {};
     if (fullName.trim().length < 2) next.name = 'Enter your full name.';
     if (!isValidTzPhone(phone)) next.phone = 'Use a valid Tanzanian number, e.g. +255 712 345 678.';
-    if (studentId.trim().length < 3) next.studentId = 'Enter your student number.';
+    if (buyerType === 'STUDENT' && studentId.trim().length < 3) {
+      next.studentId = 'Enter your student number.';
+    }
     if (!confirm) next.confirm = 'Confirm that these details are yours.';
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -51,9 +54,10 @@ export function GoogleSignupForm({
       const result = await postJson<{ redirectTo: string }>('/api/auth/google/signup', {
         name: fullName.trim(),
         phone: normalizePhone(phone),
-        studentId: studentId.trim(),
-        course: course.trim(),
-        year: Number(year),
+        buyerType,
+        ...(buyerType === 'STUDENT'
+          ? { studentId: studentId.trim(), course: course.trim(), year: Number(year) }
+          : {}),
         confirm: true,
       });
       window.location.assign(result.redirectTo);
@@ -106,8 +110,8 @@ export function GoogleSignupForm({
         </div>
         <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500">
           <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          You will not receive an SMS code. This Google email becomes your login. Pay for each order
-          with Kupon at checkout; no student wallet is created.
+          No SMS code needed. This Google account becomes your login, and you pay for each order at
+          checkout.
         </p>
       </div>
 
@@ -159,6 +163,35 @@ export function GoogleSignupForm({
           ) : null}
         </div>
 
+        <fieldset className="space-y-1.5">
+          <legend className="text-sm font-medium text-navy">I am</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['STUDENT', 'A student'],
+                ['GUEST', 'Staff, lecturer or visitor'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setBuyerType(value)}
+                aria-pressed={buyerType === value}
+                className={cn(
+                  'min-h-11 rounded-lg border px-3 text-sm font-medium transition-colors',
+                  buyerType === value
+                    ? 'border-navy bg-navy text-white'
+                    : 'border-navy/15 bg-white text-navy hover:bg-navy-50',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {buyerType === 'STUDENT' ? (
+        <>
         <div className="space-y-1.5">
           <Label htmlFor="signup-student-id">Student number</Label>
           <Input
@@ -206,6 +239,8 @@ export function GoogleSignupForm({
             </select>
           </div>
         </div>
+        </>
+        ) : null}
 
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
@@ -233,7 +268,9 @@ export function GoogleSignupForm({
             className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500/30"
           />
           <span className="text-[11px] leading-relaxed text-slate-600">
-            I am a student at {university.name} and these account details are mine.
+            {buyerType === 'STUDENT'
+              ? `I am a student at ${university.name} and these details are mine.`
+              : `I buy food at ${university.name} and these details are mine.`}
             {errors.confirm ? (
               <span className="mt-1 block font-medium text-red-600">{errors.confirm}</span>
             ) : null}

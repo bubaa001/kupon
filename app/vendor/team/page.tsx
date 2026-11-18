@@ -9,8 +9,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
-import { ApiClientError, apiFetch, postJson } from '@/lib/client-api';
-import { formatDateTime } from '@/lib/utils';
+import { ApiClientError, apiFetch, deleteJson, patchJson, postJson } from '@/lib/client-api';
+import { formatDateTime, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 
 type TeamRole = 'STAFF' | 'FINANCE';
@@ -21,6 +21,7 @@ type TeamAccount = {
   phone: string;
   role: TeamRole;
   createdAt: string;
+  emergencyWithdrawalLimit: number;
 };
 type TeamInvite = {
   id: string;
@@ -213,25 +214,164 @@ export default function VendorTeamPage() {
                 </li>
               ))}
               {accounts.map((account) => (
-                <li key={account.id} className="flex items-start justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-800">{account.name}</p>
-                    <p className="mt-0.5 truncate text-xs text-slate-500">
-                      {account.email || account.phone}
-                    </p>
-                    <p className="mt-1 text-[10px] text-slate-400">
-                      Added {formatDateTime(account.createdAt)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-semibold text-primary-700">
-                    {account.role === 'STAFF' ? 'Staff' : 'Finance'}
-                  </span>
-                </li>
+                <TeamMemberRow key={account.id} account={account} onChanged={() => void loadTeam(true)} />
               ))}
             </ul>
           )}
         </Card>
       </div>
+      <FinanceActivity />
     </div>
+  );
+}
+
+type FinanceActivityItem = {
+  id: string;
+  who: string;
+  what: string;
+  amount: number | null;
+  note: string | null;
+  reference: string | null;
+  at: string;
+};
+
+/** What Finance did with money, so the owner sees it even when away. */
+function FinanceActivity() {
+  const [items, setItems] = useState<FinanceActivityItem[] | null>(null);
+  const load = useCallback(async () => {
+    try {
+      const payload = await apiFetch<{ items: FinanceActivityItem[] }>('/api/vendor/finance-activity');
+      setItems(payload.items);
+    } catch {
+      setItems((previous) => previous ?? []);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  useAutoRefresh(() => {
+    void load();
+  });
+
+  return (
+    <Card className="p-5 sm:p-6">
+      <h2 className="text-base font-semibold text-navy">Finance activity</h2>
+      <p className="mt-1 text-xs text-ink-muted">
+        Every withdrawal and money decision your Finance people made, newest first.
+      </p>
+      {items === null ? (
+        <p className="mt-4 text-sm text-ink-muted">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-dashed border-navy/15 p-4 text-sm text-ink-muted">
+          Nothing yet.
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-navy/[0.07]">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-navy">
+                  {item.who} · {item.what}
+                </p>
+                {item.note ? <p className="mt-0.5 text-xs text-ink-muted">{item.note}</p> : null}
+                <p className="mt-0.5 text-[11px] text-ink-muted">
+                  {formatDateTime(item.at)}
+                  {item.reference ? ` · ${item.reference}` : ''}
+                </p>
+              </div>
+              {item.amount !== null ? (
+                <span className="shrink-0 text-sm font-semibold tabular text-navy">
+                  {formatTZS(item.amount)}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function TeamMemberRow({ account, onChanged }: { account: TeamAccount; onChanged: () => void }) {
+  const [limit, setLimit] = useState(String(account.emergencyWithdrawalLimit || ''));
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  async function saveLimit() {
+    setSavingLimit(true);
+    try {
+      await patchJson('/api/vendor/team', {
+        userId: account.id,
+        dailyWithdrawalLimit: Number(limit.replace(/[^\d]/g, '')) || 0,
+      });
+      toast.success('Withdrawal limit saved');
+      onChanged();
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not save the limit.');
+    } finally {
+      setSavingLimit(false);
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm(`Remove ${account.name}? They will no longer be able to sign in. Their past actions stay in your records.`)) {
+      return;
+    }
+    setRemoving(true);
+    try {
+      await deleteJson(`/api/vendor/team?userId=${encodeURIComponent(account.id)}`);
+      toast.success(`${account.name} removed`);
+      onChanged();
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not remove this account.');
+      setRemoving(false);
+    }
+  }
+
+  return (
+    <li className="space-y-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-navy">{account.name}</p>
+          <p className="mt-0.5 truncate text-xs text-ink-muted">{account.email || account.phone}</p>
+          <p className="mt-1 text-[11px] text-ink-muted">Added {formatDateTime(account.createdAt)}</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-navy-50 px-2.5 py-1 text-[11px] font-semibold text-navy">
+          {account.role === 'STAFF' ? 'Staff' : 'Finance'}
+        </span>
+      </div>
+      {account.role === 'FINANCE' ? (
+        <div className="space-y-1.5">
+          <Label htmlFor={`limit-${account.id}`} className="text-xs">
+            Can withdraw per day without you (TZS)
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              id={`limit-${account.id}`}
+              inputMode="numeric"
+              value={limit}
+              onChange={(event) => setLimit(event.target.value.replace(/[^\d]/g, ''))}
+              placeholder="0 = not allowed"
+            />
+            <Button type="button" variant="outline" onClick={() => void saveLimit()} loading={savingLimit}>
+              Save
+            </Button>
+          </div>
+          <p className="text-[11px] text-ink-muted">
+            {account.emergencyWithdrawalLimit > 0
+              ? `Now ${formatTZS(account.emergencyWithdrawalLimit)} a day. You see every withdrawal they make.`
+              : 'Withdrawals are off for this person.'}
+          </p>
+        </div>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => void remove()}
+        disabled={removing}
+        className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50"
+      >
+        {removing ? 'Removing…' : 'Remove from team'}
+      </button>
+    </li>
   );
 }

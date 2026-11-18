@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CircleDollarSign, RefreshCw, RotateCcw } from 'lucide-react';
+import { CircleDollarSign, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +50,6 @@ export default function StudentCreditRequestsPage() {
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -95,33 +94,12 @@ export default function StudentCreditRequestsPage() {
     }
   }
 
-  async function escalate(item: CreditCase) {
-    const confirmed = window.confirm(
-      'Open a further-measures ticket? A TZS 1,500 test charge will be recorded against the cafeteria. This test system cannot send a cash refund.',
-    );
-    if (!confirmed) return;
-    setBusy(item.id);
-    try {
-      const ticketReason = window.prompt('Describe why you need further review:', '');
-      if (ticketReason === null) return;
-      await postJson(`/api/student/credit-requests/${encodeURIComponent(item.id)}/escalate`, {
-        reason: ticketReason,
-      });
-      toast.success('Escalation ticket opened. No real money was moved.');
-      await load();
-    } catch (error) {
-      toast.error(error instanceof ApiClientError ? error.message : 'Could not open the ticket.');
-    } finally {
-      setBusy(null);
-    }
-  }
-
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Cafeteria support"
         title="Credit & support"
-        description="Ask the cafeteria to resolve an unfulfilled order. Approved credit appears here and can be used at that cafeteria."
+        description="If a paid meal could not be served, talk to the counter staff first. You can also ask here: the cafeteria manager gives credit or your money back."
         actions={
           <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
@@ -219,23 +197,10 @@ export default function StudentCreditRequestsPage() {
               <p className="mt-1 text-xs text-slate-500">Order {item.order.reference}</p>
               <p className="mt-2 text-sm text-slate-600">{item.reason}</p>
               <p className="mt-1 text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
-              {item.status === 'APPROVED' && item.kind === 'STUDENT_UNFULFILLED' ? (
-                item.supportTicket ? (
-                  <p className="mt-3 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-600">
-                    Escalation {item.supportTicket.reference} · {item.supportTicket.status} ·{' '}
-                    {formatTZS(item.supportTicket.feeAmount)} test charge
-                  </p>
-                ) : (
-                  <Button
-                    className="mt-3"
-                    size="sm"
-                    variant="outline"
-                    disabled={busy === item.id}
-                    onClick={() => void escalate(item)}
-                  >
-                    <RotateCcw className="h-4 w-4" /> Open further-measures ticket · TZS 1,500
-                  </Button>
-                )
+              {item.supportTicket ? (
+                <p className="mt-3 rounded-lg bg-navy-50 p-2.5 text-xs text-ink-muted">
+                  Earlier escalation {item.supportTicket.reference} · {item.supportTicket.status}
+                </p>
               ) : null}
             </Card>
           ))

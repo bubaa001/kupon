@@ -40,11 +40,8 @@ export async function POST(request: Request) {
 
     const hash = user?.passwordHash ?? '$2a$10$jvPplD9ywuj93bbTBoZL7Ovo1NdNQ.Zhm60O8kFZ64m9i4z4aCPFG';
     const validPassword = await bcrypt.compare(body.password, hash);
-    if (!user || !validPassword || !['ADMIN', 'SUPER_ADMIN', 'FINANCE', 'STAFF'].includes(user.role)) {
+    if (!user || !validPassword || !['SUPER_ADMIN', 'FINANCE', 'STAFF'].includes(user.role)) {
       throw unauthorized('Username or phone number and password are incorrect.');
-    }
-    if (user.role === 'ADMIN' && user.university?.status !== 'ACTIVE') {
-      throw unauthorized('This university is suspended on Kupon.');
     }
     if (user.role === 'STAFF' && user.managedVendorId === null) {
       throw unauthorized('This staff account is not linked to a cafeteria.');

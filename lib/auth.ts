@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { env } from '@/lib/env';
 import { AppError, forbidden, unauthorized } from '@/lib/errors';
-import type { Role } from '@/lib/constants';
+import { SIGN_IN_ROLES, type Role } from '@/lib/constants';
 
 export const SESSION_COOKIE = 'kupon_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -150,6 +150,8 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 
   if (!user) return null;
   if (user.sessionVersion !== session.sessionVersion) return null;
+  // Retired (university admin) and removed accounts lose access immediately.
+  if (!(SIGN_IN_ROLES as readonly string[]).includes(user.role)) return null;
   if (
     (user.role === 'STAFF' || user.role === 'FINANCE') &&
     user.managedVendorId &&
@@ -301,8 +303,6 @@ export function roleHome(role: Role): string {
       return '/student';
     case 'VENDOR':
       return '/vendor';
-    case 'ADMIN':
-      return '/admin';
     case 'FINANCE':
       return '/finance';
     case 'STAFF':

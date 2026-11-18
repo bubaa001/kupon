@@ -21,7 +21,7 @@ export function StudentShell({
   return (
     <AppShell
       homeHref="/student"
-      roleLabel="Student"
+      roleLabel={user.studentId.startsWith('GUEST-') ? 'Campus guest' : 'Student'}
       orgLabel={user.universityName}
       groups={[
         {
@@ -46,7 +46,10 @@ export function StudentShell({
         },
       ]}
       mobileTabs={['/student', '/student/pay', '/student/history', '/student/credit-requests']}
-      user={{ name: user.name, detail: user.studentId }}
+      user={{
+        name: user.name,
+        detail: user.studentId.startsWith('GUEST-') ? user.universityName : user.studentId,
+      }}
       signOutTo="/login"
       width="narrow"
     >

@@ -602,8 +602,8 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           <DialogHeader>
             <DialogTitle>Report food as unavailable</DialogTitle>
             <DialogDescription>
-              The student sees your reason right away and their coupon is put on hold. Kupon
-              then reviews the case and, if approved, gives the student credit at your cafeteria.
+              The buyer sees your reason right away and their coupon is put on hold. Offer them a
+              different meal first; otherwise your Finance manager gives credit or their money back.
             </DialogDescription>
           </DialogHeader>
           <Label htmlFor="unavailable-reason">Reason the student will see</Label>

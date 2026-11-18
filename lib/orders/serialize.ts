@@ -49,7 +49,9 @@ function cafeteriaNotice(order: OrderRecord, declineReason: string | null): Cafe
         ? 'OPEN'
         : unavailableCase.status === 'APPROVED'
           ? 'APPROVED'
-          : 'REJECTED',
+          : unavailableCase.status === 'CASH_REFUNDED'
+            ? 'REFUNDED'
+            : 'REJECTED',
       resolution: unavailableCase.adminNote,
     };
   }

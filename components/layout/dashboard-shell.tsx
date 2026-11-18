@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { AppShell, type AppNavGroup } from '@/components/layout/app-shell';
 
-export type DashboardKind = 'admin' | 'super' | 'finance';
+export type DashboardKind = 'super' | 'finance';
 
 export type DashboardUser = {
   name: string;
@@ -26,29 +26,6 @@ export type DashboardUser = {
   universityCode?: string;
 };
 
-const ADMIN_NAV: AppNavGroup[] = [
-  {
-    title: 'Campus',
-    items: [
-      { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-      { href: '/admin/transactions', label: 'Transactions', shortLabel: 'Activity', icon: ArrowLeftRight },
-      { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
-    ],
-  },
-  {
-    title: 'People',
-    items: [
-      { href: '/admin/vendors', label: 'Cafeterias', icon: Store },
-      { href: '/admin/students', label: 'Students', icon: Users },
-      { href: '/admin/team', label: 'Team accounts', icon: UserCog },
-    ],
-  },
-  {
-    title: 'System',
-    items: [{ href: '/admin/settings', label: 'Settings', icon: Settings }],
-  },
-];
-
 const SUPER_NAV: AppNavGroup[] = [
   {
     title: 'Platform',
@@ -57,6 +34,7 @@ const SUPER_NAV: AppNavGroup[] = [
       { href: '/super-admin/tenants', label: 'Universities', icon: Building2 },
       { href: '/super-admin/revenue', label: 'Revenue', icon: TrendingUp },
       { href: '/super-admin/health', label: 'System health', shortLabel: 'Health', icon: Activity },
+      { href: '/super-admin/settings', label: 'Fees and limits', shortLabel: 'Fees', icon: Settings },
     ],
   },
   {
@@ -78,7 +56,10 @@ const SUPER_NAV: AppNavGroup[] = [
   },
   {
     title: 'Access',
-    items: [{ href: '/super-admin/finance-users', label: 'Team accounts', icon: UserCog }],
+    items: [
+      { href: '/super-admin/accounts', label: 'Accounts', icon: Users },
+      { href: '/super-admin/finance-users', label: 'Team accounts', icon: UserCog },
+    ],
   },
 ];
 
@@ -93,11 +74,6 @@ const FINANCE_NAV: AppNavGroup[] = [
 ];
 
 const CONFIG: Record<DashboardKind, { home: string; groups: AppNavGroup[]; tabs: string[] }> = {
-  admin: {
-    home: '/admin',
-    groups: ADMIN_NAV,
-    tabs: ['/admin', '/admin/transactions', '/admin/vendors', '/admin/students'],
-  },
   super: {
     home: '/super-admin',
     groups: SUPER_NAV,

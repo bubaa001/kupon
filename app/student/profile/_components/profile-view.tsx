@@ -220,6 +220,8 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
   }
 
   const { student, university, stats } = data;
+  // Staff, lecturers and visitors sign up without a student number.
+  const isGuest = student.studentId.startsWith('GUEST-');
   const googleEmail = identity.email ? maskEmail(identity.email) : null;
   const googleState = identity.googleLinked
     ? { label: 'Google session', variant: 'success' as const, dot: true }
@@ -252,7 +254,7 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
                 {student.name}
               </p>
               <p className="mt-0.5 truncate text-xs text-slate-300">
-                {student.studentId} • {university.code}
+                {isGuest ? 'Campus guest' : student.studentId} • {university.code}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Badge variant="outline" className="border-white/20 bg-white/10 text-white">
@@ -365,7 +367,9 @@ export function ProfileView({ identity }: { identity: ProfileIdentity }) {
       <Card className="p-5">
         <p className="text-sm font-semibold text-slate-900">University details</p>
         <div className="mt-2 divide-y divide-slate-100">
-          <DetailRow icon={Hash} label="Student number" value={student.studentId} />
+          {isGuest ? null : (
+            <DetailRow icon={Hash} label="Student number" value={student.studentId} />
+          )}
           <DetailRow
             icon={Building2}
             label="University"

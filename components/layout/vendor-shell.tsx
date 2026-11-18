@@ -38,33 +38,25 @@ export function VendorShell({
       orgLabel={`${user.vendorName} · ${user.universityName}`}
       groups={[
         {
-          title: 'Service',
+          title: 'Your business',
           items: [
-            { href: '/vendor', label: 'Today', icon: Home },
-            {
-              href: '/vendor/scan',
-              label: 'Orders & coupons',
-              shortLabel: 'Orders',
-              icon: ClipboardCheck,
-              primary: true,
-            },
+            { href: '/vendor', label: 'Overview', icon: Home },
+            { href: '/vendor/sales', label: 'Sales', icon: BadgeDollarSign },
+            { href: '/vendor/settlement', label: 'Money', icon: Wallet },
+            { href: '/vendor/credit-requests', label: 'Meal cases', shortLabel: 'Cases', icon: LifeBuoy },
+            { href: '/vendor/team', label: 'Team & Finance', shortLabel: 'Team', icon: UsersRound },
+          ],
+        },
+        {
+          // Staff run the counter; the owner can look in or step in when needed.
+          title: 'Counter (staff run this)',
+          items: [
+            { href: '/vendor/scan', label: 'Orders & coupons', shortLabel: 'Orders', icon: ClipboardCheck },
             { href: '/vendor/menu', label: 'Menu', icon: UtensilsCrossed },
           ],
         },
-        {
-          title: 'Money',
-          items: [
-            { href: '/vendor/sales', label: 'Sales', icon: BadgeDollarSign },
-            { href: '/vendor/settlement', label: 'Settlement', icon: Wallet },
-            { href: '/vendor/credit-requests', label: 'Credit cases', icon: LifeBuoy },
-          ],
-        },
-        {
-          title: 'Cafeteria',
-          items: [{ href: '/vendor/team', label: 'Team', icon: UsersRound }],
-        },
       ]}
-      mobileTabs={['/vendor', '/vendor/scan', '/vendor/menu', '/vendor/sales']}
+      mobileTabs={['/vendor', '/vendor/sales', '/vendor/settlement', '/vendor/team']}
       user={{ name: user.name, detail: user.vendorCode }}
       signOutTo="/login?role=vendor"
       accountLinks={[

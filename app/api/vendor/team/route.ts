@@ -2,7 +2,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { auditLog } from '@/lib/audit';
 import { fail, ok, parseJson } from '@/lib/api';
-import { conflict, tooManyRequests } from '@/lib/errors';
+import { conflict, notFound, tooManyRequests } from '@/lib/errors';
+import { disableAccount } from '@/lib/accounts/disable-account';
+import { getFeeSettings } from '@/lib/platform-settings';
 import { prisma } from '@/lib/db';
 import { phoneSchema } from '@/lib/validators';
 import { rateLimit } from '@/lib/rate-limit';
@@ -25,7 +27,15 @@ export async function GET() {
     const [accounts, invites] = await Promise.all([
       prisma.user.findMany({
       where: { managedVendorId: vendor.id, role: { in: ['STAFF', 'FINANCE'] } },
-      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+        emergencyWithdrawalLimit: true,
+      },
       orderBy: { createdAt: 'desc' },
       }),
       prisma.teamInvite.findMany({
@@ -92,6 +102,62 @@ export async function POST(request: Request) {
 
     const inviteUrl = new URL(`/staff/invite/${rawToken}`, externalUrl(request, '/')).toString();
     return ok({ invite: { ...invite, inviteUrl } }, { status: 201 });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+const financeLimitSchema = z
+  .object({
+    userId: z.string().min(1),
+    /** TZS a Finance person may withdraw per day without the owner. 0 turns it off. */
+    dailyWithdrawalLimit: z.number().int().min(0).max(50_000_000),
+  })
+  .strict();
+
+/** PATCH /api/vendor/team: the owner sets a Finance person's daily withdrawal limit. */
+export async function PATCH(request: Request) {
+  try {
+    const { user: actor, vendor, universityId } = await requireVendorAccess();
+    const body = await parseJson(request, financeLimitSchema);
+    const { minWithdrawal } = await getFeeSettings();
+    if (body.dailyWithdrawalLimit !== 0 && body.dailyWithdrawalLimit < minWithdrawal) {
+      throw conflict(
+        `Use 0 to turn withdrawals off, or at least the TZS ${minWithdrawal.toLocaleString()} minimum withdrawal.`,
+      );
+    }
+    const updated = await prisma.user.updateMany({
+      where: { id: body.userId, managedVendorId: vendor.id, role: 'FINANCE' },
+      data: { emergencyWithdrawalLimit: body.dailyWithdrawalLimit },
+    });
+    if (!updated.count) throw notFound('Finance account not found in your cafeteria.');
+    await auditLog({
+      actorId: actor.id,
+      universityId,
+      action: 'FINANCE_WITHDRAWAL_LIMIT_SET',
+      entity: 'User',
+      entityId: body.userId,
+      metadata: { vendorId: vendor.id, dailyWithdrawalLimit: body.dailyWithdrawalLimit },
+    });
+    return ok({ userId: body.userId, dailyWithdrawalLimit: body.dailyWithdrawalLimit });
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/** DELETE /api/vendor/team?userId=…: the owner removes a staff or Finance account. History stays. */
+export async function DELETE(request: Request) {
+  try {
+    const { user: actor, vendor } = await requireVendorAccess();
+    const userId = new URL(request.url).searchParams.get('userId');
+    if (!userId) throw notFound('Choose a team member to remove.');
+    const result = await disableAccount({
+      userId,
+      actorId: actor.id,
+      reason: 'Removed by cafeteria owner',
+      where: { managedVendorId: vendor.id, role: { in: ['STAFF', 'FINANCE'] } },
+    });
+    return ok(result);
   } catch (error) {
     return fail(error);
   }

@@ -4,6 +4,8 @@ import { fail, ok, parseJson } from '@/lib/api';
 import { requireApiUser } from '@/lib/auth';
 import { conflict, notFound, tooManyRequests } from '@/lib/errors';
 import { issueCafeteriaCredit } from '@/lib/credits/issue-credit';
+import { CASH_REFUNDED, refundCash } from '@/lib/credits/refund-cash';
+import { getFeeSettings } from '@/lib/platform-settings';
 import { prisma } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -11,7 +13,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const decisionSchema = z.object({
-  decision: z.enum(['APPROVE', 'REJECT']),
+  decision: z.enum(['APPROVE', 'CASH', 'REJECT']),
   note: z.string().trim().min(5).max(500),
 }).strict();
 
@@ -41,6 +43,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         }),
       );
       return ok({ status: 'APPROVED', creditBalance: account.balance });
+    }
+
+    if (body.decision === 'CASH') {
+      const { withdrawalFee } = await getFeeSettings();
+      const result = await prisma.$transaction((tx) =>
+        refundCash({ tx, request: creditRequest, withdrawalFee, actorId: user.id, note: body.note }),
+      );
+      return ok({ status: CASH_REFUNDED, totalCost: result.totalCost });
     }
 
     await prisma.$transaction(async (tx) => {

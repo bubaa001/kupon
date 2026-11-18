@@ -13,7 +13,7 @@ export async function GET() {
       prisma.creditRequest.findMany({
         where: {
           ...vendorScope,
-          status: { in: ['PENDING_FINANCE', 'APPROVED', 'REJECTED'] },
+          status: { in: ['PENDING_FINANCE', 'APPROVED', 'CASH_REFUNDED', 'REJECTED'] },
         },
         include: {
           order: { select: { reference: true, status: true, expiresAt: true } },

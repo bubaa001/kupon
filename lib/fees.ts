@@ -24,11 +24,17 @@ export type OrderCheckoutFees = {
   amountCharged: number;
 };
 
-/** Checkout adds the API collection fee to the student's food total. */
-export function calcOrderCheckoutFees(amountDue: number): OrderCheckoutFees {
+/**
+ * Checkout adds Snippe's collection fee to the student's food total. Kupon's cut
+ * comes out of the cafeteria's share; pass the percent saved in platform settings.
+ */
+export function calcOrderCheckoutFees(
+  amountDue: number,
+  kuponFeePercent: number = KUPON_TRANSACTION_FEE_PERCENT,
+): OrderCheckoutFees {
   const cashDue = Math.max(0, Math.round(amountDue));
   const apiFee = Math.round((cashDue * STUDENT_PAYMENT_FEE_PERCENT) / 100);
-  const kuponFee = Math.round((cashDue * KUPON_TRANSACTION_FEE_PERCENT) / 100);
+  const kuponFee = Math.round((cashDue * kuponFeePercent) / 100);
   return {
     apiFee,
     kuponFee,

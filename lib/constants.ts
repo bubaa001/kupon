@@ -1,6 +1,12 @@
 export const ROLES = ['STUDENT', 'VENDOR', 'ADMIN', 'SUPER_ADMIN', 'FINANCE', 'STAFF'] as const;
 export type Role = (typeof ROLES)[number];
 
+/**
+ * Roles that may sign in. The university admin role (ADMIN) is retired: Kupon
+ * sells to cafeterias, not universities. Removed accounts carry role DISABLED.
+ */
+export const SIGN_IN_ROLES: readonly Role[] = ['STUDENT', 'VENDOR', 'SUPER_ADMIN', 'FINANCE', 'STAFF'];
+
 export const TX_TYPES = [
   'TOPUP',
   'PAYMENT',

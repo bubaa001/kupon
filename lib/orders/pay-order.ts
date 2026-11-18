@@ -4,6 +4,7 @@ import { auditLog } from '@/lib/audit';
 import { conflict, notFound } from '@/lib/errors';
 import { randomReference } from '@/lib/utils';
 import { calcOrderCheckoutFees } from '@/lib/fees';
+import { getFeeSettings } from '@/lib/platform-settings';
 import { signCouponToken } from './coupon';
 import { orderInclude, serializeOrder } from './serialize';
 
@@ -29,6 +30,9 @@ export async function payApprovedOrder(input: {
   const useCredit = input.useCredit ?? order.useCafeteriaCredit;
 
   const expiresAt = new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000);
+  // Kupon's fee is fixed when the student pays, so a later settings change
+  // never alters an order that is already in flight.
+  const { kuponFeePercent } = await getFeeSettings();
   const result = await prisma.$transaction(async (tx) => {
     const creditAccount = useCredit
       ? await tx.cafeteriaCredit.findUnique({
@@ -44,7 +48,7 @@ export async function payApprovedOrder(input: {
       : null;
     const creditApplied = Math.min(creditAccount?.balance ?? 0, order.total);
     const cashAmount = order.total - creditApplied;
-    const fees = calcOrderCheckoutFees(cashAmount);
+    const fees = calcOrderCheckoutFees(cashAmount, kuponFeePercent);
     const now = new Date();
     const claimed = await tx.order.updateMany({
       where: {
@@ -131,6 +135,7 @@ export async function payApprovedOrder(input: {
           creditApplied,
           gatewayFee: fees.apiFee,
           kuponFee: fees.kuponFee,
+          kuponFeePercent,
           vendorSettlement: fees.vendorSettlement,
           provider: 'kupon-test-gateway',
           stage: 'INITIATED',

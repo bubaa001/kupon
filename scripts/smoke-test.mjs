@@ -302,34 +302,12 @@ async function main() {
   });
   check('cross-tenant vendor QR is rejected', crossTenantScan.status === 403);
 
-  console.log('\nAdmin flow + tenant isolation');
-  const admin = await loginStaff('+255745000001', 'admin1234');
-  const dashboard = await request('/api/admin/dashboard', { cookie: admin.cookie });
-  check('admin dashboard responds', dashboard.status === 200);
-  check('dashboard has 7-day chart data', (dashboard.json?.data?.chart?.length ?? 0) === 7);
-  check('dashboard has top meals', (dashboard.json?.data?.topMeals?.length ?? 0) > 0);
-
-  const crossTenant = await request(`/api/admin/students?universityId=${must.id}`, {
-    cookie: admin.cookie,
+  console.log('\nRetired university admin');
+  const retiredAdmin = await request('/api/auth/staff-login', {
+    method: 'POST',
+    body: { phone: '+255745000001', password: 'admin1234' },
   });
-  check('UDSM admin cannot query MUST students', crossTenant.status === 403);
-
-  const txns = await request('/api/admin/transactions?pageSize=5', { cookie: admin.cookie });
-  check('admin transactions respond', txns.status === 200 && Array.isArray(txns.json?.data?.rows));
-  check(
-    'admin rows are tenant-scoped',
-    (txns.json?.data?.rows ?? []).every((row) => row.reference),
-  );
-
-  const reports = await request('/api/admin/reports?range=7d', { cookie: admin.cookie });
-  check('admin reports respond', reports.status === 200);
-  check('reports include fee breakdown', Boolean(reports.json?.data?.fees));
-
-  const refunds = await request('/api/admin/refunds', { cookie: admin.cookie });
-  check('legacy admin refunds endpoint is removed', refunds.status === 404);
-
-  const settings = await request('/api/admin/settings', { cookie: admin.cookie });
-  check('settings expose Lipa Namba', settings.json?.data?.university?.paymentRouteCode === '555111');
+  check('university admin accounts can no longer sign in', retiredAdmin.status === 401);
 
   console.log('\nSuper admin');
   const overview = await request('/api/super-admin/overview', { cookie: superAdmin.cookie });
@@ -344,8 +322,8 @@ async function main() {
   check('system health responds', health.status === 200);
   check('ledger is balanced', health.json?.data?.ledgerBalanced === true);
 
-  const adminAsSuper = await request('/api/super-admin/tenants', { cookie: admin.cookie });
-  check('university admin blocked from platform API', adminAsSuper.status === 403);
+  const studentAsSuper = await request('/api/super-admin/tenants', { cookie: student.cookie });
+  check('students are blocked from the platform API', studentAsSuper.status === 403);
 
   console.log('\nUSSD / offline payments');
   const ussd = await request('/api/ussd', {
