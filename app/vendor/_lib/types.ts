@@ -39,6 +39,8 @@ export type VendorStats = {
   pendingBalance: number;
   totalSettled: number;
   recentSales: SaleRow[];
+  /** Live items that need someone: requests to accept, coupons to hand out, cases for Finance. */
+  attention: { ordersWaiting: number; couponsReady: number; openCases: number };
   counts: { settled: number; pending: number; failed: number };
 };
 

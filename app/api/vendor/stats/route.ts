@@ -30,7 +30,8 @@ export async function GET() {
       type: 'PAYMENT',
     } as const;
 
-    const [todayPayments, recentPayments, snapshot, menuItems] = await Promise.all([
+    const now = new Date();
+    const [todayPayments, recentPayments, snapshot, menuItems, ordersWaiting, couponsReady, openCases] = await Promise.all([
       prisma.transaction.findMany({
         where: { ...baseWhere, createdAt: { gte: start, lte: end } },
         select: paymentSelect,
@@ -56,6 +57,12 @@ export async function GET() {
         where: { vendorId: vendor.id },
         select: { name: true, emoji: true },
       }),
+      // What needs someone's attention right now, for the owner's overview.
+      prisma.order.count({ where: { vendorId: vendor.id, status: 'AWAITING_ACCEPTANCE' } }),
+      prisma.order.count({
+        where: { vendorId: vendor.id, status: 'PENDING', expiresAt: { gt: now } },
+      }),
+      prisma.creditRequest.count({ where: { vendorId: vendor.id, status: 'PENDING_FINANCE' } }),
     ]);
 
     if (!snapshot) {
@@ -79,6 +86,7 @@ export async function GET() {
       pendingBalance: snapshot.pendingBalance,
       totalSettled: snapshot.totalSettled,
       recentSales: recentPayments.map(saleRow),
+      attention: { ordersWaiting, couponsReady, openCases },
       counts: {
         settled: transactionCount,
         pending: todayPayments.filter((payment) => payment.status === 'PENDING').length,

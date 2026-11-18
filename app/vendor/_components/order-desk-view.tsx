@@ -13,7 +13,10 @@ import {
   QrCode,
   RefreshCw,
   ScanLine,
-  Wifi,
+  Bell,
+  BellOff,
+  Volume2,
+  VolumeX,
   WifiOff,
   type LucideIcon,
 } from 'lucide-react';
@@ -30,12 +33,12 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiFetch, postJson } from '@/lib/client-api';
 import type { OrderView, VendorOrdersData } from '@/lib/orders/types';
 import { cn } from '@/lib/utils';
+import { useOrderAlerts } from '@/lib/use-order-alerts';
 import { toast } from 'sonner';
 import { LoadError } from './feedback';
 import { OrderCard } from './order-card';
@@ -46,6 +49,8 @@ type VerifyMode = 'code' | 'scan';
 type VerifyTarget = { order: OrderView | null; mode: VerifyMode };
 
 const POLL_MS = 3000;
+/** Slower checks while the tab is in the background, so alerts still fire. */
+const HIDDEN_POLL_MS = 10_000;
 const HIGHLIGHT_MS = 8000;
 
 export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
@@ -67,6 +72,10 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
   const knownPendingRef = useRef<Set<string> | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+  const alerts = useOrderAlerts();
+  const announceRef = useRef(alerts.announce);
+  announceRef.current = alerts.announce;
+  const lastPollRef = useRef(0);
 
   const load = useCallback(async (silent: boolean) => {
     if (!silent) setLoading(true);
@@ -103,27 +112,20 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           const paymentWaitCount = payload.orders.filter(
             (order) => fresh.includes(order.id) && order.status === 'AWAITING_PAYMENT',
           ).length;
-          toast.success(
-            requestCount
-              ? `${requestCount} new meal request${requestCount === 1 ? '' : 's'}`
-              : paymentWaitCount
-                ? `${paymentWaitCount} approved order${paymentWaitCount === 1 ? '' : 's'} awaiting payment`
-                : fresh.length === 1
-                  ? 'New coupon ready'
-                  : `${fresh.length} coupons ready`,
-            {
-              description: requestCount
-                ? 'Confirm availability. Students pay only after acceptance.'
-                : paymentWaitCount
-                  ? 'The student must complete payment before a coupon is issued.'
-                : 'A student is waiting at the counter — verify their coupon.',
-            },
-          );
-          try {
-            navigator.vibrate?.([30, 40, 30]);
-          } catch {
-            /* Vibration is a bonus on supported devices. */
-          }
+          const headline = requestCount
+            ? `${requestCount} new meal request${requestCount === 1 ? '' : 's'}`
+            : paymentWaitCount
+              ? `${paymentWaitCount} order${paymentWaitCount === 1 ? '' : 's'} waiting for payment`
+              : fresh.length === 1
+                ? 'New coupon ready'
+                : `${fresh.length} coupons ready`;
+          const detail = requestCount
+            ? 'Check the food is available, then accept.'
+            : paymentWaitCount
+              ? 'The buyer pays next; the coupon appears after payment.'
+              : 'A buyer is coming to the counter. Verify their coupon.';
+          toast.success(headline, { description: detail });
+          announceRef.current(headline, detail);
         }
       }
 
@@ -155,7 +157,11 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
     void load(false);
 
     const tick = () => {
-      if (document.visibilityState === 'hidden' || !mountedRef.current) return;
+      if (!mountedRef.current) return;
+      const now = Date.now();
+      const wait = document.visibilityState === 'hidden' ? HIDDEN_POLL_MS : POLL_MS;
+      if (now - lastPollRef.current < wait - 100) return;
+      lastPollRef.current = now;
       void load(true);
     };
     const interval = window.setInterval(tick, POLL_MS);
@@ -291,7 +297,7 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
           description:
             result.status === 'CANCELLED'
               ? 'The student sees your reason. They were not charged.'
-              : 'The student sees your reason and their coupon is on hold while Kupon reviews the credit case.',
+              : 'The buyer sees your reason and their coupon is on hold. Your Finance manager decides credit or money back.',
         },
       );
       setUnavailableOrder(null);
@@ -354,60 +360,85 @@ export function OrderDeskView({ basePath = '/vendor' }: { basePath?: string }) {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        eyebrow="Order desk"
-        title="Order & coupon desk"
-        description="Check each request against current stock. Students pay only after staff accept; only paid orders receive a coupon."
-        actions={
-          <>
+      <header className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-[1.65rem] font-medium leading-tight tracking-[-0.045em] text-navy sm:text-[2rem]">
+              Orders
+            </h1>
+            <span
+              className={cn(
+                'mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                liveTone,
+              )}
+              role="status"
+            >
+              {stale ? (
+                <WifiOff className="h-3 w-3" aria-hidden />
+              ) : (
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    liveState === 'new' ? 'animate-pulse bg-amber-500' : 'bg-emerald-500',
+                  )}
+                  aria-hidden
+                />
+              )}
+              {liveState === 'new'
+                ? `${newCount} new ${newCount === 1 ? 'order' : 'orders'}`
+                : stale
+                  ? 'Reconnecting…'
+                  : 'Live'}
+            </span>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
+              onClick={alerts.toggleSound}
+              aria-pressed={alerts.soundOn}
+              aria-label={alerts.soundOn ? 'Turn order sound off' : 'Turn order sound on'}
+              title={alerts.soundOn ? 'Sound on' : 'Sound off'}
+            >
+              {alerts.soundOn ? <Volume2 /> : <VolumeX />}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
               onClick={() => {
                 setRefreshing(true);
                 void load(true);
               }}
               disabled={refreshing}
+              aria-label="Refresh orders"
             >
-              <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-              Refresh
+              <RefreshCw className={cn(refreshing && 'animate-spin')} />
             </Button>
-            <Button size="sm" onClick={() => openVerify(null, 'scan')}>
-              <QrCode className="h-4 w-4" />
-              Verify by QR
-            </Button>
-          </>
-        }
-      />
-
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <span
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
-            liveTone,
-          )}
-        >
-          {stale ? (
-            <WifiOff className="h-3 w-3" />
-          ) : (
-            <span
-              className={cn(
-                'h-1.5 w-1.5 rounded-full',
-                liveState === 'new' ? 'bg-amber-500' : 'bg-emerald-500',
-              )}
-            />
-          )}
-          {liveState === 'new'
-            ? `${newCount} new ${newCount === 1 ? 'order' : 'orders'}`
-            : stale
-              ? 'Reconnecting…'
-              : 'Live'}
-        </span>
-        <p className="flex items-center gap-1 text-[11px] text-slate-500">
-          <Wifi className="h-3 w-3" />
-          Updates every 3 seconds while this screen is open
-        </p>
-      </div>
+          </div>
+        </div>
+        <Button size="lg" className="w-full sm:w-auto" onClick={() => openVerify(null, 'scan')}>
+          <QrCode aria-hidden />
+          Verify a coupon
+        </Button>
+        {alerts.permission === 'default' ? (
+          <button
+            type="button"
+            onClick={() => void alerts.enableNotifications()}
+            className="flex w-full items-center gap-2 rounded-xl border border-gold-200 bg-gold-50 px-3 py-2.5 text-left text-xs text-navy"
+          >
+            <Bell className="h-4 w-4 shrink-0 text-gold-600" aria-hidden />
+            <span className="flex-1">
+              <span className="font-semibold">Turn on order alerts</span> so new orders pop up even
+              when this tab is in the background.
+            </span>
+          </button>
+        ) : alerts.permission === 'denied' ? (
+          <p className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+            <BellOff className="h-3.5 w-3.5" aria-hidden />
+            Pop-up alerts are blocked in this browser. Sound and the tab title still alert you.
+          </p>
+        ) : null}
+      </header>
 
       {error && !data ? <LoadError message={error} onRetry={() => void load(false)} /> : null}
 

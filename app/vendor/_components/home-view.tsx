@@ -3,21 +3,19 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  Banknote,
+  ChevronRight,
   ClipboardCheck,
-  QrCode,
-  TrendingUp,
+  LifeBuoy,
   UtensilsCrossed,
   Wallet,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/ui/page-header';
 import { SectionHeading } from '@/components/ui/section-heading';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { VendorQrCard } from '@/components/orders/vendor-qr-card';
-import { formatDate, formatTZS } from '@/lib/utils';
+import { cn, formatDate, formatTZS } from '@/lib/utils';
 import { useApiData } from '../_lib/use-api';
 import type { VendorStats } from '../_lib/types';
 import { SaleList } from './sale-list';
@@ -25,33 +23,10 @@ import { TopItemsList } from './top-items-list';
 import { LoadError } from './feedback';
 import { CardBlockSkeleton, SaleListSkeleton } from './skeletons';
 
-const QUICK_ACTIONS = [
-  {
-    href: '/vendor/scan',
-    label: 'Order desk',
-    hint: 'Verify coupons',
-    icon: ClipboardCheck,
-  },
-  {
-    href: '/vendor/sales',
-    label: 'Sales report',
-    hint: 'Today, week, month',
-    icon: TrendingUp,
-  },
-  {
-    href: '/vendor/menu',
-    label: 'Update menu',
-    hint: 'Prices & photos',
-    icon: UtensilsCrossed,
-  },
-  {
-    href: '#counter-qr',
-    label: 'Show menu QR',
-    hint: 'Student scan point',
-    icon: QrCode,
-  },
-];
-
+/**
+ * The owner's overview: how today is going, what needs attention, and where
+ * the money is. Built to be read in one glance on a phone.
+ */
 export function VendorHome() {
   const { data, loading, error, reload } = useApiData<VendorStats>('/api/vendor/stats');
   const [todayLabel, setTodayLabel] = useState('');
@@ -61,28 +36,17 @@ export function VendorHome() {
     setTodayLabel(formatDate(new Date(), 'EEEE, dd MMMM'));
   }, []);
 
-  const showInitialSkeleton = loading && !data;
-
   return (
     <div className="space-y-5">
-      <PageHeader
-        eyebrow={todayLabel || 'Vendor terminal'}
-        title="Today's till"
-        description={
-          data
-            ? `Live sales at ${data.vendor.name} • ${data.vendor.university.name}`
-            : 'Live sales, top sellers and your settlement balance.'
-        }
-      />
-
       {error && !data ? <LoadError message={error} onRetry={reload} /> : null}
 
-      {showInitialSkeleton ? (
+      {loading && !data ? (
         <>
-          <Skeleton className="h-[236px] w-full rounded-2xl" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Skeleton className="h-[116px] w-full rounded-xl" />
-            <Skeleton className="h-[116px] w-full rounded-xl" />
+          <Skeleton className="h-[188px] w-full rounded-2xl" />
+          <div className="grid grid-cols-3 gap-2.5">
+            <Skeleton className="h-[96px] rounded-2xl" />
+            <Skeleton className="h-[96px] rounded-2xl" />
+            <Skeleton className="h-[96px] rounded-2xl" />
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
             <CardBlockSkeleton rows={4} />
@@ -98,95 +62,71 @@ export function VendorHome() {
 
       {data ? (
         <>
-          <section className="balance-card animate-fade-up p-5 sm:p-6" aria-label="Today's sales">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200/90">
-                  Today&apos;s sales
-                </p>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-100">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Till online
-                </span>
-              </div>
-              <p className="tabular mt-3 text-[2rem] font-semibold tracking-[-0.045em] text-white sm:text-4xl">
-                {formatTZS(data.todaySales)}
-              </p>
-              <p className="mt-1.5 text-xs text-emerald-100/75">
-                {data.transactionCount} {data.transactionCount === 1 ? 'payment' : 'payments'} today
-                {' • '}
-                {data.transactionCount > 0
-                  ? `avg ${formatTZS(data.averageSale)}`
-                  : 'waiting for the first student order'}
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  className="bg-white text-emerald-800 shadow-none hover:bg-emerald-50"
-                >
-                  <Link href="/vendor/scan">
-                    <ClipboardCheck />
-                    Open order desk
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="sm"
-                  variant="ghost"
-                  className="border border-white/15 text-white hover:bg-white/10 hover:text-white"
-                >
-                  <Link href="/vendor/sales">View sales</Link>
-                </Button>
-              </div>
+          <section
+            className="relative overflow-hidden rounded-2xl bg-navy p-5 text-white animate-fade-up sm:p-6"
+            aria-label="Today"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent"
+            />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">
+              {todayLabel || 'Today'} · {data.vendor.name}
+            </p>
+            <p className="mt-3 text-[2.25rem] font-medium leading-none tracking-[-0.05em] tabular sm:text-5xl">
+              {formatTZS(data.todaySales)}
+            </p>
+            <p className="mt-2 text-sm text-navy-300">
+              {data.transactionCount > 0
+                ? `${data.transactionCount} ${data.transactionCount === 1 ? 'sale' : 'sales'} today · average ${formatTZS(data.averageSale)}`
+                : 'No sales yet today'}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button asChild variant="gold" size="sm">
+                <Link href="/vendor/sales">See sales</Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="border border-white/15 text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link href="/vendor/settlement">Money</Link>
+              </Button>
             </div>
           </section>
 
-          <section id="counter-qr" className="scroll-mt-24" aria-label="Counter menu QR">
-            <VendorQrCard />
-          </section>
-
-          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-            <StatCard
-              label="Pending settlement"
-              value={formatTZS(data.pendingBalance)}
-              icon={Wallet}
-              accent="amber"
-              hint="Request a payout from the settlement screen"
-            />
-            <StatCard
-              label="Total settled"
-              value={formatTZS(data.totalSettled)}
-              icon={Banknote}
-              accent="emerald"
-              hint="Lifetime payouts to your account"
-            />
-          </div>
-
-          <section aria-label="Quick actions" className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {QUICK_ACTIONS.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className="card-surface group flex min-h-[88px] min-w-0 flex-col justify-between overflow-hidden p-3 transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 transition-transform group-hover:scale-105">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <span className="block text-[11px] font-semibold leading-tight text-slate-800">
-                      {action.label}
-                    </span>
-                    <span className="mt-0.5 block text-[10px] leading-tight text-slate-500">
-                      {action.hint}
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
+          <section aria-label="Needs attention" className="space-y-2">
+            <p className="eyebrow">Needs attention</p>
+            <div className="grid grid-cols-3 gap-2.5">
+              <AttentionTile
+                href="/vendor/scan"
+                icon={ClipboardCheck}
+                value={data.attention.ordersWaiting + data.attention.couponsReady}
+                label="Orders open"
+                hint={
+                  data.attention.ordersWaiting > 0
+                    ? `${data.attention.ordersWaiting} to accept`
+                    : `${data.attention.couponsReady} to collect`
+                }
+                urgent={data.attention.ordersWaiting > 0}
+              />
+              <AttentionTile
+                href="/vendor/credit-requests"
+                icon={LifeBuoy}
+                value={data.attention.openCases}
+                label="Meal cases"
+                hint={data.attention.openCases > 0 ? 'Finance to decide' : 'None open'}
+                urgent={data.attention.openCases > 0}
+              />
+              <AttentionTile
+                href="/vendor/settlement"
+                icon={Wallet}
+                value={formatTZS(data.pendingBalance)}
+                label="Balance"
+                hint="Ready to withdraw"
+              />
+            </div>
           </section>
 
           <div className="grid min-w-0 gap-4 lg:grid-cols-2">
@@ -203,8 +143,8 @@ export function VendorHome() {
                   emptyState={
                     <EmptyState
                       icon={UtensilsCrossed}
-                      title="The kitchen is warming up"
-                      description="Capture your first payment of the day and your best sellers will appear here."
+                      title="Nothing sold yet today"
+                      description="Your best sellers appear here after the first paid order."
                       compact
                     />
                   }
@@ -214,8 +154,8 @@ export function VendorHome() {
 
             <section className="card-surface min-w-0 overflow-hidden p-5">
               <SectionHeading
-                title="Recent sales"
-                description="Latest order payments"
+                title="Latest sales"
+                description="Newest first"
                 actionLabel={data.recentSales.length > 0 ? 'View all' : undefined}
                 actionHref={data.recentSales.length > 0 ? '/vendor/sales' : undefined}
               />
@@ -225,17 +165,9 @@ export function VendorHome() {
                   emptyState={
                     <EmptyState
                       icon={ClipboardCheck}
-                      title="No orders yet"
-                      description="Students scan your counter QR to place an order. It appears here after its Kupon test payment is confirmed."
+                      title="No sales yet"
+                      description="Buyers scan your counter QR to order. Paid orders appear here."
                       compact
-                      action={
-                        <Button asChild size="sm">
-                          <Link href="/vendor/scan">
-                            <ClipboardCheck />
-                            Open order desk
-                          </Link>
-                        </Button>
-                      }
                     />
                   }
                 />
@@ -243,41 +175,50 @@ export function VendorHome() {
             </section>
           </div>
 
-          {data.pendingBalance > 0 ? (
-            <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-                  <Wallet className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-emerald-950">
-                    {formatTZS(data.pendingBalance)} ready to settle
-                  </p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-emerald-800/80">
-                    Sales stay in your pending balance until you request a payout. Move them to your
-                    settlement account in one tap.
-                  </p>
-                </div>
-              </div>
-              <Button asChild size="sm" className="shrink-0">
-                <Link href="/vendor/settlement">Open settlement</Link>
-              </Button>
-            </section>
-          ) : (
-            <div className="card-surface flex min-w-0 items-center gap-3 overflow-hidden p-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-                <Banknote className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">All caught up</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                  No pending balance. Every settled sale has been paid out to your account.
-                </p>
-              </div>
-            </div>
-          )}
+          <section id="counter-qr" className="scroll-mt-24 space-y-2" aria-label="Counter QR">
+            <p className="eyebrow">Counter QR</p>
+            <VendorQrCard />
+          </section>
         </>
       ) : null}
     </div>
+  );
+}
+
+function AttentionTile({
+  href,
+  icon: Icon,
+  value,
+  label,
+  hint,
+  urgent = false,
+}: {
+  href: string;
+  icon: LucideIcon;
+  value: number | string;
+  label: string;
+  hint: string;
+  urgent?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'group flex min-h-[104px] min-w-0 flex-col justify-between rounded-2xl border bg-white p-3 transition-colors hover:bg-navy-50',
+        urgent ? 'border-gold' : 'border-navy/[0.09]',
+      )}
+    >
+      <span className="flex items-center justify-between">
+        <Icon className={cn('h-4 w-4', urgent ? 'text-gold-600' : 'text-ink-muted')} aria-hidden />
+        <ChevronRight className="h-3.5 w-3.5 text-ink-muted" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-semibold leading-tight tracking-[-0.03em] text-navy tabular">
+          {value}
+        </span>
+        <span className="block text-xs font-medium text-navy">{label}</span>
+        <span className="block truncate text-[11px] text-ink-muted">{hint}</span>
+      </span>
+    </Link>
   );
 }

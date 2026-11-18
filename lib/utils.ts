@@ -110,8 +110,10 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /** Avoids leaking full wallet balances or phone numbers in vendor scan results. */
+/** "Amina Hassan Mwinyi" → "Amina M."; titles such as "Dr." are kept but not used as the name. */
 export function displayName(name: string): string {
   const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+  const title = parts.length > 1 && parts[0].endsWith('.') ? `${parts.shift()} ` : '';
+  if (parts.length === 1) return `${title}${parts[0]}`;
+  return `${title}${parts[0]} ${parts[parts.length - 1][0]}.`;
 }

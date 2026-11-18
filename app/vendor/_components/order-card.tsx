@@ -17,7 +17,7 @@ import type { OrderStatus, OrderView } from '@/lib/orders/types';
 
 /**
  * One incoming/verified order at the counter.
- * PENDING cards are amber and pulse gently; VERIFIED cards are emerald.
+ * The coloured left edge shows the state at a glance; words always say it too.
  * The coupon code itself is never rendered for pending orders — the student
  * must show it (or their QR) so the vendor can't self-verify.
  */
@@ -50,12 +50,13 @@ export function OrderCard({
     <li
       className={cn(
         'animate-order-in card-surface min-w-0 overflow-hidden',
-        pending && 'border-amber-200/90 bg-amber-50/30',
-        awaitingAcceptance && 'border-sky-200/90 bg-sky-50/30',
-        awaitingPayment && 'border-violet-200/90 bg-violet-50/30',
-        verified && 'border-emerald-200/80 bg-emerald-50/20',
-        order.status === 'CANCELLED' && 'opacity-70',
-        isNew && 'ring-2 ring-amber-200/80',
+        'border-l-4',
+        awaitingAcceptance && 'border-l-gold',
+        pending && 'border-l-primary-600',
+        awaitingPayment && 'border-l-navy-300',
+        verified && 'border-l-navy-100',
+        order.status === 'CANCELLED' && 'border-l-navy-100 opacity-70',
+        isNew && 'ring-2 ring-gold',
       )}
       style={{ animationDelay: `${animationDelay}ms` }}
     >
@@ -72,7 +73,9 @@ export function OrderCard({
                 <p className="truncate text-sm font-semibold text-slate-900">
                   {displayName(order.student.name)}
                 </p>
-                <p className="truncate text-[11px] text-slate-500">{order.student.studentId}</p>
+                <p className="truncate text-[11px] text-ink-muted">
+                  {order.student.studentId.startsWith('GUEST-') ? 'Campus guest' : order.student.studentId}
+                </p>
               </div>
               <OrderStatusChip status={order.status} />
             </div>
@@ -169,23 +172,22 @@ export function OrderCard({
         </div>
 
         {pending ? (
-          <p className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-amber-700/90">
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
             <Clock3 className="h-3 w-3" />
-            Coupon valid until {formatDateTime(order.expiresAt)} — ask for the student&apos;s 6-digit
-            code or coupon QR.
+            Valid until {formatDateTime(order.expiresAt)}. Ask for the coupon QR or 6-digit code.
           </p>
         ) : null}
 
         {awaitingAcceptance ? (
-          <p className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-sky-700/90">
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
             <Clock3 className="h-3 w-3" />
-            No payment has been taken. Accept only if the requested food can be prepared.
+            Not paid yet. Accept only if you can serve this food now.
           </p>
         ) : null}
         {awaitingPayment ? (
-          <p className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-violet-700/90">
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
             <Clock3 className="h-3 w-3" />
-            Request accepted. The student must pay before a coupon is issued.
+            Accepted. The buyer has 20 minutes to pay.
           </p>
         ) : null}
       </div>
@@ -196,26 +198,26 @@ export function OrderCard({
 function OrderStatusChip({ status }: { status: OrderStatus }) {
   if (status === 'AWAITING_ACCEPTANCE') {
     return (
-      <Badge variant="default" dot>
-        Needs acceptance
+      <Badge variant="gold" dot>
+        New request
       </Badge>
     );
   }
   if (status === 'PENDING') {
     return (
-      <span className="animate-status-pulse inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-        Pending
+      <span className="animate-status-pulse inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary-600" />
+        Ready to collect
       </span>
     );
   }
   if (status === 'AWAITING_PAYMENT') {
-    return <Badge variant="default" dot>Waiting for payment</Badge>;
+    return <Badge variant="neutral" dot>Waiting for payment</Badge>;
   }
   if (status === 'VERIFIED') {
     return (
       <Badge variant="success" dot>
-        Verified
+        Collected
       </Badge>
     );
   }
