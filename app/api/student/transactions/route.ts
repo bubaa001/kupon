@@ -5,7 +5,7 @@ import { fail, ok, searchParams } from '@/lib/api';
 import { TX_STATUSES } from '@/lib/constants';
 import type { TransactionsData } from '@/app/student/_lib/types';
 import { processKuponTestGatewayPayments } from '@/lib/payments/kupon-test-gateway';
-import { getStudentContext, serializeTransaction } from '../_lib/student';
+import { getStudentContext, serializeTransaction, studentTxInclude } from '../_lib/student';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
           ...baseWhere,
           ...(query.status ? { status: query.status } : {}),
         },
-        include: { vendor: { select: { name: true, code: true } } },
+        include: studentTxInclude,
         orderBy: { createdAt: 'desc' },
         take: 100,
       }),

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { AppError, conflict, notFound } from '@/lib/errors';
 import { randomReference } from '@/lib/utils';
 import { signCouponToken } from './coupon';
+import { PAY_WINDOW_MS } from './accept-request';
 import { orderInclude, serializeOrder } from './serialize';
 import type { PlaceOrderInput } from './types';
 
@@ -113,7 +114,11 @@ export async function placeOrder(input: {
 
   const reference = randomReference('ORD');
   const couponCode = await uniqueCouponCode();
-  const expiresAt = new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000);
+  // Auto-accepted orders get the 20-minute pay window; requests waiting for the
+  // cafeteria keep 24 hours and get the pay window when accepted.
+  const expiresAt = new Date(
+    Date.now() + (requiresAcceptance ? COUPON_TTL_HOURS * 60 * 60 * 1000 : PAY_WINDOW_MS),
+  );
 
   const created = await prisma.$transaction(async (tx) => {
     const order = await tx.order.create({

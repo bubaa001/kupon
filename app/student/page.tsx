@@ -20,6 +20,7 @@ import { PendingOrderCard } from '@/components/student/pending-order-card';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
 import { cn, formatTZS } from '@/lib/utils';
+import { OrderSheet } from '@/components/student/order-sheet';
 import { ErrorState } from './_components/error-state';
 import { TransactionRow } from './_components/transaction-row';
 import type { StudentDashboardData } from './_lib/types';
@@ -79,6 +80,7 @@ export default function StudentHomePage() {
   const [data, setData] = useState<StudentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -276,14 +278,15 @@ export default function StudentHomePage() {
               }
             />
           ) : (
-            <div className="divide-y divide-navy/[0.07]">
+            <div className="space-y-0.5">
               {data.recentTransactions.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} />
+                <TransactionRow key={tx.id} tx={tx} onOpen={setOpenOrderId} />
               ))}
             </div>
           )}
         </div>
       </Card>
+      <OrderSheet orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );
 }

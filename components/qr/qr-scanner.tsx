@@ -40,6 +40,21 @@ export function QrScanner({
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [cameraLabel, setCameraLabel] = useState<string | null>(null);
+  // Hardware zoom, when the camera supports it. A coupon held at arm's length
+  // fills too little of a 1x frame, so scanning opens a little zoomed in.
+  const [zoom, setZoom] = useState<{ value: number; min: number; max: number } | null>(null);
+
+  async function changeZoom(target: number) {
+    const feature = scannerRef.current?.getRunningTrackCameraCapabilities?.().zoomFeature();
+    if (!feature?.isSupported() || !zoom) return;
+    const value = Math.min(Math.max(target, zoom.min), zoom.max);
+    try {
+      await feature.apply(value);
+      setZoom({ ...zoom, value });
+    } catch {
+      // Ignore: the stream keeps its current zoom.
+    }
+  }
 
   useEffect(() => {
     onResultRef.current = onResult;
@@ -145,10 +160,11 @@ export function QrScanner({
           if (zoom?.isSupported()) {
             const min = zoom.min();
             const max = zoom.max();
-            const target = Math.min(Math.max(1, min), max);
+            const target = Math.min(Math.max(1.5, min), max);
             if (Math.abs((zoom.value() ?? target) - target) > 0.01) {
               await zoom.apply(target);
             }
+            if (!cancelled) setZoom({ value: target, min, max });
           }
         } catch {
           // Not every camera supports programmatic zoom; keep the stream as-is.
@@ -222,25 +238,44 @@ export function QrScanner({
           <>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="relative h-[220px] w-[220px] rounded-2xl border-2 border-white/25">
-                <span className="absolute -left-0.5 -top-0.5 h-7 w-7 rounded-tl-xl border-l-4 border-t-4 border-primary-400" />
-                <span className="absolute -right-0.5 -top-0.5 h-7 w-7 rounded-tr-xl border-r-4 border-t-4 border-primary-400" />
-                <span className="absolute -bottom-0.5 -left-0.5 h-7 w-7 rounded-bl-xl border-b-4 border-l-4 border-primary-400" />
-                <span className="absolute -bottom-0.5 -right-0.5 h-7 w-7 rounded-br-xl border-b-4 border-r-4 border-primary-400" />
-                <span className="absolute left-3 right-3 top-1/2 h-px animate-pulse bg-primary-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.8)]" />
+                <span className="absolute -left-0.5 -top-0.5 h-7 w-7 rounded-tl-xl border-l-4 border-t-4 border-gold" />
+                <span className="absolute -right-0.5 -top-0.5 h-7 w-7 rounded-tr-xl border-r-4 border-t-4 border-gold" />
+                <span className="absolute -bottom-0.5 -left-0.5 h-7 w-7 rounded-bl-xl border-b-4 border-l-4 border-gold" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-7 w-7 rounded-br-xl border-b-4 border-r-4 border-gold" />
+                <span className="absolute left-3 right-3 top-1/2 h-px animate-pulse bg-gold shadow-[0_0_12px_2px_rgba(227,195,111,0.8)]" />
               </div>
             </div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-[10px] font-medium text-white backdrop-blur">
-                <Camera className="h-3 w-3" />
-                {cameraLabel ? `${cameraLabel} · 1×` : '1× camera'} · align the QR
+            <div className="absolute inset-x-0 bottom-3 flex items-center justify-center gap-2 px-3">
+              <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-full bg-navy/80 px-3 py-1.5 text-[11px] font-medium text-white">
+                <Camera className="h-3 w-3" aria-hidden />
+                Fit the QR inside the frame
               </span>
+              {zoom && zoom.max > zoom.min ? (
+                <div className="flex rounded-full bg-navy/80 p-0.5" role="group" aria-label="Camera zoom">
+                  {[1, 2].filter((level) => level >= zoom.min - 0.01 && level <= zoom.max + 0.01).map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => void changeZoom(level)}
+                      aria-pressed={Math.abs(zoom.value - level) < 0.05}
+                      className={
+                        Math.abs(zoom.value - level) < 0.05
+                          ? 'min-h-8 rounded-full bg-gold px-3 text-[11px] font-bold text-navy'
+                          : 'min-h-8 rounded-full px-3 text-[11px] font-semibold text-white'
+                      }
+                    >
+                      {level}×
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </>
         ) : null}
 
         {state === 'starting' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-navy text-slate-300">
-            <Loader2 className="h-6 w-6 animate-spin text-primary-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-gold" />
             <p className="text-xs">Starting camera…</p>
           </div>
         ) : null}
@@ -262,9 +297,9 @@ export function QrScanner({
           </div>
         ) : null}
       </div>
-      <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-        <ScanLine className="h-3.5 w-3.5" />
-        Camera scanning works on localhost or HTTPS
+      <p className="flex items-center justify-center gap-1.5 text-[11px] text-ink-muted">
+        <ScanLine className="h-3.5 w-3.5" aria-hidden />
+        {cameraLabel ? cameraLabel : 'Back camera'}
       </p>
     </div>
   );

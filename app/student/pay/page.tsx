@@ -8,7 +8,6 @@ import {
   Loader2,
   MapPin,
   ScanLine,
-  ShoppingBag,
   Smartphone,
   Store,
   UtensilsCrossed,
@@ -141,6 +140,8 @@ export default function PayPage() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [reviewOpen, setReviewOpen] = useState(false);
   const [note, setNote] = useState('');
+  // The note is optional, so it stays collapsed and never opens the keyboard by itself.
+  const [noteOpen, setNoteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [order, setOrder] = useState<OrderView | null>(null);
@@ -710,60 +711,48 @@ export default function PayPage() {
 
       {phase === 'menu' && menu ? (
         <>
-          <PageHeader
-            eyebrow={`${menu.vendor.universityName} • ${menu.vendor.code}`}
-            title="Choose your meal"
-            description={menu.vendor.description}
-            actions={
-              <Button variant="outline" size="sm" onClick={resetToScan} disabled={submitting}>
-                <ScanLine aria-hidden />
-                Badilisha
-              </Button>
-            }
-          />
-
-          <section className="balance-card p-5" aria-label="Cafeteria menu">
-            <div className="relative z-10 flex items-start justify-between gap-3">
+          <section
+            className="relative overflow-hidden rounded-2xl bg-navy p-4 text-white sm:p-5"
+            aria-label="Cafeteria"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold to-transparent"
+            />
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
-                  <Store className="h-3.5 w-3.5" aria-hidden />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold">
                   {menu.vendor.code}
                 </p>
-                <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight">
+                <h1 className="mt-1 truncate text-xl font-medium tracking-[-0.03em] sm:text-2xl">
                   {menu.vendor.name}
-                </h2>
-                <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-emerald-100/70">
-                  {menu.vendor.description}
-                </p>
-                <p className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-100/70">
-                  <MapPin className="h-3.5 w-3.5" aria-hidden />
-                  {menu.vendor.universityName}
+                </h1>
+                <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-navy-300">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  {menu.vendor.universityName} · {menu.items.length}{' '}
+                  {menu.items.length === 1 ? 'dish' : 'dishes'} today
                 </p>
               </div>
-              <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-100">
-                {menu.items.length} items
-              </span>
-            </div>
-            <div className="relative z-10 mt-4 flex items-center justify-between rounded-xl border border-white/15 bg-white/10 px-3 py-2">
-              <span className="flex items-center gap-1.5 text-[11px] text-emerald-100/80">
-                <Smartphone className="h-3.5 w-3.5" aria-hidden />
-                Pay for this order at checkout
-              </span>
-              <span className="text-[11px] font-semibold text-white">Mobile money</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetToScan}
+                disabled={submitting}
+                className="shrink-0 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                <ScanLine aria-hidden />
+                Change
+              </Button>
             </div>
           </section>
 
           {categories.length > 1 ? (
             <div
-              className="hide-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1"
+              className="hide-scrollbar sticky top-14 z-10 -mx-4 flex gap-2 overflow-x-auto bg-canvas px-4 py-2 lg:top-16"
               role="group"
               aria-label="Menu categories"
             >
               {categories.map((item) => {
-                const sample =
-                  item === 'All'
-                    ? menu.items[0]
-                    : menu.items.find((entry) => entry.category === item);
                 const selected = category === item;
                 return (
                   <button
@@ -771,33 +760,14 @@ export default function PayPage() {
                     type="button"
                     onClick={() => setCategory(item)}
                     aria-pressed={selected}
-                    className="flex w-[68px] shrink-0 flex-col items-center gap-1.5 text-center"
+                    className={cn(
+                      'min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-medium transition-colors',
+                      selected
+                        ? 'border-navy bg-navy text-white'
+                        : 'border-navy/15 bg-white text-navy hover:bg-navy-50',
+                    )}
                   >
-                    <span
-                      className={cn(
-                        'relative h-[58px] w-[58px] overflow-hidden rounded-full border-[3px] p-[2px] transition-all',
-                        selected
-                          ? 'border-primary-500 shadow-emerald-glow'
-                          : 'border-white shadow-sm ring-1 ring-slate-200',
-                      )}
-                    >
-                      <FoodThumb
-                        imageUrl={sample?.imageUrl}
-                        name={sample?.name ?? item}
-                        className="h-full w-full rounded-full"
-                      />
-                      {selected ? (
-                        <span className="absolute inset-0 rounded-full ring-2 ring-white/60" />
-                      ) : null}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-[10px] font-semibold leading-tight',
-                        selected ? 'text-primary-800' : 'text-slate-500',
-                      )}
-                    >
-                      {item}
-                    </span>
+                    {item}
                   </button>
                 );
               })}
@@ -818,15 +788,8 @@ export default function PayPage() {
             />
           ) : (
             <>
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold tracking-tight text-slate-900">
-                  {category === 'All' ? 'All dishes' : category}
-                </h2>
-                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
-                  {visibleItems.length} {visibleItems.length === 1 ? 'dish' : 'dishes'}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-3.5 pb-24 sm:grid-cols-2 lg:grid-cols-3 lg:pb-0">
+              <h2 className="sr-only">{category === 'All' ? 'All dishes' : category}</h2>
+              <div className="grid grid-cols-2 gap-3 pb-28 sm:grid-cols-3 lg:grid-cols-4 lg:pb-0">
                 {visibleItems.map((item, index) => (
                   <FoodProductCard
                     key={item.id}
@@ -845,32 +808,21 @@ export default function PayPage() {
           )}
 
           {itemCount > 0 ? (
-            <div className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 px-4 lg:static lg:mt-4 lg:px-0">
-              <div
+            <div className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-20 px-4 lg:sticky lg:bottom-6 lg:px-0">
+              <button
                 key={itemCount}
-                className="mx-auto flex max-w-md animate-order-in items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-lift lg:max-w-none"
+                type="button"
+                onClick={() => setReviewOpen(true)}
+                className="mx-auto flex min-h-14 w-full max-w-lg animate-order-in items-center gap-3 rounded-2xl bg-navy px-4 py-2.5 text-left text-white shadow-lift transition-transform active:scale-[0.99]"
+                aria-label={`Review order: ${itemCount} ${itemCount === 1 ? 'item' : 'items'}, ${formatTZS(subtotal)}`}
               >
-                <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
-                  <ShoppingBag className="h-5 w-5" aria-hidden />
-                  <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-bold text-white">
-                    {itemCount}
-                  </span>
+                <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-gold px-2 text-sm font-bold text-navy tabular">
+                  {itemCount}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                    {itemCount} {itemCount === 1 ? 'item' : 'items'}
-                  </p>
-                  <p className="text-sm font-semibold tabular text-slate-900">{formatTZS(subtotal)}</p>
-                </div>
-                <Button
-                  onClick={() => {
-                    setReviewOpen(true);
-                  }}
-                >
-                  Review order
-                  <ChevronRight aria-hidden />
-                </Button>
-              </div>
+                <span className="flex-1 text-sm font-semibold">Review order</span>
+                <span className="text-sm font-semibold tabular">{formatTZS(subtotal)}</span>
+                <ChevronRight className="h-4 w-4 text-gold" aria-hidden />
+              </button>
             </div>
           ) : null}
         </>
@@ -1187,17 +1139,27 @@ export default function PayPage() {
                 Nothing is charged yet. You pay only after the cafeteria confirms the food is available. Test gateway: no real money moves.
               </Alert>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="order-note">Note for the cafeteria (optional)</Label>
-                <Textarea
-                  id="order-note"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value.slice(0, 160))}
-                  placeholder="For example: no chilli, one extra chapati…"
-                  className="min-h-[72px]"
-                />
-                <p className="text-right text-[10px] tabular text-slate-400">{note.length}/160</p>
-              </div>
+              {noteOpen || note ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="order-note">Note for the cafeteria</Label>
+                  <Textarea
+                    id="order-note"
+                    value={note}
+                    onChange={(event) => setNote(event.target.value.slice(0, 160))}
+                    placeholder="For example: no chilli, one extra chapati…"
+                    className="min-h-[72px]"
+                  />
+                  <p className="text-right text-[10px] tabular text-ink-muted">{note.length}/160</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setNoteOpen(true)}
+                  className="min-h-10 self-start text-sm font-semibold text-primary-700 hover:text-primary-800"
+                >
+                  + Add a note for the cafeteria
+                </button>
+              )}
 
               {formError ? (
                 <Alert variant="danger" title="Payment did not go through">

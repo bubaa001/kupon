@@ -15,6 +15,7 @@ import { STATUS_BADGE, TX_STATUSES } from '@/lib/constants';
 import { ApiClientError, apiFetch } from '@/lib/client-api';
 import { formatDate, formatTZS } from '@/lib/utils';
 import { useAutoRefresh } from '@/lib/use-auto-refresh';
+import { OrderSheet } from '@/components/student/order-sheet';
 import { ErrorState } from '../_components/error-state';
 import { TransactionRow } from '../_components/transaction-row';
 import type { StudentTx, TransactionsData } from '../_lib/types';
@@ -30,6 +31,7 @@ const RANGES: { value: RangeKey; label: string }[] = [
 export default function HistoryPage() {
   const [range, setRange] = useState<RangeKey>('week');
   const [status, setStatus] = useState('');
+  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
 
   const [data, setData] = useState<TransactionsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -188,9 +190,9 @@ export default function HistoryPage() {
                           {group.transactions.length === 1 ? 'transaction' : 'transactions'}
                         </span>
                       </div>
-                      <div className="mt-1 divide-y divide-navy/[0.07]">
+                      <div className="mt-1 space-y-0.5">
                         {group.transactions.map((tx) => (
-                          <TransactionRow key={tx.id} tx={tx} />
+                          <TransactionRow key={tx.id} tx={tx} onOpen={setOpenOrderId} />
                         ))}
                       </div>
                     </section>
@@ -201,6 +203,7 @@ export default function HistoryPage() {
           )}
         </TabsContent>
       </Tabs>
+      <OrderSheet orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );
 }

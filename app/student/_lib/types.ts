@@ -12,6 +12,13 @@ export type StudentTx = {
   vendor?: { name: string; code: string };
   channel: string;
   metadataSummary: string;
+  /** The meal this payment was for; opens the order sheet. */
+  order: {
+    id: string;
+    status: string;
+    itemCount: number;
+    items: Array<{ name: string; quantity: number; imageUrl: string | null }>;
+  } | null;
 };
 
 export type StudentDashboardData = {

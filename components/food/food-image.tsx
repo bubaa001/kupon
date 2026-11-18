@@ -37,7 +37,7 @@ export function FoodImage({
   const isIllustration = Boolean(src && /\.svg($|\?)/i.test(src));
 
   return (
-    <div className={cn('relative h-full w-full overflow-hidden bg-[#171008]', className)}>
+    <div className={cn('relative h-full w-full overflow-hidden bg-paper', className)}>
       {showImage ? (
         <img
           src={src ?? ''}
@@ -54,19 +54,15 @@ export function FoodImage({
       ) : (
         <div
           className={cn(
-            'relative flex h-full w-full items-center justify-center overflow-hidden bg-[#171008]',
+            'relative flex h-full w-full items-center justify-center overflow-hidden bg-paper',
             fallbackClassName,
           )}
         >
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(251,191,36,0.3),transparent_55%),radial-gradient(circle_at_80%_85%,rgba(16,185,129,0.24),transparent_55%)]"
+            className="absolute aspect-square w-[46%] rounded-full border border-gold-200 bg-white"
           />
-          <span
-            aria-hidden
-            className="absolute aspect-square w-[48%] rounded-full border border-white/[0.07] bg-white/[0.04] shadow-[inset_0_2px_26px_rgba(0,0,0,0.35)]"
-          />
-          <UtensilsCrossed aria-hidden className="relative h-7 w-7 text-white/30" />
+          <UtensilsCrossed aria-hidden className="relative h-7 w-7 text-gold-600/60" />
         </div>
       )}
     </div>

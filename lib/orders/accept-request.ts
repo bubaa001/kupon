@@ -3,7 +3,8 @@ import { auditLog } from '@/lib/audit';
 import { conflict, forbidden, notFound } from '@/lib/errors';
 import { orderInclude, serializeVendorOrder } from './serialize';
 
-const COUPON_TTL_HOURS = 24;
+/** Once accepted, the buyer has 20 minutes to pay before the request expires. */
+export const PAY_WINDOW_MS = 20 * 60 * 1000;
 
 export async function acceptOrderRequest(input: {
   orderId: string;
@@ -46,7 +47,7 @@ export async function acceptOrderRequest(input: {
       },
       data: {
         status: 'AWAITING_PAYMENT',
-        expiresAt: new Date(Date.now() + COUPON_TTL_HOURS * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + PAY_WINDOW_MS),
       },
     });
     if (!claimed.count) throw conflict('This order request was just handled.');
@@ -99,7 +100,7 @@ export async function acceptAllOrderRequests(input: {
       },
       data: {
         status: 'AWAITING_PAYMENT',
-        expiresAt: new Date(now.getTime() + COUPON_TTL_HOURS * 60 * 60 * 1000),
+        expiresAt: new Date(now.getTime() + PAY_WINDOW_MS),
       },
     });
     await auditLog(

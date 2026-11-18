@@ -4,7 +4,7 @@ import { fail, ok } from '@/lib/api';
 import { notFound } from '@/lib/errors';
 import type { StudentDashboardData } from '@/app/student/_lib/types';
 import { getStudentActiveOrders } from '../_lib/orders';
-import { getStudentContext, serializeTransaction } from '../_lib/student';
+import { getStudentContext, serializeTransaction, studentTxInclude } from '../_lib/student';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,7 +62,7 @@ export async function GET() {
             studentId: student.id,
             type: 'PAYMENT',
           },
-          include: { vendor: { select: { name: true, code: true } } },
+          include: studentTxInclude,
           orderBy: { createdAt: 'desc' },
           take: 6,
         }),

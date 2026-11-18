@@ -160,7 +160,7 @@ export function MenuPreview({
             </span>
           </div>
 
-          <ul className="grid grid-cols-1 gap-3.5 pb-24 sm:grid-cols-2 lg:grid-cols-3 lg:pb-0">
+          <ul className="grid grid-cols-2 gap-3 pb-28 sm:grid-cols-3 lg:grid-cols-4 lg:pb-0">
             {shown.map((item, index) => (
               <li key={item.id} className="min-w-0">
                 <FoodProductCard

@@ -22,9 +22,20 @@ export async function getStudentContext(): Promise<StudentContext> {
   return { user, student };
 }
 
-export type TransactionWithVendor = Prisma.TransactionGetPayload<{
-  include: { vendor: { select: { name: true; code: true } } };
-}>;
+/** What a buyer's history row needs: the cafeteria and a preview of the meal. */
+export const studentTxInclude = {
+  vendor: { select: { name: true, code: true } },
+  order: {
+    select: {
+      id: true,
+      status: true,
+      itemCount: true,
+      items: { orderBy: { name: 'asc' }, take: 3, select: { name: true, quantity: true, imageUrl: true } },
+    },
+  },
+} satisfies Prisma.TransactionInclude;
+
+export type TransactionWithVendor = Prisma.TransactionGetPayload<{ include: typeof studentTxInclude }>;
 
 function channelFor(tx: TransactionWithVendor, metadata: Record<string, unknown>): string {
   if (tx.isTest) return 'Kupon test gateway';
@@ -57,5 +68,13 @@ export function serializeTransaction(tx: TransactionWithVendor): StudentTx {
     vendor: tx.vendor ? { name: tx.vendor.name, code: tx.vendor.code } : undefined,
     channel: channelFor(tx, metadata),
     metadataSummary: summaryFor(tx, metadata),
+    order: tx.order
+      ? {
+          id: tx.order.id,
+          status: tx.order.status,
+          itemCount: tx.order.itemCount,
+          items: tx.order.items,
+        }
+      : null,
   };
 }

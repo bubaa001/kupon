@@ -172,6 +172,20 @@ function StudentActions({
   );
 }
 
+function Price({ price }: { price: number }) {
+  return (
+    <p className="text-[15px] font-semibold tracking-[-0.02em] text-navy tabular">
+      <span className="mr-0.5 text-[10px] font-medium text-ink-muted">TZS</span>
+      {price > 0 ? formatNumber(price) : '—'}
+    </p>
+  );
+}
+
+/**
+ * The buyer's menu card: a bright food photo, the name and price at a glance,
+ * and one thumb-sized control that becomes a quantity stepper once added.
+ * Laid out for a two-column grid on phones so a whole menu fits in a scroll.
+ */
 function StudentCard({
   item,
   quantity,
@@ -184,84 +198,103 @@ function StudentCard({
 }: FoodProductCardProps & { maxQuantity: number }) {
   const available = item.available !== false;
   const isPopular = item.category?.trim().toLowerCase() === 'popular';
+  const count = quantity ?? 0;
+  const inCart = count > 0;
 
   return (
     <article
       style={
         revealIndex !== undefined
-          ? { animationDelay: `${Math.min(revealIndex, 10) * 45}ms` }
+          ? { animationDelay: `${Math.min(revealIndex, 10) * 40}ms` }
           : undefined
       }
       className={cn(
-        'group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[1.25rem] bg-[#171008] ring-1 ring-black/10 shadow-[0_20px_44px_-26px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:-translate-y-1 animate-order-in',
+        'group relative flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border bg-white transition-[border-color,box-shadow] duration-200 animate-order-in',
+        inCart ? 'border-primary-600 shadow-[0_0_0_1px_theme(colors.primary.600)]' : 'border-navy/[0.09]',
         className,
       )}
-      aria-label={item.name}
+      aria-label={`${item.name}, ${formatNumber(item.price)} shillings${available ? '' : ', sold out'}`}
     >
-      <div className="relative aspect-[16/11] w-full overflow-hidden sm:aspect-[16/10]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-paper">
         <FoodImage
           src={item.imageUrl}
           name={item.name}
           priority={priority}
+          className="bg-paper"
+          fallbackClassName="bg-paper"
           imageClassName={cn(
-            'transition-transform duration-300 ease-out group-hover:scale-[1.04]',
-            !available && 'saturate-[0.6]',
+            'transition-transform duration-300 ease-out group-hover:scale-[1.03]',
+            !available && 'grayscale',
           )}
-          fallbackClassName="bg-[#171008]"
         />
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-overlay [background-image:radial-gradient(rgba(255,255,255,0.7)_0.6px,transparent_0.6px)] [background-size:6px_6px]"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-0 bg-[#0a0602]/15"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[94%] bg-gradient-to-t from-[#050301] via-[#050301]/88 to-transparent"
-          aria-hidden
-        />
-
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1.5 p-3">
-          <CategoryChip category={item.category} />
-          {isPopular && available ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/95 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.08em] text-[#3b2405] shadow-sm">
-              <Flame className="h-2.5 w-2.5" aria-hidden />
-              Top pick
-            </span>
-          ) : null}
-          {!available ? (
-            <span className="rounded-full border border-white/20 bg-black/50 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.1em] text-white backdrop-blur-md">
+        {isPopular && available ? (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-navy">
+            <Flame className="h-3 w-3" aria-hidden />
+            Popular
+          </span>
+        ) : null}
+        {!available ? (
+          <span className="absolute inset-0 flex items-center justify-center bg-white/60">
+            <span className="rounded-full bg-navy px-2.5 py-1 text-[11px] font-semibold text-white">
               Sold out
             </span>
-          ) : null}
-        </div>
+          </span>
+        ) : null}
+        {inCart ? (
+          <span className="absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary-600 px-1.5 text-xs font-bold text-white tabular">
+            {count}
+          </span>
+        ) : null}
+      </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-10 p-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 min-w-0 text-[18px] font-bold leading-tight text-white [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">
-              {item.name}
-            </h3>
-            <PriceOnDark price={item.price} />
-          </div>
-          <p className="mt-1 line-clamp-2 min-h-[1.7rem] break-words text-[11px] leading-relaxed text-white/75">
-            {item.description?.trim() || ''}
-          </p>
-          <div className="mt-2.5">
-            <StudentActions
-              name={item.name}
-              quantity={quantity ?? 0}
-              onAdd={onAdd}
-              onRemove={onRemove}
-              maxQuantity={maxQuantity}
-              available={available}
-              fullWidth
-            />
-          </div>
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-navy">{item.name}</h3>
+        {item.description?.trim() ? (
+          <p className="mt-0.5 line-clamp-1 text-xs text-ink-muted">{item.description.trim()}</p>
+        ) : null}
+        <div className="mt-auto pt-2.5">
+          {onAdd && available && inCart ? (
+            <div className="space-y-2">
+              <Price price={item.price} />
+              <div className="flex h-9 w-full items-center justify-between rounded-full bg-primary-600 text-white">
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  disabled={!onRemove}
+                  aria-label={`Remove one ${item.name}`}
+                  className="flex h-9 w-10 items-center justify-center rounded-full active:scale-95"
+                >
+                  <Minus className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+                </button>
+                <span aria-live="polite" className="text-sm font-bold tabular">
+                  {count}
+                </span>
+                <button
+                  type="button"
+                  onClick={onAdd}
+                  disabled={count >= maxQuantity}
+                  aria-label={`Add another ${item.name}`}
+                  className="flex h-9 w-10 items-center justify-center rounded-full active:scale-95 disabled:opacity-40"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2.6} aria-hidden />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <Price price={item.price} />
+              {onAdd && available ? (
+                <button
+                  type="button"
+                  onClick={onAdd}
+                  aria-label={`Add ${item.name} to order`}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy text-gold transition-transform hover:bg-navy-800 active:scale-95"
+                >
+                  <Plus className="h-[18px] w-[18px]" strokeWidth={2.6} aria-hidden />
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     </article>
