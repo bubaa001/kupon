@@ -101,6 +101,11 @@ export function AcceptInviteForm({ token }: { token: string }) {
         <p className="text-xs text-slate-500">
           At least 12 characters with lowercase, uppercase, and a number.
         </p>
+        <p className="text-xs text-slate-500">
+          Next time, open <span className="font-semibold text-slate-700">Staff sign in</span> and use{' '}
+          <span className="break-all font-semibold text-slate-700">{invite.email}</span> (or your phone
+          number) with this password.
+        </p>
       </div>
       <Button className="w-full" type="submit" loading={saving} disabled={saving}>
         Accept invitation

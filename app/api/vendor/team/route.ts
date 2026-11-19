@@ -145,11 +145,31 @@ export async function PATCH(request: Request) {
   }
 }
 
-/** DELETE /api/vendor/team?userId=…: the owner removes a staff or Finance account. History stays. */
+/**
+ * DELETE /api/vendor/team?userId=…: the owner removes a staff or Finance account. History stays.
+ * DELETE /api/vendor/team?inviteId=…: the owner cancels an invitation nobody has accepted yet.
+ */
 export async function DELETE(request: Request) {
   try {
-    const { user: actor, vendor } = await requireVendorAccess();
-    const userId = new URL(request.url).searchParams.get('userId');
+    const { user: actor, vendor, universityId } = await requireVendorAccess();
+    const params = new URL(request.url).searchParams;
+    const inviteId = params.get('inviteId');
+    if (inviteId) {
+      const removed = await prisma.teamInvite.deleteMany({
+        where: { id: inviteId, vendorId: vendor.id, acceptedAt: null },
+      });
+      if (!removed.count) throw notFound('That invitation was already used or cancelled.');
+      await auditLog({
+        actorId: actor.id,
+        universityId,
+        action: 'TEAM_INVITE_CANCELLED',
+        entity: 'TeamInvite',
+        entityId: inviteId,
+        metadata: { vendorId: vendor.id },
+      });
+      return ok({ inviteId });
+    }
+    const userId = params.get('userId');
     if (!userId) throw notFound('Choose a team member to remove.');
     const result = await disableAccount({
       userId,

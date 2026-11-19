@@ -205,13 +205,7 @@ export default function VendorTeamPage() {
           ) : (
             <ul className="mt-4 divide-y divide-slate-100">
               {invites.map((invite) => (
-                <li key={invite.id} className="py-3">
-                  <p className="truncate text-sm font-semibold text-slate-800">{invite.name}</p>
-                  <p className="mt-0.5 truncate text-xs text-slate-500">{invite.email}</p>
-                  <p className="mt-1 text-[10px] text-amber-700">
-                    Invitation expires {formatDateTime(invite.expiresAt)}
-                  </p>
-                </li>
+                <PendingInviteRow key={invite.id} invite={invite} onChanged={() => void loadTeam(true)} />
               ))}
               {accounts.map((account) => (
                 <TeamMemberRow key={account.id} account={account} onChanged={() => void loadTeam(true)} />
@@ -222,6 +216,45 @@ export default function VendorTeamPage() {
       </div>
       <FinanceActivity />
     </div>
+  );
+}
+
+function PendingInviteRow({ invite, onChanged }: { invite: TeamInvite; onChanged: () => void }) {
+  const [cancelling, setCancelling] = useState(false);
+
+  async function cancel() {
+    if (!window.confirm(`Cancel the invitation for ${invite.name}? The link will stop working.`)) return;
+    setCancelling(true);
+    try {
+      await deleteJson(`/api/vendor/team?inviteId=${encodeURIComponent(invite.id)}`);
+      toast.success('Invitation cancelled');
+      onChanged();
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : 'Could not cancel this invitation.');
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <li className="flex items-start justify-between gap-3 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-slate-800">{invite.name}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-500">{invite.email}</p>
+        <p className="mt-1 text-[11px] text-amber-700">
+          Waiting to accept · expires {formatDateTime(invite.expiresAt)}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="shrink-0"
+        onClick={() => void cancel()}
+        loading={cancelling}
+      >
+        Cancel invite
+      </Button>
+    </li>
   );
 }
 

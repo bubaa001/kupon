@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ username: identifier }, { phone: identifier }],
+        OR: [{ username: identifier }, { phone: identifier }, { email: identifier }],
       },
       include: {
         university: { select: { id: true, name: true, code: true, status: true } },

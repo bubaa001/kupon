@@ -466,7 +466,7 @@ export function LoginForm({
   async function handleStaffSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!staffIdentifier.trim()) {
-      setStaffError('Enter your username or phone number.');
+      setStaffError('Enter your email, phone number or username.');
       return;
     }
     if (staffPassword.length < 6) {
@@ -852,13 +852,13 @@ export function LoginForm({
                 type="text"
                 autoCapitalize="none"
                 autoComplete="username"
-                placeholder="Your username or +255 745 000 001"
+                placeholder="you@example.com or 0745 000 001"
                 value={staffIdentifier}
                 onChange={(event) => setStaffIdentifier(event.target.value)}
                 error={Boolean(staffError)}
               />
               <p className="text-xs text-slate-500">
-                Use your Kupon username or the phone number linked to your staff account.
+                Use the email or phone number from your invitation, or your Kupon username.
               </p>
             </div>
 

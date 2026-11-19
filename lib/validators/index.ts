@@ -62,7 +62,7 @@ export const staffLoginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 }).refine((value) => Boolean(value.identifier ?? value.phone), {
   path: ['identifier'],
-  message: 'Enter your username or phone number.',
+  message: 'Enter your email, phone number or username.',
 });
 
 export const topUpSchema = z.object({
